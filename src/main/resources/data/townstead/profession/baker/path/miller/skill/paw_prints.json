@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.paw_prints"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.baker.miller.paw_prints.description"
+  },
+  "cost": 1,
+  "requires": [
+    "flour_trail"
+  ]
+}

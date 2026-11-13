@@ -19,34 +19,109 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:mason/stonewarden/keystone"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:mason/stonewarden/sanctuary_walls"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:mason/stonewarden/rockslide"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:mason",
+            "at_least": 80
           },
           {
             "type": "pheno:and",
             "conditions": [
-              {
-                "type": "pheno:building"
-              },
               {
                 "type": "pheno:entity_in_radius",
                 "radius": 12,
                 "condition": {
                   "type": "pheno:hostile"
                 }
+              },
+              {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:building"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "x": 1,
+                    "y": 1,
+                    "z": 0,
+                    "block_condition": {
+                      "type": "movement_blocking"
+                    }
+                  },
+                  {
+                    "type": "pheno:block",
+                    "x": -1,
+                    "y": 1,
+                    "z": 0,
+                    "block_condition": {
+                      "type": "movement_blocking"
+                    }
+                  },
+                  {
+                    "type": "pheno:block",
+                    "x": 0,
+                    "y": 1,
+                    "z": 1,
+                    "block_condition": {
+                      "type": "movement_blocking"
+                    }
+                  },
+                  {
+                    "type": "pheno:block",
+                    "x": 0,
+                    "y": 1,
+                    "z": -1,
+                    "block_condition": {
+                      "type": "movement_blocking"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:mortar",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:mortar",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:mason",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 12,
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                }
+              },
+              {
+                "type": "pheno:building"
+              },
+              {
+                "type": "pheno:time_of_day",
+                "min": 13000,
+                "max": 23000
               }
             ]
           }
@@ -63,27 +138,27 @@
     [
       "solid_ground",
       "bolt_the_door",
-      "loose_stones"
+      "murder_hole"
     ],
     [
       "load_bearing",
-      "hold_the_house",
-      "scree"
+      "bar_the_windows",
+      "boiling_oil"
     ],
     [
-      "keystone",
-      "sanctuary_walls",
-      "rockslide"
+      "threshold",
+      "brace_the_beams",
+      "hold_fast"
     ],
     [
       "safe_house",
-      "garrison",
-      "quarry_floor"
+      "fire_break",
+      "garrison"
     ],
     [
       "citadel",
       "unbroken_walls",
-      "avalanche"
+      "sanctuary_walls"
     ]
   ]
 }

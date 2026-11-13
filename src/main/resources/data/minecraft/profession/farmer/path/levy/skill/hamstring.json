@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "calloused_hands"
+    "wide_swing"
   ],
   "power": {
     "type": "pheno:trigger",

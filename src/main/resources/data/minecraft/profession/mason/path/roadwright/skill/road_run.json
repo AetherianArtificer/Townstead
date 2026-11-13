@@ -7,25 +7,193 @@
   "description": {
     "translate": "skill.townstead.mason.roadwright.road_run.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "stride_out"
+    "toll"
   ],
-  "skill_group": "townstead:road_travel",
+  "skill_group": "townstead:roadwright_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 200,
-    "slot": 1,
-    "ai_trigger": "never",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:stamina",
+      "resource": "townstead:mortar",
       "amount": 30
     },
     "action": {
-      "type": "pheno:add_velocity",
-      "relative": true,
-      "z": 1.6,
-      "y": 0.15
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/roadwright/road_patrol"
+              },
+              {
+                "type": "pheno:block",
+                "y": -1,
+                "block_condition": {
+                  "type": "in_tag",
+                  "tag": "townstead:roads"
+                }
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:delay",
+            "ticks": 1,
+            "action": {
+              "type": "pheno:change_resource",
+              "resource": "townstead:mortar",
+              "amount": 30
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/roadwright/road_patrol"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:block",
+                  "y": -1,
+                  "block_condition": {
+                    "type": "in_tag",
+                    "tag": "townstead:roads"
+                  }
+                }
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:mortar",
+                "min": 60
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:mortar",
+            "amount": -30
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:cloud",
+          "count": 10,
+          "spread": 0.3
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.horse.gallop",
+          "volume": 0.8,
+          "pitch": 1.2
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:block",
+            "y": -1,
+            "block_condition": {
+              "type": "in_tag",
+              "tag": "townstead:roads"
+            }
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:mason/roadwright/runaway_cart"
+            },
+            "if_action": {
+              "type": "pheno:dash",
+              "distance": 12,
+              "ticks": 12,
+              "max_hits": 4,
+              "stop_on_hit": false,
+              "hit_radius": 1.0,
+              "on_hit": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:add_velocity",
+                    "away_from_other": 1.3,
+                    "y": 0.35
+                  },
+                  {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:entity.minecart.riding",
+                    "volume": 0.6,
+                    "pitch": 1.4
+                  }
+                ]
+              }
+            },
+            "else_action": {
+              "type": "pheno:dash",
+              "distance": 12,
+              "ticks": 12,
+              "max_hits": 0,
+              "stop_on_hit": false,
+              "hit_radius": 1.0
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:mason/roadwright/runaway_cart"
+            },
+            "if_action": {
+              "type": "pheno:dash",
+              "distance": 6,
+              "ticks": 6,
+              "max_hits": 4,
+              "stop_on_hit": false,
+              "hit_radius": 1.0,
+              "on_hit": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:add_velocity",
+                    "away_from_other": 1.3,
+                    "y": 0.35
+                  },
+                  {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:entity.minecart.riding",
+                    "volume": 0.6,
+                    "pitch": 1.4
+                  }
+                ]
+              }
+            },
+            "else_action": {
+              "type": "pheno:dash",
+              "distance": 6,
+              "ticks": 6,
+              "max_hits": 0,
+              "stop_on_hit": false,
+              "hit_radius": 1.0
+            }
+          }
+        }
+      ]
     }
   }
 }

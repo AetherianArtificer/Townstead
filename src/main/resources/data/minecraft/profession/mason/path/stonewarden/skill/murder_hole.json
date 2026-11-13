@@ -1,0 +1,354 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.murder_hole"
+  },
+  "icon": "minecraft:cobblestone",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.murder_hole.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:stonewarden_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 360,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/stonewarden/sanctuary_walls"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:building"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "x": 1,
+                      "y": 1,
+                      "z": 0,
+                      "block_condition": {
+                        "type": "movement_blocking"
+                      }
+                    },
+                    {
+                      "type": "pheno:block",
+                      "x": -1,
+                      "y": 1,
+                      "z": 0,
+                      "block_condition": {
+                        "type": "movement_blocking"
+                      }
+                    },
+                    {
+                      "type": "pheno:block",
+                      "x": 0,
+                      "y": 1,
+                      "z": 1,
+                      "block_condition": {
+                        "type": "movement_blocking"
+                      }
+                    },
+                    {
+                      "type": "pheno:block",
+                      "x": 0,
+                      "y": 1,
+                      "z": -1,
+                      "block_condition": {
+                        "type": "movement_blocking"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 2.0,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:and",
+                        "conditions": [
+                          {
+                            "type": "pheno:block",
+                            "x": 1,
+                            "y": 1,
+                            "z": 0,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          },
+                          {
+                            "type": "pheno:block",
+                            "x": -1,
+                            "y": 1,
+                            "z": 0,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "pheno:and",
+                        "conditions": [
+                          {
+                            "type": "pheno:block",
+                            "x": 0,
+                            "y": 1,
+                            "z": 1,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          },
+                          {
+                            "type": "pheno:block",
+                            "x": 0,
+                            "y": 1,
+                            "z": -1,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": 8,
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:damage",
+                    "amount": 4,
+                    "source": "other"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:mason/stonewarden/boiling_oil"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:ignite",
+                    "seconds": 3
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:mason/stonewarden/sanctuary_walls"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 80,
+                        "amplifier": 1
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:glowing",
+                        "duration": 80,
+                        "amplifier": 0
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:poof",
+                  "count": 8,
+                  "spread": 0.4
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 4,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:and",
+                        "conditions": [
+                          {
+                            "type": "pheno:block",
+                            "x": 1,
+                            "y": 1,
+                            "z": 0,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          },
+                          {
+                            "type": "pheno:block",
+                            "x": -1,
+                            "y": 1,
+                            "z": 0,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "pheno:and",
+                        "conditions": [
+                          {
+                            "type": "pheno:block",
+                            "x": 0,
+                            "y": 1,
+                            "z": 1,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          },
+                          {
+                            "type": "pheno:block",
+                            "x": 0,
+                            "y": 1,
+                            "z": -1,
+                            "block_condition": {
+                              "type": "movement_blocking"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": 8,
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:damage",
+                    "amount": 4,
+                    "source": "other"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:mason/stonewarden/boiling_oil"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:ignite",
+                    "seconds": 3
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:mason/stonewarden/sanctuary_walls"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 80,
+                        "amplifier": 1
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:glowing",
+                        "duration": 80,
+                        "amplifier": 0
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:poof",
+                  "count": 8,
+                  "spread": 0.4
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.fall",
+          "volume": 1.0,
+          "pitch": 0.6
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.break",
+          "volume": 1.0,
+          "pitch": 0.7
+        }
+      ]
+    }
+  }
+}

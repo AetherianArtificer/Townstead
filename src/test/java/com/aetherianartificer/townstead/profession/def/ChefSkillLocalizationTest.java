@@ -17,24 +17,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class ChefSkillLocalizationTest {
 
     private static final List<String> SKILLS = List.of(
-            "appetizer_menu", "chef_de_cuisine", "chefs_knife", "dessert_menu",
-            "dinner_rush", "flambe", "grand_banquet", "kitchen_flow", "kitchen_pace",
-            "main_course", "honed_edge", "precision_cut", "running_the_pass",
-            "saute_toss", "soup_course");
+            "pass", "hands", "expedite", "all_day", "chef_de_cuisine",
+            "chefs_knife", "julienne", "hot_pan", "sizzle", "dinner_rush",
+            "plating", "honed_edge", "running_the_pass", "family_meal", "in_the_weeds");
 
     private static final Map<String, String> REQUIRES = Map.ofEntries(
-            Map.entry("honed_edge", "kitchen_pace"),
-            Map.entry("soup_course", "appetizer_menu"),
-            Map.entry("precision_cut", "chefs_knife"),
-            Map.entry("kitchen_flow", "honed_edge"),
-            Map.entry("main_course", "soup_course"),
-            Map.entry("saute_toss", "precision_cut"),
-            Map.entry("running_the_pass", "kitchen_flow"),
-            Map.entry("dessert_menu", "main_course"),
-            Map.entry("flambe", "saute_toss"),
-            Map.entry("chef_de_cuisine", "running_the_pass"),
-            Map.entry("grand_banquet", "dessert_menu"),
-            Map.entry("dinner_rush", "flambe"));
+            Map.entry("hands", "pass"),
+            Map.entry("expedite", "hands"),
+            Map.entry("all_day", "expedite"),
+            Map.entry("chef_de_cuisine", "all_day"),
+            Map.entry("julienne", "chefs_knife"),
+            Map.entry("hot_pan", "julienne"),
+            Map.entry("sizzle", "hot_pan"),
+            Map.entry("dinner_rush", "sizzle"),
+            Map.entry("honed_edge", "plating"),
+            Map.entry("running_the_pass", "honed_edge"),
+            Map.entry("family_meal", "running_the_pass"),
+            Map.entry("in_the_weeds", "family_meal"));
 
     @Test
     void everyChefSkillUsesKeysPresentInBothLocaleSources() {

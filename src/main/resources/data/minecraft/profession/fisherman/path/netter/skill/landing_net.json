@@ -1,0 +1,201 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.landing_net"
+  },
+  "icon": "minecraft:cobweb",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.landing_net.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:netter_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:netter_netted"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:passenger_action",
+                "action": {
+                  "type": "pheno:dismount"
+                }
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:netter_netted",
+                "duration": 0
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:fisherman/netter/full_catch"
+                },
+                "if_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:not",
+                        "condition": {
+                          "type": "pheno:entity_type",
+                          "entity_type": "minecraft:player"
+                        }
+                      },
+                      {
+                        "type": "pheno:dimensions",
+                        "which": "height",
+                        "max": 2.0
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:fisherman/netter/the_big_one"
+                          }
+                        },
+                        {
+                          "type": "pheno:dimensions",
+                          "which": "height",
+                          "max": 1.0
+                        }
+                      ]
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:mount"
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:poof",
+                          "count": 6,
+                          "spread": 0.3
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  },
+                  "on": {
+                    "type": "pheno:ray",
+                    "distance": 8
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:not",
+                        "condition": {
+                          "type": "pheno:entity_type",
+                          "entity_type": "minecraft:player"
+                        }
+                      },
+                      {
+                        "type": "pheno:dimensions",
+                        "which": "height",
+                        "max": 2.0
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:fisherman/netter/the_big_one"
+                          }
+                        },
+                        {
+                          "type": "pheno:dimensions",
+                          "which": "height",
+                          "max": 1.0
+                        }
+                      ]
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:mount"
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:poof",
+                          "count": 6,
+                          "spread": 0.3
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  },
+                  "on": {
+                    "type": "pheno:ray",
+                    "distance": 4
+                  }
+                }
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:netter_netted",
+                "duration": 6000
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.fishing_bobber.throw",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

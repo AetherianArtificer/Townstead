@@ -1,0 +1,63 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.kiln"
+  },
+  "icon": "minecraft:furnace",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.kiln.description"
+  },
+  "cost": 1,
+  "requires": [
+    "searing_touch"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:front",
+      "min": 25
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:block_entity"
+            },
+            {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:furnace"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:blast_furnace"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:smoker"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:accelerate",
+        "ticks": 5
+      },
+      "optional": true
+    }
+  }
+}

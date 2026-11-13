@@ -16,14 +16,14 @@
       "type": "pheno:equipped_item",
       "slot": "mainhand",
       "item_condition": {
-        "type": "or",
+        "type": "pheno:or",
         "conditions": [
           {
-            "type": "ingredient",
+            "type": "pheno:ingredient",
             "tag": "townstead:butcher_cleavers"
           },
           {
-            "type": "ingredient",
+            "type": "pheno:ingredient",
             "tag": "minecraft:axes"
           }
         ]
@@ -33,30 +33,68 @@
       "type": "pheno:and",
       "actions": [
         {
+          "type": "pheno:set_flag",
+          "flag": "townstead:bleeding",
+          "duration": 70
+        },
+        {
           "type": "pheno:delay",
           "ticks": 20,
           "action": {
-            "type": "pheno:damage",
-            "amount": 1,
-            "source": "other"
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 1,
+                "source": "other"
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:falling_dripstone_lava",
+                "count": 3,
+                "spread": 0.2
+              }
+            ]
           }
         },
         {
           "type": "pheno:delay",
           "ticks": 40,
           "action": {
-            "type": "pheno:damage",
-            "amount": 1,
-            "source": "other"
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 1,
+                "source": "other"
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:falling_dripstone_lava",
+                "count": 3,
+                "spread": 0.2
+              }
+            ]
           }
         },
         {
           "type": "pheno:delay",
           "ticks": 60,
           "action": {
-            "type": "pheno:damage",
-            "amount": 1,
-            "source": "other"
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 1,
+                "source": "other"
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:falling_dripstone_lava",
+                "count": 3,
+                "spread": 0.2
+              }
+            ]
           }
         }
       ]

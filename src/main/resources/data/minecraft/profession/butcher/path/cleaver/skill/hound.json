@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.hound"
+  },
+  "icon": "minecraft:bone",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.hound.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blood_trail"
+  ]
+}

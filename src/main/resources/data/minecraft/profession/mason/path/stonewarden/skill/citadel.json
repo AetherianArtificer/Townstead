@@ -13,7 +13,7 @@
   ],
   "power": {
     "type": "pheno:action_over_time",
-    "interval": 20,
+    "interval": 100,
     "resource_cost": {
       "resource": "townstead:mortar",
       "amount": 0
@@ -21,25 +21,13 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:mortar",
-      "min": 75
+      "min": 50
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 12,
-      "include_self": true,
-      "target": "non_hostile",
-      "action": {
-        "type": "pheno:if_else",
-        "condition": {
-          "type": "pheno:building"
-        },
-        "if_action": {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 30,
-          "amplifier": 1
-        }
-      }
+      "type": "pheno:spawn_particles",
+      "particle": "minecraft:enchant",
+      "count": 4,
+      "spread": 0.5
     }
   }
 }

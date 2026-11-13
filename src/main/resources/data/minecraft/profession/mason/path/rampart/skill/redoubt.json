@@ -7,15 +7,15 @@
   "description": {
     "translate": "skill.townstead.mason.rampart.redoubt.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
     "breastwork"
   ],
-  "skill_group": "townstead:rampart_wall",
+  "skill_group": "townstead:rampart_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 500,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:mortar",
@@ -25,72 +25,386 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:haze",
-          "kind": "townstead:stone_wall",
-          "blocks": [
+          "type": "pheno:and",
+          "actions": [
             {
-              "radius": [
-                2,
-                1,
-                0
-              ],
-              "around": {
-                "offset": [
-                  0,
-                  1,
-                  2
-                ]
-              }
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:mason/rampart/keep"
+                      },
+                      {
+                        "type": "pheno:resource",
+                        "resource": "townstead:mortar",
+                        "min": 10
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:haze",
+                    "kind": "townstead:stone_wall_keep",
+                    "blocks": [
+                      {
+                        "radius": [
+                          2,
+                          1,
+                          0
+                        ],
+                        "around": {
+                          "offset": [
+                            0,
+                            1,
+                            2
+                          ]
+                        }
+                      },
+                      {
+                        "radius": [
+                          2,
+                          1,
+                          0
+                        ],
+                        "around": {
+                          "offset": [
+                            0,
+                            1,
+                            -2
+                          ]
+                        }
+                      },
+                      {
+                        "radius": [
+                          0,
+                          1,
+                          2
+                        ],
+                        "around": {
+                          "offset": [
+                            2,
+                            1,
+                            0
+                          ]
+                        }
+                      },
+                      {
+                        "radius": [
+                          0,
+                          1,
+                          2
+                        ],
+                        "around": {
+                          "offset": [
+                            -2,
+                            1,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:rampart_long"
+                    },
+                    "if_action": {
+                      "type": "pheno:haze",
+                      "kind": "townstead:stone_wall_long",
+                      "blocks": [
+                        {
+                          "radius": [
+                            2,
+                            1,
+                            0
+                          ],
+                          "around": {
+                            "offset": [
+                              0,
+                              1,
+                              2
+                            ]
+                          }
+                        },
+                        {
+                          "radius": [
+                            2,
+                            1,
+                            0
+                          ],
+                          "around": {
+                            "offset": [
+                              0,
+                              1,
+                              -2
+                            ]
+                          }
+                        },
+                        {
+                          "radius": [
+                            0,
+                            1,
+                            2
+                          ],
+                          "around": {
+                            "offset": [
+                              2,
+                              1,
+                              0
+                            ]
+                          }
+                        },
+                        {
+                          "radius": [
+                            0,
+                            1,
+                            2
+                          ],
+                          "around": {
+                            "offset": [
+                              -2,
+                              1,
+                              0
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:haze",
+                      "kind": "townstead:stone_wall",
+                      "blocks": [
+                        {
+                          "radius": [
+                            2,
+                            1,
+                            0
+                          ],
+                          "around": {
+                            "offset": [
+                              0,
+                              1,
+                              2
+                            ]
+                          }
+                        },
+                        {
+                          "radius": [
+                            2,
+                            1,
+                            0
+                          ],
+                          "around": {
+                            "offset": [
+                              0,
+                              1,
+                              -2
+                            ]
+                          }
+                        },
+                        {
+                          "radius": [
+                            0,
+                            1,
+                            2
+                          ],
+                          "around": {
+                            "offset": [
+                              2,
+                              1,
+                              0
+                            ]
+                          }
+                        },
+                        {
+                          "radius": [
+                            0,
+                            1,
+                            2
+                          ],
+                          "around": {
+                            "offset": [
+                              -2,
+                              1,
+                              0
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:flag",
+                    "flag": "townstead:rampart_shock"
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 3,
+                        "include_self": false,
+                        "target": "hostile",
+                        "action": {
+                          "type": "pheno:add_velocity",
+                          "away_from_other": 1.0,
+                          "y": 0.3
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:poof",
+                        "count": 16,
+                        "spread": 1.5
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:play_sound",
+                  "sound": "minecraft:block.stone.place",
+                  "volume": 1.0,
+                  "pitch": 0.8
+                }
+              ]
             },
             {
-              "radius": [
-                2,
-                1,
-                0
-              ],
-              "around": {
-                "offset": [
-                  0,
-                  1,
-                  -2
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:and",
+                "conditions": [
+                  {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:mason/rampart/keep"
+                  },
+                  {
+                    "type": "pheno:resource",
+                    "resource": "townstead:mortar",
+                    "min": 10
+                  }
                 ]
-              }
-            },
-            {
-              "radius": [
-                0,
-                1,
-                2
-              ],
-              "around": {
-                "offset": [
-                  2,
-                  1,
-                  0
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:haze",
+                    "kind": "townstead:stone_wall_keep",
+                    "blocks": [
+                      {
+                        "radius": [
+                          2,
+                          0,
+                          0
+                        ],
+                        "around": {
+                          "offset": [
+                            0,
+                            3,
+                            2
+                          ]
+                        }
+                      },
+                      {
+                        "radius": [
+                          2,
+                          0,
+                          0
+                        ],
+                        "around": {
+                          "offset": [
+                            0,
+                            3,
+                            -2
+                          ]
+                        }
+                      },
+                      {
+                        "radius": [
+                          0,
+                          0,
+                          2
+                        ],
+                        "around": {
+                          "offset": [
+                            2,
+                            3,
+                            0
+                          ]
+                        }
+                      },
+                      {
+                        "radius": [
+                          0,
+                          0,
+                          2
+                        ],
+                        "around": {
+                          "offset": [
+                            -2,
+                            3,
+                            0
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "pheno:change_resource",
+                    "resource": "townstead:mortar",
+                    "amount": -10
+                  }
                 ]
-              }
-            },
-            {
-              "radius": [
-                0,
-                1,
-                2
-              ],
-              "around": {
-                "offset": [
-                  -2,
-                  1,
-                  0
-                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
               }
             }
           ]
         },
         {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:block.stone.place",
-          "volume": 1.0,
-          "pitch": 0.8
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:mason/rampart/sally_forth"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 3,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.2,
+                  "y": 0.3
+                }
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:poof",
+                "count": 20,
+                "spread": 2.0
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
         }
       ]
     }

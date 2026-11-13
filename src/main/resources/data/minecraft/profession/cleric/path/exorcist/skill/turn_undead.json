@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.cleric.exorcist.turn_undead.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:exorcist_rite",
+  "cost": 2,
+  "skill_group": "townstead:exorcist_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -36,15 +36,52 @@
               "type": "pheno:and",
               "actions": [
                 {
-                  "type": "pheno:add_velocity",
-                  "away_from_other": 1.2,
-                  "y": 0.3
+                  "type": "pheno:flee",
+                  "duration": 100
                 },
                 {
                   "type": "pheno:apply_effect",
                   "effect": "minecraft:weakness",
                   "duration": 160,
                   "amplifier": 0
+                },
+                {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:exorcist_turned",
+                  "duration": 200
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:cleric/exorcist/rebuke"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": 4,
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.0,
+                  "y": 0.3
+                },
+                {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:exorcist_turned",
+                  "duration": 200
                 }
               ]
             }

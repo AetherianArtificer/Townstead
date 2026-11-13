@@ -1,0 +1,116 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.rocket_jump"
+  },
+  "icon": "minecraft:firework_rocket",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.rocket_jump.description"
+  },
+  "cost": 2,
+  "requires": [
+    "directed_blast"
+  ],
+  "skill_group": "townstead:sapper_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "y": 1.5
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:toolsmith/sapper/soft_landing"
+          },
+          "if_action": {
+            "type": "pheno:set_flag",
+            "flag": "townstead:sapper_soft",
+            "duration": 200
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:toolsmith/sapper/grand_detonation"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 4,
+                "include_self": false,
+                "target": "all",
+                "action": {
+                  "type": "pheno:add_velocity",
+                  "y": 1.2
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:toolsmith/sapper/grand_detonation"
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 4
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.generic.explode",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:explosion",
+              "count": 4,
+              "spread": 1.0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "companions": {
+    "soft": {
+      "type": "pheno:damage_modifier",
+      "modifier": 0.0,
+      "damage_tag": "minecraft:is_fall",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:sapper_soft"
+      }
+    }
+  }
+}

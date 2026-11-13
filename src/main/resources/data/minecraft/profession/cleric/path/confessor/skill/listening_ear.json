@@ -9,39 +9,66 @@
   },
   "cost": 1,
   "requires": [
-    "steady_pour"
+    "grace"
   ],
   "power": {
     "type": "pheno:action_over_time",
-    "interval": 20,
+    "interval": 100,
     "resource_cost": {
       "resource": "townstead:faith",
       "amount": 0
     },
     "condition": {
-      "type": "pheno:entity_in_radius",
+      "type": "pheno:resource",
+      "resource": "townstead:faith",
+      "min": 25
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
       "radius": 8,
-      "condition": {
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
         "type": "pheno:and",
-        "conditions": [
+        "actions": [
           {
-            "type": "pheno:not",
-            "condition": {
-              "type": "pheno:hostile"
-            }
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:poison"
           },
           {
-            "type": "pheno:health",
-            "max": 0.7,
-            "relative": true
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:wither"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:hunger"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:weakness"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:slowness"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:nausea"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:blindness"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:mining_fatigue"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:darkness"
           }
         ]
       }
-    },
-    "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:faith",
-      "amount": 3
     }
   }
 }

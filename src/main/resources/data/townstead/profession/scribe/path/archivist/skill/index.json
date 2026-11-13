@@ -1,0 +1,78 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.index"
+  },
+  "icon": "minecraft:compass",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.index.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:archivist_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.book.page_turn",
+          "volume": 1.0,
+          "pitch": 1.0
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:scribe/archivist/head_archivist"
+          },
+          "if_action": {
+            "type": "pheno:delay",
+            "ticks": 2,
+            "action": {
+              "type": "pheno:change_resource",
+              "resource": "townstead:ink",
+              "amount": -100
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:scribe/archivist/head_archivist"
+          },
+          "if_action": {
+            "type": "pheno:locate_item",
+            "radius": 64
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:scribe/archivist/cross_reference"
+            },
+            "if_action": {
+              "type": "pheno:locate_item",
+              "radius": 32
+            },
+            "else_action": {
+              "type": "pheno:locate_item",
+              "radius": 16
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.black_ice"
+  },
+  "icon": "minecraft:blue_ice",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.black_ice.description"
+  },
+  "cost": 1,
+  "requires": [
+    "frostbite"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:front",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:front",
+          "min": 25
+        },
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:block",
+              "y": -1,
+              "block_condition": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:ice"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:snow"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "pheno:block",
+              "y": 0,
+              "block_condition": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:ice"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:snow"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  },
+  "companions": {
+    "sure": {
+      "type": "pheno:attribute",
+      "attribute": "minecraft:generic.knockback_resistance",
+      "amount": 1.0,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:resource",
+            "resource": "townstead:front",
+            "min": 25
+          },
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:block",
+                "y": -1,
+                "block_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:ice"
+                    },
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:snow"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:block",
+                "y": 0,
+                "block_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:ice"
+                    },
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:snow"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

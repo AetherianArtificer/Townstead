@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.head_archivist"
+  },
+  "icon": "minecraft:lectern",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.head_archivist.description"
+  },
+  "cost": 2,
+  "requires": [
+    "standing_order"
+  ]
+}

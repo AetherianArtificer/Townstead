@@ -1,0 +1,1275 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.pave"
+  },
+  "icon": "minecraft:iron_shovel",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.pave.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:roadwright_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:gamemode",
+            "gamemode": "adventure"
+          }
+        },
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "pheno:ingredient",
+            "tag": "minecraft:shovels"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:mason/roadwright/kings_highway"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:mason/roadwright/wide_road"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:at",
+                  "blocks": [
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          2
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          3
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          4
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          5
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          6
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          7
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          8
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          9
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          10
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          11
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          12
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          13
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          14
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          15
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    }
+                  ],
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": false
+                  },
+                  "optional": true
+                },
+                {
+                  "type": "pheno:at",
+                  "blocks": [
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          1
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          2
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          3
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          4
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          5
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          6
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          7
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          8
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          9
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          10
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          11
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          12
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          13
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          14
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          15
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    }
+                  ],
+                  "do": {
+                    "type": "pheno:set_block",
+                    "block": "minecraft:dirt_path"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:at",
+              "blocks": [
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      1
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      2
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      3
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      4
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      5
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      6
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      7
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      8
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      9
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      10
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      11
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      12
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      13
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      14
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      15
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                }
+              ],
+              "do": {
+                "type": "pheno:set_block",
+                "block": "minecraft:dirt_path"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:mason/roadwright/wide_road"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:at",
+                  "blocks": [
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          2
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          3
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          4
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          5
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "replaceable"
+                      }
+                    }
+                  ],
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": false
+                  },
+                  "optional": true
+                },
+                {
+                  "type": "pheno:at",
+                  "blocks": [
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          1
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          2
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          3
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          4
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    },
+                    {
+                      "radius": [
+                        1,
+                        0,
+                        1
+                      ],
+                      "around": {
+                        "offset": [
+                          0,
+                          -1,
+                          5
+                        ],
+                        "space": "facing"
+                      },
+                      "where": {
+                        "type": "in_tag",
+                        "tag": "minecraft:dirt"
+                      }
+                    }
+                  ],
+                  "do": {
+                    "type": "pheno:set_block",
+                    "block": "minecraft:dirt_path"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:at",
+              "blocks": [
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      1
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      2
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      3
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      4
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                },
+                {
+                  "radius": [
+                    0,
+                    0,
+                    0
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -1,
+                      5
+                    ],
+                    "space": "facing"
+                  },
+                  "where": {
+                    "type": "in_tag",
+                    "tag": "minecraft:dirt"
+                  }
+                }
+              ],
+              "do": {
+                "type": "pheno:set_block",
+                "block": "minecraft:dirt_path"
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:equipped_item_action",
+          "slot": "mainhand",
+          "item_action": {
+            "type": "pheno:damage",
+            "amount": 2
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.shovel.flatten",
+          "volume": 1.0,
+          "pitch": 0.9
+        },
+        {
+          "type": "pheno:swing_hand"
+        }
+      ]
+    }
+  }
+}

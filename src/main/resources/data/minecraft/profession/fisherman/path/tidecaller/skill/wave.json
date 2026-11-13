@@ -1,0 +1,178 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.wave"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.wave.description"
+  },
+  "cost": 2,
+  "requires": [
+    "buoy"
+  ],
+  "skill_group": "townstead:tidecaller_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": false,
+          "target": "all",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": 1.7,
+                "y": 0.35
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:splash",
+                "count": 8,
+                "spread": 0.4
+              }
+            ]
+          },
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 35
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fisherman/tidecaller/surf"
+          },
+          "if_action": {
+            "type": "pheno:dash",
+            "distance": 8,
+            "ticks": 10,
+            "max_hits": 0,
+            "stop_on_hit": false
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/tidecaller/spring_tide"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:tide",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:tide",
+                "amount": -10
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 60,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 12,
+                      "include_self": false,
+                      "target": "all",
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:add_velocity",
+                            "away_from_other": -1.7,
+                            "y": 0.35
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:splash",
+                            "count": 8,
+                            "spread": 0.4
+                          }
+                        ]
+                      },
+                      "bientity_condition": {
+                        "type": "pheno:relative_rotation",
+                        "max_angle": 35
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.generic.splash",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:splash",
+                          "count": 20,
+                          "spread": 1.2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.generic.splash",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:splash",
+              "count": 20,
+              "spread": 1.2
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:ambient.underwater.exit",
+          "volume": 1.0,
+          "pitch": 0.7
+        }
+      ]
+    }
+  }
+}

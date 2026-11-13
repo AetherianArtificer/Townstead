@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.conveyor"
+  },
+  "icon": "minecraft:hopper",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.conveyor.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spring_pad"
+  ]
+}

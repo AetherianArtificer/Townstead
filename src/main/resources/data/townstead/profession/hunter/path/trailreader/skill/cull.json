@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.trailreader.cull"
+  },
+  "icon": "minecraft:netherite_sword",
+  "description": {
+    "translate": "skill.townstead.hunter.trailreader.cull.description"
+  },
+  "cost": 2,
+  "requires": [
+    "cornered"
+  ]
+}

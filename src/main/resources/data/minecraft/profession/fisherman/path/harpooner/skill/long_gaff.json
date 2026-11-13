@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.long_gaff"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.long_gaff.description"
+  },
+  "cost": 1,
+  "requires": [
+    "gaff"
+  ]
+}

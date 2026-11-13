@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.hush.whisper"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.librarian.hush.whisper.description"
+  },
+  "cost": 1,
+  "requires": [
+    "quiet_room"
+  ]
+}

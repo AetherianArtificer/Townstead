@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.swap"
+  },
+  "icon": "minecraft:ender_pearl",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.swap.description"
+  },
+  "cost": 1,
+  "requires": [
+    "straw_double"
+  ]
+}

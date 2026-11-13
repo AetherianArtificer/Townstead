@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.smoke_and_mirrors"
+  },
+  "icon": "minecraft:glass_pane",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.smoke_and_mirrors.description"
+  },
+  "cost": 1,
+  "requires": [
+    "flash_powder"
+  ]
+}

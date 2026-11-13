@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.dust_up"
+  },
+  "icon": "minecraft:gravel",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.dust_up.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cave_in"
+  ]
+}

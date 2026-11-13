@@ -7,20 +7,367 @@
   "description": {
     "translate": "skill.townstead.witch.herbalist.poultice.description"
   },
-  "cost": 1,
+  "cost": 2,
+  "skill_group": "townstead:herbalist_utility",
   "power": {
-    "type": "pheno:trigger",
-    "trigger": "when_hurt",
-    "condition": {
-      "type": "pheno:health",
-      "max": 0.3,
-      "relative": true
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 1,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
     },
     "action": {
-      "type": "pheno:apply_effect",
-      "effect": "minecraft:absorption",
-      "duration": 200,
-      "amplifier": 1
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.ambient",
+          "volume": 1.0,
+          "pitch": 1.2
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:witch/herbalist/panacea"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:witch/herbalist/tonic"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:status_effect",
+                          "effect": "minecraft:slowness"
+                        },
+                        "if_action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:clear_effect",
+                                  "effect": "minecraft:slowness"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "pheno:apply_effect",
+                              "effect": "minecraft:speed",
+                              "duration": 100,
+                              "amplifier": 0
+                            }
+                          ]
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      },
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:status_effect",
+                          "effect": "minecraft:weakness"
+                        },
+                        "if_action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:clear_effect",
+                                  "effect": "minecraft:weakness"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "pheno:apply_effect",
+                              "effect": "minecraft:strength",
+                              "duration": 100,
+                              "amplifier": 0
+                            }
+                          ]
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:clear_effect",
+                  "category": "harmful"
+                },
+                {
+                  "type": "pheno:extinguish"
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:happy_villager",
+                  "count": 6,
+                  "spread": 0.4
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "townstead:witch/herbalist/tonic"
+                      }
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:status_effect",
+                            "effect": "minecraft:slowness"
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:and",
+                                "actions": [
+                                  {
+                                    "type": "pheno:clear_effect",
+                                    "effect": "minecraft:slowness"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:speed",
+                                "duration": 100,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        },
+                        {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:status_effect",
+                            "effect": "minecraft:weakness"
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:and",
+                                "actions": [
+                                  {
+                                    "type": "pheno:clear_effect",
+                                    "effect": "minecraft:weakness"
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:strength",
+                                "duration": 100,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  },
+                  {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:clear_effect",
+                        "effect": "minecraft:poison"
+                      },
+                      {
+                        "type": "pheno:clear_effect",
+                        "effect": "minecraft:wither"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "pheno:extinguish"
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:happy_villager",
+                    "count": 6,
+                    "spread": 0.4
+                  }
+                ]
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "townstead:witch/herbalist/tonic"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:status_effect",
+                              "effect": "minecraft:slowness"
+                            },
+                            "if_action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:clear_effect",
+                                      "effect": "minecraft:slowness"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:speed",
+                                  "duration": 100,
+                                  "amplifier": 0
+                                }
+                              ]
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          },
+                          {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:status_effect",
+                              "effect": "minecraft:weakness"
+                            },
+                            "if_action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:clear_effect",
+                                      "effect": "minecraft:weakness"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:strength",
+                                  "duration": 100,
+                                  "amplifier": 0
+                                }
+                              ]
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:poison"
+                        },
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:wither"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:extinguish"
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:happy_villager",
+                      "count": 6,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                },
+                "on": {
+                  "type": "pheno:ray",
+                  "distance": 8
+                }
+              }
+            ]
+          }
+        }
+      ]
     }
   }
 }

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.second_sight"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.second_sight.description"
+  },
+  "cost": 1,
+  "requires": [
+    "scry"
+  ]
+}

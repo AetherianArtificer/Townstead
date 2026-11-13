@@ -32,13 +32,13 @@ public final class VelocityActionType implements ActionType {
         double y = GsonHelper.getAsDouble(json, "y", 0d);
         double z = GsonHelper.getAsDouble(json, "z", 0d);
         boolean relative = GsonHelper.getAsBoolean(json, "relative", false);
-        double awayFromOther = Math.max(0d,
-                GsonHelper.getAsDouble(json, "away_from_other", 0d));
+        // A negative value pulls the entity toward the other party.
+        double awayFromOther = GsonHelper.getAsDouble(json, "away_from_other", 0d);
         return ctx -> {
             var entity = ctx.entity();
             Vec3 push = new Vec3(x, y, z);
             if (relative) push = push.yRot((float) -Math.toRadians(entity.getYRot()));
-            if (awayFromOther > 0d && ctx.other() != null) {
+            if (awayFromOther != 0d && ctx.other() != null) {
                 Vec3 away = entity.position().subtract(ctx.other().position())
                         .multiply(1d, 0d, 1d);
                 if (away.lengthSqr() > 1.0e-6d) {

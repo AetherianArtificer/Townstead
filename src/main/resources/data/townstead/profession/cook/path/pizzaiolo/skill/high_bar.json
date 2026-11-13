@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.high_bar"
+  },
+  "icon": "minecraft:oak_fence",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.high_bar.description"
+  },
+  "cost": 1,
+  "requires": [
+    "peel_vault"
+  ]
+}

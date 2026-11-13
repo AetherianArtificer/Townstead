@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.haymaker"
+  },
+  "icon": "minecraft:golden_hoe",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.haymaker.description"
+  },
+  "cost": 2,
+  "requires": [
+    "mow"
+  ]
+}

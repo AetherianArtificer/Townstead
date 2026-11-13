@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.watch_captain"
+  },
+  "icon": "minecraft:shield",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.watch_captain.description"
+  },
+  "cost": 2,
+  "requires": [
+    "parachute_flare"
+  ]
+}

@@ -1,20 +1,30 @@
 {
   "schema": "townstead:skill/v1",
-  "display_name": { "translate": "skill.townstead.cook.chef.chefs_knife" },
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.chefs_knife"
+  },
   "icon": "farmersdelight:iron_knife",
-  "description": { "translate": "skill.townstead.cook.chef.chefs_knife.description" },
-  "cost": 1,
+  "description": {
+    "translate": "skill.townstead.cook.chef.chefs_knife.description"
+  },
+  "cost": 2,
   "skill_group": "townstead:chef_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 100,
+    "cooldown": 160,
     "slot": 2,
     "ai_trigger": "when_threatened",
-    "resource_cost": { "resource": "townstead:stamina", "amount": 20 },
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
     "condition": {
       "type": "pheno:equipped_item",
       "slot": "mainhand",
-      "item_condition": { "type": "pheno:ingredient", "tag": "townstead:kitchen_knives" }
+      "item_condition": {
+        "type": "pheno:ingredient",
+        "tag": "townstead:kitchen_knives"
+      }
     },
     "action": {
       "type": "pheno:and",
@@ -22,13 +32,113 @@
         {
           "type": "pheno:area_of_effect",
           "radius": 2.5,
+          "include_self": false,
           "target": "hostile",
-          "bientity_condition": { "type": "pheno:relative_rotation", "max_angle": 55 },
-          "action": { "type": "pheno:damage", "source": "other", "amount": 6.0 }
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "townstead:cook/chef/julienne"
+                      }
+                    },
+                    {
+                      "type": "pheno:status_effect",
+                      "effect": "minecraft:slowness"
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "source": "other",
+                  "amount": 8
+                },
+                "else_action": {
+                  "type": "pheno:damage",
+                  "source": "other",
+                  "amount": 4
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "townstead:cook/chef/dinner_rush"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:change_resource",
+                  "resource": "townstead:flow",
+                  "amount": 5,
+                  "on": "origin"
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 55
+          }
         },
-        { "type": "pheno:swing_hand", "hand": "mainhand" },
-        { "type": "pheno:play_sound", "sound": "minecraft:entity.player.attack.sweep", "volume": 1.0, "pitch": 1.1 },
-        { "type": "pheno:spawn_particles", "particle": "minecraft:sweep_attack", "count": 4, "spread": 0.5, "speed": 0.0 }
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:cook/chef/dinner_rush"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:stamina",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:stamina",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:swing_hand",
+          "hand": "mainhand"
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.player.attack.sweep",
+              "volume": 1.0,
+              "pitch": 1.1
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 4,
+              "spread": 0.5,
+              "speed": 0.0
+            }
+          ]
+        }
       ]
     }
   }

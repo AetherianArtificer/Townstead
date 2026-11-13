@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "tally"
+    "keep_pace"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:flock",
-      "min": 50
+      "min": 25
     },
     "action": {
       "type": "pheno:area_of_effect",
@@ -35,10 +35,14 @@
           "tag": "townstead:livestock"
         },
         "if_action": {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 30,
-          "amplifier": 0
+          "type": "pheno:ward",
+          "id": "fold",
+          "amount": 1000,
+          "fraction": 0.3,
+          "duration": 30
+        },
+        "else_action": {
+          "type": "pheno:nothing"
         }
       }
     }

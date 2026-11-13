@@ -7,52 +7,16 @@
   "description": {
     "translate": "skill.townstead.farmer.scarecrow.dread_harvest.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "nightmare"
+    "straw_man"
   ],
-  "skill_group": "townstead:scarecrow_fright",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 600,
-    "slot": 1,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:grit",
-      "amount": 60
-    },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:area_of_effect",
-          "radius": 16,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:add_velocity",
-                "away_from_other": 1.8,
-                "y": 0.4
-              },
-              {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:weakness",
-                "duration": 300,
-                "amplifier": 1
-              }
-            ]
-          }
-        },
-        {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:ambient.cave",
-          "volume": 0.8,
-          "pitch": 1.2
-        }
-      ]
+    "type": "pheno:attack_modifier",
+    "modifier": 0.0,
+    "condition": {
+      "type": "pheno:toggled",
+      "gene": "minecraft:farmer/scarecrow/scarecrows_post"
     }
   }
 }

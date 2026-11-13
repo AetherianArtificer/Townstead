@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.camp_kitchen"
+  },
+  "icon": "minecraft:smoker",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.camp_kitchen.description"
+  },
+  "cost": 2,
+  "requires": [
+    "bedroll_corner"
+  ]
+}

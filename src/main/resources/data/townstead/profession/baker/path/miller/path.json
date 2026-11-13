@@ -25,21 +25,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:baker/miller/turning_stone"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:baker/miller/dust_storm"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:baker/miller/windmill"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "townstead:baker",
+            "at_least": 300
           },
           {
             "type": "pheno:block_in_radius",
@@ -63,35 +51,163 @@
       "action": {
         "type": "pheno:change_resource",
         "resource": "townstead:proof",
-        "amount": 1
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:proof",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "townstead:baker",
+            "at_least": 300
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:block_in_radius",
+                  "radius": 6,
+                  "block_condition": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:block",
+                        "block": "kaleidoscope_cookery:millstone"
+                      },
+                      {
+                        "type": "pheno:block",
+                        "block": "minecraft:hay_block"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 8,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:proof",
+        "amount": 2
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:miller_whiteout"
+      },
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:miller_fine"
+        },
+        "if_action": {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:miller_lasting"
+          },
+          "if_action": {
+            "type": "pheno:haze",
+            "kind": "townstead:flour_fine_long",
+            "blocks": {
+              "radius": 2,
+              "around": "above",
+              "where": {
+                "type": "air"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:haze",
+            "kind": "townstead:flour_fine",
+            "blocks": {
+              "radius": 2,
+              "around": "above",
+              "where": {
+                "type": "air"
+              }
+            }
+          }
+        },
+        "else_action": {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:miller_lasting"
+          },
+          "if_action": {
+            "type": "pheno:haze",
+            "kind": "townstead:flour_long",
+            "blocks": {
+              "radius": 2,
+              "around": "above",
+              "where": {
+                "type": "air"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:haze",
+            "kind": "townstead:flour",
+            "blocks": {
+              "radius": 2,
+              "around": "above",
+              "where": {
+                "type": "air"
+              }
+            }
+          }
+        }
       }
     }
   ],
   "skills": [
     [
-      "millstone_shoulders",
-      "sack_burst",
-      "sails"
+      "dusty",
+      "winnow",
+      "sack_burst"
     ],
     [
       "vermin_keeper",
-      "flour_cloud",
-      "grist"
-    ],
-    [
-      "turning_stone",
-      "dust_storm",
-      "windmill"
+      "clean_sweep",
+      "flash_point"
     ],
     [
       "threshing_floor",
-      "chaff",
-      "gale_force"
+      "flour_trail",
+      "whiteout"
     ],
     [
-      "millers_stride",
-      "whiteout",
-      "millrace"
+      "fine_grind",
+      "paw_prints",
+      "chaff"
+    ],
+    [
+      "grain_dust",
+      "windmill",
+      "dust_explosion"
     ]
   ]
 }

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.emperors_clothes"
+  },
+  "icon": "minecraft:golden_helmet",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.emperors_clothes.description"
+  },
+  "cost": 1,
+  "requires": [
+    "wardrobe_malfunction"
+  ]
+}

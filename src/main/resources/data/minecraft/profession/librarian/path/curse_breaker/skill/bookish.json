@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.bookish"
+  },
+  "icon": "minecraft:enchanted_book",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.bookish.description"
+  },
+  "cost": 1,
+  "requires": [
+    "unbound"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "anvil_prior_work",
+    "operation": "set",
+    "value": 0,
+    "item_condition": {
+      "type": "pheno:ingredient",
+      "item": "minecraft:enchanted_book"
+    }
+  }
+}

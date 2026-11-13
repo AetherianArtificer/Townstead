@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.counter"
+  },
+  "icon": "minecraft:diamond_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.counter.description"
+  },
+  "cost": 1,
+  "requires": [
+    "balanced_blade"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 2.0,
+    "condition": {
+      "type": "pheno:flag",
+      "flag": "townstead:duelist_counter"
+    }
+  },
+  "companions": {
+    "spent": {
+      "type": "pheno:trigger",
+      "trigger": "when_attack",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:duelist_counter"
+      },
+      "action": {
+        "type": "pheno:delay",
+        "ticks": 2,
+        "action": {
+          "type": "pheno:set_flag",
+          "flag": "townstead:duelist_counter",
+          "duration": 0
+        }
+      }
+    }
+  }
+}

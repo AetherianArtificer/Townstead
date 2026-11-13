@@ -7,40 +7,165 @@
   "description": {
     "translate": "skill.townstead.witch.broomrider.swoop.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "take_off"
+    "bad_luck"
   ],
-  "skill_group": "townstead:broom_aerial",
+  "skill_group": "townstead:broomrider_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 240,
-    "slot": 1,
-    "ai_trigger": "never",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:stamina",
+      "resource": "townstead:hex",
       "amount": 30
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:add_velocity",
-          "relative": true,
-          "z": 1.8,
-          "y": 0.2
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:slow_falling",
-          "duration": 100,
-          "amplifier": 0
-        },
-        {
           "type": "pheno:play_sound",
-          "sound": "minecraft:entity.witch.ambient",
+          "sound": "minecraft:entity.witch.celebrate",
           "volume": 1.0,
-          "pitch": 1.2
+          "pitch": 1.0
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/broomrider/coven_night"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:movement",
+                    "movement": "grounded"
+                  }
+                }
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:hex",
+            "amount": -30
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:witch/broomrider/coven_night"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:movement",
+                  "movement": "grounded"
+                }
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:dash",
+            "distance": 10,
+            "ticks": 10,
+            "horizontal": false,
+            "max_hits": 3,
+            "stop_on_hit": false,
+            "on_hit": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "y": 1.0
+                },
+                {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:witch/broomrider/from_on_high"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:delay",
+                    "ticks": 30,
+                    "action": {
+                      "type": "pheno:damage",
+                      "amount": 4,
+                      "source": "other"
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:dash",
+            "distance": 10,
+            "ticks": 10,
+            "horizontal": false,
+            "max_hits": 1,
+            "stop_on_hit": false,
+            "on_hit": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "y": 1.0
+                },
+                {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:witch/broomrider/from_on_high"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:delay",
+                    "ticks": 30,
+                    "action": {
+                      "type": "pheno:damage",
+                      "amount": 4,
+                      "source": "other"
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
+          }
         }
       ]
     }

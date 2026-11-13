@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.saddlebags"
+  },
+  "icon": "minecraft:chest",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.saddlebags.description"
+  },
+  "cost": 1,
+  "requires": [
+    "steady_mount"
+  ],
+  "power": {
+    "type": "pheno:inventory",
+    "size": 9,
+    "slot": 0
+  }
+}

@@ -7,22 +7,13 @@
   "description": {
     "translate": "skill.townstead.shepherd.herder.bellwether.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "fold"
+    "sort"
   ],
   "power": {
     "type": "pheno:action_over_time",
     "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:flock",
-      "amount": 0
-    },
-    "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:flock",
-      "min": 75
-    },
     "action": {
       "type": "pheno:area_of_effect",
       "radius": 16,
@@ -35,20 +26,12 @@
           "tag": "townstead:livestock"
         },
         "if_action": {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:add_velocity",
-              "away_from_other": -0.25,
-              "y": 0.0
-            },
-            {
-              "type": "pheno:apply_effect",
-              "effect": "minecraft:resistance",
-              "duration": 30,
-              "amplifier": 0
-            }
-          ]
+          "type": "pheno:add_velocity",
+          "away_from_other": -0.25,
+          "y": 0.0
+        },
+        "else_action": {
+          "type": "pheno:nothing"
         }
       }
     }

@@ -1,0 +1,33 @@
+{
+  "duration": 300,
+  "inside": {
+    "interval": 20,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 160,
+          "amplifier": 1
+        },
+        {
+          "type": "pheno:damage",
+          "amount": 3
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:glowing",
+          "duration": 160,
+          "amplifier": 0
+        }
+      ]
+    }
+  },
+  "shape": "layer",
+  "color": "#E8E4D8",
+  "texture": "townstead:haze/layer"
+}

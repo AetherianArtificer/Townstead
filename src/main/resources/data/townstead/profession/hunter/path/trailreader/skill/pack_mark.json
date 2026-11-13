@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.trailreader.pack_mark"
+  },
+  "icon": "minecraft:spectral_arrow",
+  "description": {
+    "translate": "skill.townstead.hunter.trailreader.pack_mark.description"
+  },
+  "cost": 1,
+  "requires": [
+    "mark_quarry"
+  ]
+}

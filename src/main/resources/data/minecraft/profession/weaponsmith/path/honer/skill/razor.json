@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "building_edge"
+    "edge_alignment"
   ],
   "power": {
     "type": "pheno:attack_modifier",
@@ -21,14 +21,14 @@
           "type": "pheno:equipped_item",
           "slot": "mainhand",
           "item_condition": {
-            "type": "or",
+            "type": "pheno:or",
             "conditions": [
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "tag": "minecraft:swords"
               },
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "tag": "minecraft:axes"
               }
             ]
@@ -37,7 +37,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:edge",
-          "min": 75
+          "min": 50
         }
       ]
     }

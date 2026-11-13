@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.night_watch.parachute_flare"
+  },
+  "icon": "minecraft:phantom_membrane",
+  "description": {
+    "translate": "skill.townstead.shepherd.night_watch.parachute_flare.description"
+  },
+  "cost": 1,
+  "requires": [
+    "signal_flare"
+  ]
+}

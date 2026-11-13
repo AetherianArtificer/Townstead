@@ -7,93 +7,38 @@
   "description": {
     "translate": "skill.townstead.weaponsmith.duelist.masters_duel.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "whirling_steel"
+    "honor_guard"
   ],
-  "skill_group": "townstead:duelist_blade",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 600,
-    "slot": 1,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:edge",
-      "amount": 60
+    "type": "pheno:trigger",
+    "trigger": "when_kill",
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:duelist_challenged"
+      }
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:delay",
-              "ticks": 0,
-              "action": {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
-              }
-            },
-            {
-              "type": "pheno:delay",
-              "ticks": 5,
-              "action": {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
-              }
-            },
-            {
-              "type": "pheno:delay",
-              "ticks": 10,
-              "action": {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
-              }
-            },
-            {
-              "type": "pheno:delay",
-              "ticks": 15,
-              "action": {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
-              }
-            },
-            {
-              "type": "pheno:delay",
-              "ticks": 20,
-              "action": {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
-              }
-            }
-          ],
-          "on": {
-            "type": "pheno:ray",
-            "distance": 4
-          }
+          "type": "pheno:set_flag",
+          "flag": "townstead:duelist_duel",
+          "duration": 0
         },
         {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:play_sound",
-              "sound": "minecraft:entity.player.attack.sweep",
-              "volume": 1.0,
-              "pitch": 0.9
-            },
-            {
-              "type": "pheno:spawn_particles",
-              "particle": "minecraft:sweep_attack",
-              "count": 6,
-              "spread": 1.2
-            }
-          ]
+          "type": "pheno:change_resource",
+          "resource": "townstead:edge",
+          "amount": 30
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.levelup",
+          "volume": 0.6,
+          "pitch": 1.5
         }
       ]
     }

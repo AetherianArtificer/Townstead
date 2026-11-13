@@ -1,0 +1,166 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.hot_pan"
+  },
+  "icon": "farmersdelight:skillet",
+  "description": {
+    "translate": "skill.townstead.cook.chef.hot_pan.description"
+  },
+  "cost": 2,
+  "requires": [
+    "julienne"
+  ],
+  "skill_group": "townstead:chef_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:flow",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:ingredient",
+        "tag": "townstead:kitchen_skillets"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:ward",
+          "id": "hot_pan",
+          "amount": 1000,
+          "duration": 40,
+          "damage_condition": {
+            "type": "pheno:projectile"
+          },
+          "on_absorb": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:target_action",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:damage",
+                      "amount": {
+                        "type": "pheno:event_damage"
+                      }
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "townstead:cook/chef/dinner_rush"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:change_resource",
+                        "resource": "townstead:flow",
+                        "amount": 5,
+                        "on": "origin"
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:block.bell.use",
+                    "volume": 1.0,
+                    "pitch": 0.6
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:crit",
+                    "count": 10,
+                    "spread": 0.5
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:cook/chef/sizzle"
+          },
+          "if_action": {
+            "type": "pheno:ward",
+            "id": "sizzle",
+            "amount": 1000,
+            "fraction": 0,
+            "duration": 40,
+            "on_absorb": {
+              "type": "pheno:target_action",
+              "action": {
+                "type": "pheno:ignite",
+                "seconds": 2
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:chef_pan",
+          "duration": 40
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:cook/chef/dinner_rush"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:stamina",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:stamina",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:swing_hand",
+          "hand": "mainhand"
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.place",
+          "volume": 0.6,
+          "pitch": 1.8
+        }
+      ]
+    }
+  }
+}

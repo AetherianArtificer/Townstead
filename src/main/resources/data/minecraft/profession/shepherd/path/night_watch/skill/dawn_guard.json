@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "shepherds_crook"
+    "dog_watch"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -29,26 +29,15 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:flock",
-          "min": 75
+          "min": 50
         }
       ]
     },
     "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:strength",
-          "duration": 30,
-          "amplifier": 0
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 30,
-          "amplifier": 0
-        }
-      ]
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:strength",
+      "duration": 30,
+      "amplifier": 0
     }
   }
 }

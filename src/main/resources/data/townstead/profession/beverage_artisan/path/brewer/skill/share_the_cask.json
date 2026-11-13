@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.share_the_cask"
+  },
+  "icon": "minecraft:barrel",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.share_the_cask.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cask_strength"
+  ]
+}

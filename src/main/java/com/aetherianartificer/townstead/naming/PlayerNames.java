@@ -23,6 +23,8 @@ public final class PlayerNames {
     private static final List<PlayerFamilySource> SOURCES = new CopyOnWriteArrayList<>();
     /** The name each player's sources last gave, so a change made in another mod gets synced. */
     private static final Map<UUID, String> LAST_AUTHORITATIVE = new ConcurrentHashMap<>();
+    /** The faceplate alias each player last wore, since another mod can put one on without a refresh. */
+    private static final Map<UUID, String> LAST_ALIAS = new ConcurrentHashMap<>();
 
     private PlayerNames() {}
 
@@ -51,12 +53,23 @@ public final class PlayerNames {
         return "";
     }
 
-    /** Other mods change their names without telling anyone, so a held name is checked for changes. */
+    /**
+     * Other mods change their names without telling anyone, so a held name and a worn alias are
+     * checked for changes.
+     */
     public static void tick(MinecraftServer server) {
-        if (SOURCES.isEmpty() || server.getTickCount() % 40 != 0) return;
+        if (server.getTickCount() % 40 != 0) return;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            String held = authoritative(player);
-            if (!held.equals(LAST_AUTHORITATIVE.put(player.getUUID(), held))) settled(player);
+            boolean changed = false;
+            if (!SOURCES.isEmpty()) {
+                String held = authoritative(player);
+                changed = !held.equals(LAST_AUTHORITATIVE.put(player.getUUID(), held));
+            }
+            Component alias = com.aetherianartificer.townstead.compat.cybernetics.FaceplateAlias.worn(player);
+            String worn = alias == null ? "" : alias.getString();
+            String before = LAST_ALIAS.put(player.getUUID(), worn);
+            if (!worn.equals(before == null ? "" : before)) changed = true;
+            if (changed) settled(player);
         }
     }
 
@@ -145,6 +158,17 @@ public final class PlayerNames {
     private static boolean recordFamily(ServerPlayer player) {
         return NamingRegisterSavedData.get(player.server)
                 .putPlayerFamily(player.getUUID(), Naming.familyName(player), order(player));
+    }
+
+    /**
+     * The name a player goes by, given the one other listeners settled on. Runs last, so another
+     * mod writing in the bare custom name can't drop the family name. A worn alias stands as it is.
+     */
+    public static Component displayName(Player player, Component incoming) {
+        Component alias = com.aetherianartificer.townstead.compat.cybernetics.FaceplateAlias.worn(player);
+        if (alias != null) return alias;
+        String reborn = Rebirth.characterName(player);
+        return compose(player, reborn != null ? Component.literal(reborn) : incoming);
     }
 
     /** {@code name} with this player's family name added, in the configured style. */

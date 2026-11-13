@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.wide_survey"
+  },
+  "icon": "minecraft:filled_map",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.wide_survey.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sure_stride"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "map_fill_radius",
+    "operation": "multiply",
+    "value": 2.0
+  }
+}

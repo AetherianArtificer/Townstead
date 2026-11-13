@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.farmer.levy.reap.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:levy_scythe",
+  "cost": 2,
+  "skill_group": "townstead:levy_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 200,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,18 +22,110 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 4,
-          "include_self": false,
-          "target": "hostile",
-          "bientity_condition": {
-            "type": "pheno:relative_rotation",
-            "max_angle": 60
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:farmer/levy/levee_en_masse"
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 6,
+                "compare_to": 2,
+                "condition": {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                }
+              }
+            ]
           },
-          "action": {
-            "type": "pheno:damage",
-            "amount": 4,
-            "source": "other"
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 4,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:farmer/levy/sweep_the_rows"
+                }
+              },
+              "if_action": {
+                "type": "pheno:if_bientity",
+                "condition": {
+                  "type": "pheno:distance",
+                  "min": 3
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 9.0,
+                  "source": "other"
+                },
+                "else_action": {
+                  "type": "pheno:damage",
+                  "amount": 4.5,
+                  "source": "other"
+                }
+              },
+              "else_action": {
+                "type": "pheno:damage",
+                "amount": 4.5,
+                "source": "other"
+              }
+            },
+            "bientity_condition": {
+              "type": "pheno:relative_rotation",
+              "max_angle": 60
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 4,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:farmer/levy/sweep_the_rows"
+                }
+              },
+              "if_action": {
+                "type": "pheno:if_bientity",
+                "condition": {
+                  "type": "pheno:distance",
+                  "min": 3
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 8,
+                  "source": "other"
+                },
+                "else_action": {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                }
+              },
+              "else_action": {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              }
+            },
+            "bientity_condition": {
+              "type": "pheno:relative_rotation",
+              "max_angle": 60
+            }
           }
         },
         {
@@ -50,6 +142,9 @@
               "particle": "minecraft:sweep_attack",
               "count": 6,
               "spread": 1.2
+            },
+            {
+              "type": "pheno:swing_hand"
             }
           ]
         }

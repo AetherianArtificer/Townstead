@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.split"
+  },
+  "icon": "minecraft:cocoa_beans",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.split.description"
+  },
+  "cost": 1,
+  "requires": [
+    "coconut_bomb"
+  ]
+}

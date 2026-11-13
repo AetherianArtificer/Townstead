@@ -1,0 +1,265 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.mend"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.mend.description"
+  },
+  "cost": 2,
+  "requires": [
+    "wool_sack"
+  ],
+  "skill_group": "townstead:needle_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:origin",
+              "condition": {
+                "type": "pheno:skill",
+                "skill": "townstead:tailor/needle/bespoke"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "head",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -40
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "chest",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -40
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "legs",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -40
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "feet",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -40
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:tailor/needle/invisible_mending"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "head",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "chest",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "legs",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "feet",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:happy_villager",
+                  "count": 6,
+                  "spread": 0.4
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "head",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -20
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "chest",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -20
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "legs",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -20
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "feet",
+                      "item_action": {
+                        "type": "pheno:damage",
+                        "amount": -20
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:tailor/needle/invisible_mending"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "head",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "chest",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "legs",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "feet",
+                        "item_action": {
+                          "type": "pheno:reset_repair_cost"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:happy_villager",
+                  "count": 6,
+                  "spread": 0.4
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 6
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:tailor/needle/bespoke"
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:stitch",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.sheep.shear",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

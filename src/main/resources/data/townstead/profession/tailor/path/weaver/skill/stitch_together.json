@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.stitch_together"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.stitch_together.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bind"
+  ]
+}

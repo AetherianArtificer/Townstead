@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.low_flying"
+  },
+  "icon": "minecraft:wheat",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.low_flying.description"
+  },
+  "cost": 1,
+  "requires": [
+    "broomstick"
+  ]
+}

@@ -9,36 +9,33 @@
   },
   "cost": 1,
   "requires": [
-    "sun_kissed"
+    "nose"
   ],
   "power": {
     "type": "pheno:action_over_time",
     "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:vintage",
-      "amount": 0
-    },
-    "condition": {
-      "type": "pheno:block_in_radius",
-      "radius": 6,
-      "block_condition": {
-        "type": "pheno:or",
-        "conditions": [
-          {
-            "type": "pheno:block",
-            "block": "vinery:fermentation_barrel"
-          },
-          {
-            "type": "pheno:block",
-            "block": "minecraft:barrel"
-          }
-        ]
-      }
-    },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:vintage",
-      "amount": 3
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:block_entity"
+            },
+            {
+              "type": "pheno:block",
+              "block": "vinery:fermentation_barrel"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:accelerate",
+        "ticks": 5
+      },
+      "optional": true
     }
   }
 }

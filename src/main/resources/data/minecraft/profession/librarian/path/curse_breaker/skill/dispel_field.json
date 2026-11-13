@@ -1,0 +1,120 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.dispel_field"
+  },
+  "icon": "minecraft:glass",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.dispel_field.description"
+  },
+  "cost": 2,
+  "requires": [
+    "mass_uncursing"
+  ],
+  "skill_group": "townstead:curse_breaker_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:focus",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:librarian/curse_breaker/purity"
+          },
+          "if_action": {
+            "type": "pheno:set_flag",
+            "flag": "townstead:curse_breaker_field",
+            "duration": 400
+          },
+          "else_action": {
+            "type": "pheno:cloud",
+            "radius": 8.0,
+            "height": 4.0,
+            "duration": 400,
+            "wait_time": 10,
+            "reapply_delay": 20,
+            "particle": "minecraft:enchant",
+            "do": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:clear_effect"
+              },
+              "else_action": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/curse_breaker/exemption"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:poison"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:wither"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:hunger"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:weakness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:slowness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:nausea"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:blindness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:mining_fatigue"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:darkness"
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:clear_effect"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.beacon.deactivate",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

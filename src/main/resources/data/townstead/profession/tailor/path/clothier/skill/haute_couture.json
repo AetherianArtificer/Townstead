@@ -16,35 +16,36 @@
     "interval": 20,
     "resource_cost": {
       "resource": "townstead:stitch",
-      "amount": 0
+      "amount": 2
     },
     "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:stitch",
-      "min": 75
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:stitch",
+          "min": 50
+        },
+        {
+          "type": "pheno:wearing_cosmetic",
+          "slot": "head"
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 12,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 10,
-      "include_self": true,
-      "target": "non_hostile",
-      "action": {
-        "type": "pheno:and",
-        "actions": [
-          {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:resistance",
-            "duration": 30,
-            "amplifier": 0
-          },
-          {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:speed",
-            "duration": 30,
-            "amplifier": 0
-          }
-        ]
-      }
+      "type": "pheno:wear_cosmetic",
+      "slot": "head",
+      "item": [
+        "minecraft:zombie_head"
+      ],
+      "duration": 40
     }
   }
 }

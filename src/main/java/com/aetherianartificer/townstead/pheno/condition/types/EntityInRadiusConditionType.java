@@ -43,7 +43,8 @@ public final class EntityInRadiusConditionType implements ConditionType {
             int count = 0;
             for (LivingEntity other : nearby) {
                 if (other == self) continue;
-                if (inner != null && !inner.test(new ConditionContext(other))) continue;
+                // The candidate sees the one counting as its counterpart, so "hostile" reads "hostile to me".
+                if (inner != null && !inner.test(new ConditionContext(other, self))) continue;
                 count++;
             }
             return comparison.compare(count, compareTo);

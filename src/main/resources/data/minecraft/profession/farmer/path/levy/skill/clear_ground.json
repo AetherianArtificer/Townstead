@@ -1,0 +1,250 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.clear_ground"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.clear_ground.description"
+  },
+  "cost": 2,
+  "requires": [
+    "gleaner"
+  ],
+  "skill_group": "townstead:levy_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:ingredient",
+        "tag": "minecraft:hoes"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:farmer/levy/haymaker"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:farmer/levy/mow"
+                },
+                "if_action": {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      4,
+                      1,
+                      4
+                    ],
+                    "around": {
+                      "offset": [
+                        0,
+                        0,
+                        5
+                      ],
+                      "space": "facing"
+                    },
+                    "where": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:replaceable_by_trees"
+                        },
+                        {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:flowers"
+                        },
+                        {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:leaves"
+                        }
+                      ]
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": true,
+                    "collect": true
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      4,
+                      1,
+                      4
+                    ],
+                    "around": {
+                      "offset": [
+                        0,
+                        0,
+                        5
+                      ],
+                      "space": "facing"
+                    },
+                    "where": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:replaceable_by_trees"
+                        },
+                        {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:flowers"
+                        },
+                        {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:leaves"
+                        }
+                      ]
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": true
+                  }
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "mainhand",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": 5
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:farmer/levy/mow"
+            },
+            "if_action": {
+              "type": "pheno:at",
+              "blocks": {
+                "radius": [
+                  2,
+                  1,
+                  2
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:replaceable_by_trees"
+                    },
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:flowers"
+                    },
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:leaves"
+                    }
+                  ]
+                }
+              },
+              "do": {
+                "type": "pheno:destroy",
+                "drop_item": true,
+                "collect": true
+              }
+            },
+            "else_action": {
+              "type": "pheno:at",
+              "blocks": {
+                "radius": [
+                  2,
+                  1,
+                  2
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:replaceable_by_trees"
+                    },
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:flowers"
+                    },
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:leaves"
+                    }
+                  ]
+                }
+              },
+              "do": {
+                "type": "pheno:destroy",
+                "drop_item": true
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.player.attack.sweep",
+              "volume": 1.0,
+              "pitch": 0.9
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 6,
+              "spread": 1.2
+            },
+            {
+              "type": "pheno:swing_hand"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

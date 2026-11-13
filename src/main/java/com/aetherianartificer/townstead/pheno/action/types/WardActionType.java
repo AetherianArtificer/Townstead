@@ -18,6 +18,10 @@ import net.minecraft.util.GsonHelper;
  * {@code damage_condition} limits it to matching damage. {@code on_absorb} runs on the warded
  * entity each time it spares damage and {@code on_break} when its budget runs out, both with the
  * attacker as the counterpart and the spared amount readable as {@code pheno:event_damage}.
+ * {@code on_end} runs when the time runs out before the budget does, with the total spared as the
+ * event damage. In all three, {@code origin} is the entity that placed the ward. A ward with
+ * {@code fraction} 0 spares nothing: {@code on_absorb} runs on every matching hit, with the whole hit
+ * as the event damage, even while another ward spares that hit.
  *
  * <p>Wards never stack: a hit is softened only by the ward that spares the most. A ward with the
  * same {@code id} (default {@code "ward"}) replaces the previous one.</p>
@@ -46,7 +50,8 @@ public final class WardActionType implements ActionType {
         if (json.has("damage_condition") && damageCondition == null) return null;
         Action onAbsorb = json.has("on_absorb") ? Actions.parse(json.get("on_absorb")) : null;
         Action onBreak = json.has("on_break") ? Actions.parse(json.get("on_break")) : null;
-        Wards.Spec spec = new Wards.Spec(id, fraction, duration, damageCondition, onAbsorb, onBreak);
-        return ctx -> Wards.place(ctx.entity(), spec, (float) amount.get(SelectorContext.of(ctx)));
+        Action onEnd = json.has("on_end") ? Actions.parse(json.get("on_end")) : null;
+        Wards.Spec spec = new Wards.Spec(id, fraction, duration, damageCondition, onAbsorb, onBreak, onEnd);
+        return ctx -> Wards.place(ctx.entity(), spec, (float) amount.get(SelectorContext.of(ctx)), ctx.origin());
     }
 }

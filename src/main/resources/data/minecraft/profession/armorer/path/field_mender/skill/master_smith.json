@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "quartermaster"
+    "tinkers_eye"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,18 +21,19 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:temper",
-      "min": 75
+      "min": 50
     },
     "action": {
       "type": "pheno:area_of_effect",
       "radius": 8,
-      "include_self": true,
+      "include_self": false,
       "target": "non_hostile",
       "action": {
-        "type": "pheno:apply_effect",
-        "effect": "minecraft:resistance",
-        "duration": 30,
-        "amplifier": 0
+        "type": "pheno:ward",
+        "id": "master_smith",
+        "amount": 100,
+        "fraction": 0.15,
+        "duration": 30
       }
     }
   }

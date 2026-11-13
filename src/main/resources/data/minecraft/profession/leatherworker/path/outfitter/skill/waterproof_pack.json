@@ -12,6 +12,11 @@
     "well_supplied"
   ],
   "power": {
-    "type": "pheno:keep_inventory"
+    "type": "pheno:keep_inventory",
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:hide",
+      "min": 50
+    }
   }
 }

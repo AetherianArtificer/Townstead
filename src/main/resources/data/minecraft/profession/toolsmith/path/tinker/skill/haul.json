@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.haul"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.haul.description"
+  },
+  "cost": 1,
+  "requires": [
+    "grappling_line"
+  ]
+}

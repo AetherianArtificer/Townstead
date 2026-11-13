@@ -10,8 +10,8 @@
     "translate": "career.townstead.hunter.description"
   },
   "skills": [
-    "night_watch",
-    "stand_fast"
+    "keen_senses",
+    "vigil"
   ],
   "unlock_model": "experiential"
 }

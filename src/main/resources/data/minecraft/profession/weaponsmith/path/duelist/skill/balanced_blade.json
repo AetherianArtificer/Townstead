@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "parry"
+    "poise"
   ],
   "power": {
     "type": "pheno:modifier",

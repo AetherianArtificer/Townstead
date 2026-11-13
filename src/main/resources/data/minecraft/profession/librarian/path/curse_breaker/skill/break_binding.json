@@ -7,11 +7,11 @@
   "description": {
     "translate": "skill.townstead.librarian.curse_breaker.break_binding.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:curse_uncurse",
+  "cost": 2,
+  "skill_group": "townstead:curse_breaker_utility",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 600,
+    "cooldown": 400,
     "slot": 1,
     "ai_trigger": "never",
     "resource_cost": {
@@ -33,38 +33,372 @@
             "type": "pheno:and",
             "actions": [
               {
-                "type": "pheno:equipped_item_action",
-                "slot": "head",
-                "item_action": {
-                  "type": "pheno:remove_enchantment",
-                  "enchantment": "minecraft:binding_curse"
-                }
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "head",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:binding_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "head",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:vanishing_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "chest",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:binding_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "chest",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:vanishing_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "legs",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:binding_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "legs",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:vanishing_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "feet",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:binding_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "feet",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:vanishing_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "mainhand",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:binding_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "mainhand",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:vanishing_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "offhand",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:binding_curse"
+                        }
+                      },
+                      {
+                        "type": "pheno:equipped_item_action",
+                        "slot": "offhand",
+                        "item_action": {
+                          "type": "pheno:remove_enchantment",
+                          "enchantment": "minecraft:vanishing_curse"
+                        }
+                      }
+                    ]
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:librarian/curse_breaker/purity"
+                      }
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:equipped_item_action",
+                          "slot": "head",
+                          "item_action": {
+                            "type": "pheno:reset_repair_cost"
+                          }
+                        },
+                        {
+                          "type": "pheno:equipped_item_action",
+                          "slot": "chest",
+                          "item_action": {
+                            "type": "pheno:reset_repair_cost"
+                          }
+                        },
+                        {
+                          "type": "pheno:equipped_item_action",
+                          "slot": "legs",
+                          "item_action": {
+                            "type": "pheno:reset_repair_cost"
+                          }
+                        },
+                        {
+                          "type": "pheno:equipped_item_action",
+                          "slot": "feet",
+                          "item_action": {
+                            "type": "pheno:reset_repair_cost"
+                          }
+                        },
+                        {
+                          "type": "pheno:equipped_item_action",
+                          "slot": "mainhand",
+                          "item_action": {
+                            "type": "pheno:reset_repair_cost"
+                          }
+                        },
+                        {
+                          "type": "pheno:equipped_item_action",
+                          "slot": "offhand",
+                          "item_action": {
+                            "type": "pheno:reset_repair_cost"
+                          }
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:enchant",
+                    "count": 12,
+                    "spread": 0.6
+                  }
+                ]
               },
               {
-                "type": "pheno:equipped_item_action",
-                "slot": "chest",
-                "item_action": {
-                  "type": "pheno:remove_enchantment",
-                  "enchantment": "minecraft:binding_curse"
-                }
-              },
-              {
-                "type": "pheno:equipped_item_action",
-                "slot": "legs",
-                "item_action": {
-                  "type": "pheno:remove_enchantment",
-                  "enchantment": "minecraft:binding_curse"
-                }
-              },
-              {
-                "type": "pheno:equipped_item_action",
-                "slot": "feet",
-                "item_action": {
-                  "type": "pheno:remove_enchantment",
-                  "enchantment": "minecraft:binding_curse"
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/curse_breaker/mass_uncursing"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 8,
+                  "include_self": false,
+                  "target": "non_hostile",
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "head",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:binding_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "head",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:vanishing_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "chest",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:binding_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "chest",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:vanishing_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "legs",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:binding_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "legs",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:vanishing_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "feet",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:binding_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "feet",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:vanishing_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "mainhand",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:binding_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "mainhand",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:vanishing_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "offhand",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:binding_curse"
+                            }
+                          },
+                          {
+                            "type": "pheno:equipped_item_action",
+                            "slot": "offhand",
+                            "item_action": {
+                              "type": "pheno:remove_enchantment",
+                              "enchantment": "minecraft:vanishing_curse"
+                            }
+                          }
+                        ]
+                      },
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:librarian/curse_breaker/purity"
+                          }
+                        },
+                        "if_action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:equipped_item_action",
+                              "slot": "head",
+                              "item_action": {
+                                "type": "pheno:reset_repair_cost"
+                              }
+                            },
+                            {
+                              "type": "pheno:equipped_item_action",
+                              "slot": "chest",
+                              "item_action": {
+                                "type": "pheno:reset_repair_cost"
+                              }
+                            },
+                            {
+                              "type": "pheno:equipped_item_action",
+                              "slot": "legs",
+                              "item_action": {
+                                "type": "pheno:reset_repair_cost"
+                              }
+                            },
+                            {
+                              "type": "pheno:equipped_item_action",
+                              "slot": "feet",
+                              "item_action": {
+                                "type": "pheno:reset_repair_cost"
+                              }
+                            },
+                            {
+                              "type": "pheno:equipped_item_action",
+                              "slot": "mainhand",
+                              "item_action": {
+                                "type": "pheno:reset_repair_cost"
+                              }
+                            },
+                            {
+                              "type": "pheno:equipped_item_action",
+                              "slot": "offhand",
+                              "item_action": {
+                                "type": "pheno:reset_repair_cost"
+                              }
+                            }
+                          ]
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:enchant",
+                        "count": 12,
+                        "spread": 0.6
+                      }
+                    ]
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
                 }
               }
             ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           },
           "on": {
             "type": "pheno:ray",
@@ -72,10 +406,192 @@
           }
         },
         {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:librarian/curse_breaker/purity"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "head",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:binding_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "head",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:vanishing_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "chest",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:binding_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "chest",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:vanishing_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "legs",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:binding_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "legs",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:vanishing_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "feet",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:binding_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "feet",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:vanishing_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "mainhand",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:binding_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "mainhand",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:vanishing_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "offhand",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:binding_curse"
+                    }
+                  },
+                  {
+                    "type": "pheno:equipped_item_action",
+                    "slot": "offhand",
+                    "item_action": {
+                      "type": "pheno:remove_enchantment",
+                      "enchantment": "minecraft:vanishing_curse"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/curse_breaker/purity"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "head",
+                      "item_action": {
+                        "type": "pheno:reset_repair_cost"
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "chest",
+                      "item_action": {
+                        "type": "pheno:reset_repair_cost"
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "legs",
+                      "item_action": {
+                        "type": "pheno:reset_repair_cost"
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "feet",
+                      "item_action": {
+                        "type": "pheno:reset_repair_cost"
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "mainhand",
+                      "item_action": {
+                        "type": "pheno:reset_repair_cost"
+                      }
+                    },
+                    {
+                      "type": "pheno:equipped_item_action",
+                      "slot": "offhand",
+                      "item_action": {
+                        "type": "pheno:reset_repair_cost"
+                      }
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:enchant",
+                "count": 12,
+                "spread": 0.6
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
           "type": "pheno:play_sound",
-          "sound": "minecraft:item.book.page_turn",
+          "sound": "minecraft:block.enchantment_table.use",
           "volume": 1.0,
-          "pitch": 1.0
+          "pitch": 1.2
         }
       ]
     }

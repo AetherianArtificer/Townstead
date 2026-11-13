@@ -1,0 +1,95 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.lead_the_way"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.lead_the_way.description"
+  },
+  "cost": 2,
+  "requires": [
+    "second_camp"
+  ],
+  "skill_group": "townstead:pathfinder_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:pathfinder_locked"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:cartographer/pathfinder/homeward"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 10,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:speed",
+              "duration": 1200,
+              "amplifier": 1
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 10,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:speed",
+              "duration": 600,
+              "amplifier": 1
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:cartographer/pathfinder/no_one_left_behind"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 24,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:add_velocity",
+              "away_from_other": -1.2,
+              "y": 0.3
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.goat_horn.sound.0",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

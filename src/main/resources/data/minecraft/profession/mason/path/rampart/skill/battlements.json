@@ -9,37 +9,20 @@
   },
   "cost": 1,
   "requires": [
-    "siege_mind"
+    "behind_stone"
   ],
   "power": {
-    "type": "pheno:action_over_time",
-    "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:mortar",
-      "amount": 0
-    },
+    "type": "pheno:modifier",
+    "target": "projectile_damage",
+    "operation": "multiply",
+    "value": 1.25,
     "condition": {
-      "type": "pheno:and",
-      "conditions": [
-        {
-          "type": "pheno:resource",
-          "resource": "townstead:mortar",
-          "min": 50
-        },
-        {
-          "type": "pheno:not",
-          "condition": {
-            "type": "pheno:movement",
-            "movement": "moving"
-          }
-        }
-      ]
-    },
-    "action": {
-      "type": "pheno:apply_effect",
-      "effect": "minecraft:resistance",
-      "duration": 30,
-      "amplifier": 0
+      "type": "pheno:block_in_radius",
+      "radius": 2,
+      "block_condition": {
+        "type": "block",
+        "block": "townstead:haze"
+      }
     }
   }
 }

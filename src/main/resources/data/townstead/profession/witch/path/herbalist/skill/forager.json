@@ -1,0 +1,57 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.forager"
+  },
+  "icon": "minecraft:poppy",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.forager.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bitter_root"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 8,
+        "where": {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "minecraft:flowers"
+            },
+            {
+              "type": "pheno:block",
+              "block": "minecraft:brown_mushroom"
+            },
+            {
+              "type": "pheno:block",
+              "block": "minecraft:red_mushroom"
+            },
+            {
+              "type": "pheno:block",
+              "block": "minecraft:nether_wart"
+            },
+            {
+              "type": "pheno:block",
+              "block": "minecraft:sweet_berry_bush"
+            }
+          ]
+        },
+        "limit": 24
+      },
+      "do": {
+        "type": "pheno:spawn_particles",
+        "particle": "minecraft:happy_villager",
+        "count": 4,
+        "spread": 0.4
+      },
+      "optional": true
+    }
+  }
+}

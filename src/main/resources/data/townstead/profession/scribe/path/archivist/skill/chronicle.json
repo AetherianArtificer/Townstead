@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.chronicle"
+  },
+  "icon": "minecraft:book",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.chronicle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fair_copy"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "target": "other",
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:glowing",
+      "duration": 200,
+      "amplifier": 0
+    }
+  }
+}

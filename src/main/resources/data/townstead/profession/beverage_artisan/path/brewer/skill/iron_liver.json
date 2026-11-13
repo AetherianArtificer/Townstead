@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "cool_head"
+    "patient_fermentation"
   ],
   "power": {
     "type": "pheno:effect_immunity",

@@ -1,0 +1,102 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.iron_tread"
+  },
+  "icon": "minecraft:chainmail_boots",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.iron_tread.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:heavy_weight",
+  "power": {
+    "type": "pheno:ability",
+    "ability": "sink",
+    "mode": "toggle",
+    "slot": 1
+  },
+  "companions": {
+    "drain": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:stamina",
+        "amount": 4
+      },
+      "condition": {
+        "type": "pheno:toggled",
+        "gene": "minecraft:armorer/heavyweight/iron_tread"
+      },
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:in_fluid",
+          "fluid": "water"
+        },
+        "if_action": {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:bubble",
+          "count": 10,
+          "spread": 0.3
+        },
+        "else_action": {
+          "type": "pheno:nothing"
+        }
+      }
+    },
+    "release": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:armorer/heavyweight/iron_tread"
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:resource",
+              "resource": "townstead:stamina",
+              "min": 4
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:set_toggle",
+            "power": "minecraft:armorer/heavyweight/iron_tread",
+            "enabled": false
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.bubble_column.upwards_ambient",
+            "volume": 0.8,
+            "pitch": 1.2
+          }
+        ]
+      }
+    },
+    "lungs": {
+      "type": "pheno:ability",
+      "ability": "water_breathing",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:armorer/heavyweight/iron_tread"
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "minecraft:armorer/heavyweight/deep_lungs"
+          }
+        ]
+      }
+    }
+  }
+}

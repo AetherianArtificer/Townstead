@@ -1,0 +1,117 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.identify"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.identify.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:lorekeeper_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:librarian/lorekeeper/great_library"
+          }
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:movement",
+            "movement": "moving"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:librarian/lorekeeper/great_library"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:lorekeeper_identified",
+                "duration": 36000
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:glowing",
+                "duration": 200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:show_health"
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:enchant",
+                "count": 8,
+                "spread": 0.5
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 24
+            }
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:lorekeeper_identified",
+                "duration": 6000
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:glowing",
+                "duration": 200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:show_health"
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:enchant",
+                "count": 8,
+                "spread": 0.5
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 24
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.book.page_turn",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

@@ -9,26 +9,24 @@
   },
   "cost": 1,
   "requires": [
-    "behind_stone"
+    "battlements"
   ],
   "power": {
     "type": "pheno:action_over_time",
-    "interval": 20,
+    "interval": 10,
     "resource_cost": {
       "resource": "townstead:mortar",
       "amount": 0
     },
     "condition": {
-      "type": "pheno:entity_in_radius",
-      "radius": 12,
-      "condition": {
-        "type": "pheno:hostile"
-      }
+      "type": "pheno:resource",
+      "resource": "townstead:mortar",
+      "min": 25
     },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:mortar",
-      "amount": 3
+      "type": "pheno:set_flag",
+      "flag": "townstead:rampart_long",
+      "duration": 15
     }
   }
 }

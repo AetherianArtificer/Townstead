@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.slippery"
+  },
+  "icon": "minecraft:slime_ball",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.slippery.description"
+  },
+  "cost": 1,
+  "requires": [
+    "kick_the_pot"
+  ]
+}

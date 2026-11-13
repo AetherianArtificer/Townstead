@@ -9,27 +9,33 @@
   },
   "cost": 1,
   "requires": [
-    "smite"
+    "undying_faith"
   ],
   "power": {
-    "type": "pheno:action_over_time",
-    "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:faith",
-      "amount": 0
-    },
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
     "condition": {
-      "type": "pheno:entity_in_radius",
-      "radius": 10,
-      "condition": {
-        "type": "pheno:entity_group",
-        "group": "undead"
-      }
+      "type": "pheno:resource",
+      "resource": "townstead:faith",
+      "min": 25
     },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:faith",
-      "amount": 3
+      "type": "pheno:target_action",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:entity_group",
+          "group": "undead"
+        },
+        "if_action": {
+          "type": "pheno:add_velocity",
+          "away_from_other": 1.6,
+          "y": 0.35
+        },
+        "else_action": {
+          "type": "pheno:nothing"
+        }
+      }
     }
   }
 }

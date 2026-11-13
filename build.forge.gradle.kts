@@ -276,3 +276,22 @@ tasks.named<Jar>("jarJar") {
     }
     finalizedBy("reobfJarJar")
 }
+
+// Career skill checks for 1.20.1, as a mod with the game's production names. A dev run cannot load
+// this build's mixins, so the checks run on a real Forge install: tools/skills/run_forge.sh.
+// Sources are written by tools/skills/port_forge.py. Build with: gradlew :1.20.1-forge:reobfSkillCheckJar -PskillCheck
+if (providers.gradleProperty("skillCheck").isPresent) {
+    val skillCheck by sourceSets.creating {
+        java.setSrcDirs(listOf(rootProject.file("src/skillCheckForge/java")))
+        resources.setSrcDirs(listOf(rootProject.file("src/skillCheckForge/resources")))
+        compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+    val skillCheckJar by tasks.registering(Jar::class) {
+        archiveClassifier.set("skillcheck")
+        from(skillCheck.output)
+    }
+    reobf {
+        create("skillCheckJar")
+    }
+}

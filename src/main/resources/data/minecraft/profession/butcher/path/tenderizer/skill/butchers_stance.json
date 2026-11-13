@@ -1,0 +1,37 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.butchers_stance"
+  },
+  "icon": "minecraft:iron_boots",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.butchers_stance.description"
+  },
+  "cost": 1,
+  "requires": [
+    "momentum"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:cut",
+          "min": 25
+        },
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "pheno:ingredient",
+            "tag": "townstead:butcher_hammers"
+          }
+        }
+      ]
+    }
+  }
+}

@@ -319,3 +319,55 @@ if (providers.gradleProperty("bodySizeGameTests").isPresent) {
         }
     }
 }
+
+// Career skill check: every skill file must load with its power, and each converted tool must do
+// what its text says. Never shipped. Run with: gradlew :1.21.1-neoforge:runSkillCheck -PskillCheck
+if (providers.gradleProperty("skillCheck").isPresent) {
+    val skillCheck by sourceSets.creating {
+        java.setSrcDirs(listOf(rootProject.file("src/skillCheck/java")))
+        resources.setSrcDirs(listOf(rootProject.file("src/skillCheck/resources")))
+        compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+    neoForge {
+        mods {
+            register("townstead_skill_check") { sourceSet(skillCheck) }
+        }
+        runs {
+            register("skillCheck") {
+                type = "gameTestServer"
+                sourceSet = skillCheck
+                gameDirectory = rootProject.file(".cache/skill-check")
+                systemProperty("neoforge.enabledGameTestNamespaces", "townstead_skill_check")
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
+            // The same skills on a real client, one scene and one screenshot each:
+            // gradlew :1.21.1-neoforge:runSkillScene -PskillCheck. Pictures: .cache/skill-scene/screenshots.
+            register("skillScene") {
+                client()
+                sourceSet = skillCheck
+                gameDirectory = rootProject.file(".cache/skill-scene")
+                systemProperty("townstead.scene", "true")
+                programArguments.addAll("--width", "1600", "--height", "900")
+                systemProperty("townstead.scene.only", providers.gradleProperty("scene").getOrElse(""))
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
+        }
+    }
+}

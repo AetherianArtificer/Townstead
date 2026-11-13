@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.feeding_frenzy"
+  },
+  "icon": "minecraft:cod",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.feeding_frenzy.description"
+  },
+  "cost": 1,
+  "requires": [
+    "chum"
+  ]
+}

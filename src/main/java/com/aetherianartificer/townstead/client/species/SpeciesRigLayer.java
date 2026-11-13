@@ -344,6 +344,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         if (bodyOffset[0] != 0f || bodyOffset[1] != 0f || bodyOffset[2] != 0f) {
             pose.translate(bodyOffset[0] / 16f, bodyOffset[1] / 16f, bodyOffset[2] / 16f);
         }
+        RigWearables.noteDrawn(entity, scale, bodyOffset);
         int tone = RigSkinTone.forEntity(entity);
         if (fade < 1f) tone = (Math.round(fade * 255f) << 24) | (tone & 0xFFFFFF);
         //? if neoforge {

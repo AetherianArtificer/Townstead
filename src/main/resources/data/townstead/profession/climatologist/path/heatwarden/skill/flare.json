@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.climatologist.heatwarden.flare.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:heat_fire",
+  "cost": 2,
+  "skill_group": "townstead:heatwarden_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,13 +22,86 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 4,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:ignite",
-            "seconds": 3
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:climatologist/heatwarden/inferno"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 4,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:ignite",
+                  "seconds": 10
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:climatologist/heatwarden/heat_wave"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:area_of_effect",
+                    "radius": 2,
+                    "include_self": false,
+                    "target": "all",
+                    "action": {
+                      "type": "pheno:ignite",
+                      "seconds": 10
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 4,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:ignite",
+                  "seconds": 3
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:climatologist/heatwarden/heat_wave"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:area_of_effect",
+                    "radius": 2,
+                    "include_self": false,
+                    "target": "all",
+                    "action": {
+                      "type": "pheno:ignite",
+                      "seconds": 3
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
           }
         },
         {
@@ -36,6 +109,12 @@
           "sound": "minecraft:block.fire.ambient",
           "volume": 1.0,
           "pitch": 1.0
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:flame",
+          "count": 20,
+          "spread": 1.5
         }
       ]
     }

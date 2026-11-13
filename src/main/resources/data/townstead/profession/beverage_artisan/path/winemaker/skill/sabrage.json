@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.sabrage"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.sabrage.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pop_the_cork"
+  ]
+}

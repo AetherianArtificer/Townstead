@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "deep_work"
+    "canary"
   ],
   "power": {
     "type": "pheno:block_break_speed",
@@ -18,7 +18,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:knack",
-      "min": 50
+      "min": 25
     }
   }
 }

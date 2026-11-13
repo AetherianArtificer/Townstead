@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.backfill"
+  },
+  "icon": "minecraft:dirt",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.backfill.description"
+  },
+  "cost": 1,
+  "requires": [
+    "undermine"
+  ]
+}

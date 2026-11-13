@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.bitter_root"
+  },
+  "icon": "minecraft:moss_carpet",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.bitter_root.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_hurt",
+    "condition": {
+      "type": "pheno:health",
+      "max": 0.3,
+      "relative": true
+    },
+    "action": {
+      "type": "pheno:ward",
+      "id": "bitter_root",
+      "amount": 4,
+      "duration": 200
+    }
+  }
+}

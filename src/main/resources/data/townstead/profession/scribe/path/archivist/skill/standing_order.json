@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.standing_order"
+  },
+  "icon": "minecraft:filled_map",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.standing_order.description"
+  },
+  "cost": 1,
+  "requires": [
+    "requisition"
+  ]
+}

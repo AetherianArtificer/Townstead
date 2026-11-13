@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.pathfinders_mark"
+  },
+  "icon": "minecraft:armor_stand",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.pathfinders_mark.description"
+  },
+  "cost": 2,
+  "requires": [
+    "ambuscade"
+  ]
+}

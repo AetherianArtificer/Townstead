@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.sticky"
+  },
+  "icon": "minecraft:slime_ball",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.sticky.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shaped_charge"
+  ]
+}

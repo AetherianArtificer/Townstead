@@ -12,7 +12,7 @@
   "icon": "toughasnails:thermoregulator",
   "skills": [
     "weathered",
-    "barometer"
+    "forecast"
   ],
   "unlock_model": "experiential"
 }

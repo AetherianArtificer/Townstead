@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.vigil"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.hunter.vigil.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "keen_senses"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 2400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "condition": {
+      "type": "pheno:time_of_day",
+      "min": 13000,
+      "max": 23000
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:energize",
+          "amount": 40
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.campfire.crackle",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

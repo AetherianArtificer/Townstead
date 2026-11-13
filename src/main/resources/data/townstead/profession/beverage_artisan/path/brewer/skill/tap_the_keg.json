@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.beverage_artisan.brewer.tap_the_keg.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:brewer_spill",
+  "cost": 2,
+  "skill_group": "townstead:brewer_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -27,11 +27,189 @@
           "include_self": false,
           "target": "hostile",
           "action": {
-            "type": "pheno:haze",
-            "kind": "townstead:ale",
-            "blocks": {
-              "radius": 0
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:origin",
+              "condition": {
+                "type": "pheno:skill",
+                "skill": "townstead:beverage_artisan/brewer/flood_the_cellar"
+              }
+            },
+            "if_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:ale_long",
+              "blocks": {
+                "radius": 0
+              }
+            },
+            "else_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:ale",
+              "blocks": {
+                "radius": 0
+              }
             }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:beverage_artisan/brewer/barrel_roll"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:beverage_artisan/brewer/flood_the_cellar"
+            },
+            "if_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:ale_long",
+              "blocks": [
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      2
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      3
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      4
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      5
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      6
+                    ],
+                    "space": "facing"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:ale",
+              "blocks": [
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      2
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      3
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      4
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      5
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      6
+                    ],
+                    "space": "facing"
+                  }
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {

@@ -1,0 +1,207 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.watch_post"
+  },
+  "icon": "minecraft:spyglass",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.watch_post.description"
+  },
+  "cost": 2,
+  "requires": [
+    "follow_the_story"
+  ],
+  "skill_group": "townstead:journalist_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:scoop",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:scribe/journalist/front_page"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:scribe/journalist/two_angles"
+                },
+                "if_action": {
+                  "type": "pheno:cloud",
+                  "radius": 24.0,
+                  "height": 6.0,
+                  "duration": 24000,
+                  "wait_time": 10,
+                  "reapply_delay": 40,
+                  "particle": "minecraft:wax_off",
+                  "do": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:hostile"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:glowing",
+                          "duration": 1200,
+                          "amplifier": 0
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:block.lever.click",
+                          "volume": 0.6,
+                          "pitch": 1.8
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:cloud",
+                  "radius": 16.0,
+                  "height": 6.0,
+                  "duration": 24000,
+                  "wait_time": 10,
+                  "reapply_delay": 40,
+                  "particle": "minecraft:wax_off",
+                  "do": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:hostile"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:glowing",
+                          "duration": 1200,
+                          "amplifier": 0
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:block.lever.click",
+                          "volume": 0.6,
+                          "pitch": 1.8
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:journalist_watching",
+                "duration": 24000
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:scribe/journalist/two_angles"
+            },
+            "if_action": {
+              "type": "pheno:cloud",
+              "radius": 24.0,
+              "height": 6.0,
+              "duration": 12000,
+              "wait_time": 10,
+              "reapply_delay": 40,
+              "particle": "minecraft:wax_off",
+              "do": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:hostile"
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:glowing",
+                      "duration": 60,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:block.lever.click",
+                      "volume": 0.6,
+                      "pitch": 1.8
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            },
+            "else_action": {
+              "type": "pheno:cloud",
+              "radius": 16.0,
+              "height": 6.0,
+              "duration": 12000,
+              "wait_time": 10,
+              "reapply_delay": 40,
+              "particle": "minecraft:wax_off",
+              "do": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:hostile"
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:glowing",
+                      "duration": 60,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:block.lever.click",
+                      "volume": 0.6,
+                      "pitch": 1.8
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.lever.click",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

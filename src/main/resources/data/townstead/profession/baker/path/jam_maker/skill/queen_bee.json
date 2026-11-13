@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.queen_bee"
+  },
+  "icon": "minecraft:honey_block",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.queen_bee.description"
+  },
+  "cost": 2,
+  "requires": [
+    "flypaper"
+  ]
+}

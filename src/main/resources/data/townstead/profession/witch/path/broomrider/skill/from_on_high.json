@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.from_on_high"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.from_on_high.description"
+  },
+  "cost": 1,
+  "requires": [
+    "swoop"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.slow_sip"
+  },
+  "icon": "minecraft:milk_bucket",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.slow_sip.description"
+  },
+  "cost": 1,
+  "requires": [
+    "decaf"
+  ]
+}

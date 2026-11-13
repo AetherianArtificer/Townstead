@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.all_day"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.cook.chef.all_day.description"
+  },
+  "cost": 1,
+  "requires": [
+    "expedite"
+  ]
+}

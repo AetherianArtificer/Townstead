@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "grace"
+    "listening_ear"
   ],
   "power": {
     "type": "pheno:trigger",
@@ -17,7 +17,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:faith",
-      "min": 75
+      "min": 50
     },
     "action": {
       "type": "pheno:area_of_effect",
@@ -25,10 +25,21 @@
       "include_self": false,
       "target": "non_hostile",
       "action": {
-        "type": "pheno:apply_effect",
-        "effect": "minecraft:resistance",
-        "duration": 100,
-        "amplifier": 0
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:ward",
+            "id": "martyr",
+            "amount": 2,
+            "duration": 100
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:end_rod",
+            "count": 3,
+            "spread": 0.3
+          }
+        ]
       }
     }
   }

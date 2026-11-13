@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.seconds"
+  },
+  "icon": "minecraft:rabbit_stew",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.seconds.description"
+  },
+  "cost": 1,
+  "requires": [
+    "dinner_bell"
+  ]
+}

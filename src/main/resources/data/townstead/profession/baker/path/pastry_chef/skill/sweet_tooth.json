@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.sweet_tooth"
+  },
+  "icon": "minecraft:cookie",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.sweet_tooth.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_item_use",
+    "item_condition": {
+      "type": "pheno:food"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 200,
+      "amplifier": 0
+    }
+  }
+}

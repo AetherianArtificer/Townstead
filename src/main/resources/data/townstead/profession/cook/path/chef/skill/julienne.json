@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.julienne"
+  },
+  "icon": "farmersdelight:diamond_knife",
+  "description": {
+    "translate": "skill.townstead.cook.chef.julienne.description"
+  },
+  "cost": 1,
+  "requires": [
+    "chefs_knife"
+  ]
+}

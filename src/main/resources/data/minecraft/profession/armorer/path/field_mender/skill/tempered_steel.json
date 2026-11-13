@@ -7,31 +7,386 @@
   "description": {
     "translate": "skill.townstead.armorer.field_mender.tempered_steel.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "padding"
+    "reinforce"
   ],
-  "skill_group": "townstead:mender_reinforce",
+  "skill_group": "townstead:field_mender_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
     "slot": 2,
-    "ai_trigger": "when_threatened",
+    "ai_trigger": "when_hurt_nearby",
     "resource_cost": {
       "resource": "townstead:temper",
       "amount": 30
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 8,
-      "include_self": true,
-      "target": "non_hostile",
-      "action": {
-        "type": "pheno:apply_effect",
-        "effect": "minecraft:resistance",
-        "duration": 400,
-        "amplifier": 1
-      }
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:entity_type",
+            "entity_type": "minecraft:player"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:ward",
+                  "id": "tempered_steel",
+                  "amount": 12,
+                  "duration": 300,
+                  "on_absorb": {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:block.anvil.place",
+                    "volume": 0.5,
+                    "pitch": 1.2
+                  },
+                  "on_break": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:armorer/field_mender/masterwork"
+                        },
+                        "if_action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:change_resource",
+                              "resource": "townstead:temper",
+                              "amount": 10
+                            },
+                            {
+                              "type": "pheno:play_sound",
+                              "sound": "minecraft:block.anvil.use",
+                              "volume": 0.6,
+                              "pitch": 1.6
+                            }
+                          ]
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        },
+                        "on": "origin"
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:area_of_effect",
+                            "radius": 3,
+                            "include_self": false,
+                            "target": "hostile",
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:damage",
+                                  "amount": 6
+                                },
+                                {
+                                  "type": "pheno:add_velocity",
+                                  "away_from_other": 0.8,
+                                  "y": 0.3
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:crit",
+                            "count": 24,
+                            "spread": 1.5
+                          },
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:block.anvil.land",
+                            "volume": 0.7,
+                            "pitch": 1.4
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "on_end": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 3,
+                        "include_self": false,
+                        "target": "hostile",
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": {
+                                "type": "pheno:event_damage",
+                                "scale": 0.5
+                              }
+                            },
+                            {
+                              "type": "pheno:add_velocity",
+                              "away_from_other": 0.8,
+                              "y": 0.3
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:crit",
+                        "count": 24,
+                        "spread": 1.5
+                      },
+                      {
+                        "type": "pheno:play_sound",
+                        "sound": "minecraft:block.anvil.land",
+                        "volume": 0.7,
+                        "pitch": 1.4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:armorer/field_mender/fireguard"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:extinguish"
+                      },
+                      {
+                        "type": "pheno:ward",
+                        "id": "fireguard",
+                        "amount": 200,
+                        "duration": 300,
+                        "damage_condition": {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:is_fire"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:wax_on",
+                  "count": 16,
+                  "spread": 0.6
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 8
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:ward",
+                  "id": "tempered_steel",
+                  "amount": 12,
+                  "duration": 300,
+                  "on_absorb": {
+                    "type": "pheno:play_sound",
+                    "sound": "minecraft:block.anvil.place",
+                    "volume": 0.5,
+                    "pitch": 1.2
+                  },
+                  "on_break": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:armorer/field_mender/masterwork"
+                        },
+                        "if_action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:change_resource",
+                              "resource": "townstead:temper",
+                              "amount": 10
+                            },
+                            {
+                              "type": "pheno:play_sound",
+                              "sound": "minecraft:block.anvil.use",
+                              "volume": 0.6,
+                              "pitch": 1.6
+                            }
+                          ]
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        },
+                        "on": "origin"
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:area_of_effect",
+                            "radius": 3,
+                            "include_self": false,
+                            "target": "hostile",
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:damage",
+                                  "amount": 6
+                                },
+                                {
+                                  "type": "pheno:add_velocity",
+                                  "away_from_other": 0.8,
+                                  "y": 0.3
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:crit",
+                            "count": 24,
+                            "spread": 1.5
+                          },
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:block.anvil.land",
+                            "volume": 0.7,
+                            "pitch": 1.4
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  "on_end": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 3,
+                        "include_self": false,
+                        "target": "hostile",
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": {
+                                "type": "pheno:event_damage",
+                                "scale": 0.5
+                              }
+                            },
+                            {
+                              "type": "pheno:add_velocity",
+                              "away_from_other": 0.8,
+                              "y": 0.3
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:crit",
+                        "count": 24,
+                        "spread": 1.5
+                      },
+                      {
+                        "type": "pheno:play_sound",
+                        "sound": "minecraft:block.anvil.land",
+                        "volume": 0.7,
+                        "pitch": 1.4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:armorer/field_mender/fireguard"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:extinguish"
+                      },
+                      {
+                        "type": "pheno:ward",
+                        "id": "fireguard",
+                        "amount": 200,
+                        "duration": 300,
+                        "damage_condition": {
+                          "type": "pheno:in_tag",
+                          "tag": "minecraft:is_fire"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:wax_on",
+                  "count": 16,
+                  "spread": 0.6
+                }
+              ]
+            },
+            "limit": 1
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.use",
+          "volume": 0.8,
+          "pitch": 0.9
+        }
+      ]
     }
   }
 }

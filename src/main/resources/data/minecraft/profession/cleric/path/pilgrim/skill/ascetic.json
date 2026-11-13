@@ -8,9 +8,6 @@
     "translate": "skill.townstead.cleric.pilgrim.ascetic.description"
   },
   "cost": 1,
-  "requires": [
-    "wayfarer"
-  ],
   "power": {
     "type": "pheno:effect_immunity",
     "effects": [

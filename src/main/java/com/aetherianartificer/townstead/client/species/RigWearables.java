@@ -253,6 +253,148 @@ public final class RigWearables {
         poseAt(anchoredBody, anchoredBackPose, def.back().forItem(key), false, 0f, 0f);
     }
 
+    // How the rig body was last drawn for an entity: its scale and whole-body offset (model pixels), so
+    // other mods' layers drawn after it this frame line up with it.
+    private static final java.util.Map<Integer, float[]> DRAWN = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Called as a generic rig body draws, before other layers run for the entity. */
+    public static void noteDrawn(LivingEntity entity, float scale, float[] bodyOffset) {
+        DRAWN.put(entity.getId(), new float[]{scale, bodyOffset[0], bodyOffset[1], bodyOffset[2]});
+    }
+
+    /**
+     * How many times another mod's layer draws for this entity: once per placement of the part with the
+     * most (a cyber leg on each of four spider legs), or 0 when the entity's rig declares no fit and the
+     * layer draws as it would.
+     */
+    public static int fitPasses(LivingEntity entity) {
+        RigDefinition def = fitted(entity);
+        if (def == null) return 0;
+        int passes = 1;
+        for (var placements : def.fit().values()) passes = Math.max(passes, placements.size());
+        return passes;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    private static RigDefinition fitted(LivingEntity entity) {
+        String rig = RigModels.rigBaseFor(entity);
+        if (rig == null || !RigModels.isGeneric(rig)) return null;
+        RigDefinition def = RigModels.definition(rig);
+        return def == null || def.fit() == null ? null : def;
+    }
+
+    /**
+     * Fit the host humanoid parts onto a non-humanoid rig's bones for one draw ({@code pass}) of another
+     * mod's layer (a cyber arm, a worn add-on), per the rig's {@code wearables.fit}: each part goes onto
+     * its {@code pass}-th placement, live this frame, then the authored nudge; a part with no placement
+     * for this pass, or none at all, is hidden. Returns how to put the parts back, or null when the
+     * entity's rig declares no fit.
+     */
+    @org.jetbrains.annotations.Nullable
+    public static Runnable fitForeign(LivingEntity entity, HumanoidModel<?> host, int pass) {
+        RigDefinition def = fitted(entity);
+        if (def == null) return null;
+        String rig = RigModels.rigBaseFor(entity);
+        ModelPart[] main = {host.head, host.body, host.rightArm, host.leftArm, host.rightLeg, host.leftLeg};
+        java.util.List<ModelPart> touched = new java.util.ArrayList<>(java.util.List.of(main));
+        touched.add(host.hat);
+        if (host instanceof net.minecraft.client.model.PlayerModel<?> player) {
+            touched.addAll(java.util.List.of(player.jacket, player.rightSleeve, player.leftSleeve,
+                    player.rightPants, player.leftPants));
+        }
+        java.util.List<Runnable> restores = new java.util.ArrayList<>(touched.size());
+        for (ModelPart part : touched) {
+            var before = part.storePose();
+            float sx = part.xScale, sy = part.yScale, sz = part.zScale;
+            restores.add(() -> { part.loadPose(before); part.xScale = sx; part.yScale = sy; part.zScale = sz; });
+        }
+        float[] drawn = DRAWN.getOrDefault(entity.getId(), new float[]{RigModels.scaleFor(entity), 0f, 0f, 0f});
+        for (int i = 0; i < main.length; i++) {
+            String channel = RigDefinition.FIT_PARTS.get(i);
+            var placements = def.fit().get(channel);
+            RigDefinition.Fit fit = placements == null || pass >= placements.size() ? null : placements.get(pass);
+            float[] bone = fit == null ? null
+                    : RigModels.boneModelPose(rig, fit.bone().isEmpty() ? def.boneFor(channel) : fit.bone());
+            if (bone == null) {
+                main[i].xScale = main[i].yScale = main[i].zScale = 0f;
+                continue;
+            }
+            fitPose(main[i], bone, fit.adjust());
+            liftOffSurface(main[i], PART_CENTERS[i]);
+            inDrawnFrame(main[i], drawn);
+        }
+        copyPart(host.hat, host.head);
+        if (host instanceof net.minecraft.client.model.PlayerModel<?> player) {
+            copyPart(player.jacket, host.body);
+            copyPart(player.rightSleeve, host.rightArm);
+            copyPart(player.leftSleeve, host.leftArm);
+            copyPart(player.rightPants, host.rightLeg);
+            copyPart(player.leftPants, host.leftLeg);
+        }
+        return () -> { for (Runnable restore : restores) restore.run(); };
+    }
+
+    /**
+     * Put {@code part} on a rig bone: the authored rotation turns it in the bone's own frame (so a
+     * humanoid arm can lie along a sideways spider leg), and the offset moves it along the turned axes.
+     */
+    private static void fitPose(ModelPart part, float[] bone, RigDefinition.Adjust a) {
+        part.resetPose();
+        float[] r = a.rotation();
+        org.joml.Quaternionf turn = new org.joml.Quaternionf().rotationZYX(bone[5], bone[4], bone[3])
+                .mul(new org.joml.Quaternionf().rotationZYX((float) Math.toRadians(r[2]),
+                        (float) Math.toRadians(r[1]), (float) Math.toRadians(r[0])));
+        org.joml.Vector3f offset = turn.transform(new org.joml.Vector3f(a.offset()[0], a.offset()[1], a.offset()[2]));
+        org.joml.Vector3f angles = turn.getEulerAnglesZYX(new org.joml.Vector3f());
+        part.x = bone[0] + offset.x();
+        part.y = bone[1] + offset.y();
+        part.z = bone[2] + offset.z();
+        part.xRot = angles.x();
+        part.yRot = angles.y();
+        part.zRot = angles.z();
+        part.xScale = a.scale() * a.scaleAxes()[0];
+        part.yScale = a.scale() * a.scaleAxes()[1];
+        part.zScale = a.scale() * a.scaleAxes()[2];
+    }
+
+    // Centre of each humanoid part's cube relative to its pivot (head, body, right arm, left arm, legs).
+    private static final float[][] PART_CENTERS = {
+            {0f, -4f, 0f}, {0f, 6f, 0f}, {-1f, 4f, 0f}, {1f, 4f, 0f}, {0f, 6f, 0f}, {0f, 6f, 0f}};
+    // A part fitted to the size of the rig part under it would share its faces and flicker; drawing it a
+    // little larger around its own centre keeps it just above the surface.
+    private static final float SURFACE_LIFT = 1.04f;
+
+    private static void liftOffSurface(ModelPart part, float[] center) {
+        org.joml.Vector3f c = new org.joml.Vector3f(center[0] * part.xScale, center[1] * part.yScale,
+                center[2] * part.zScale);
+        new org.joml.Quaternionf().rotationZYX(part.zRot, part.yRot, part.xRot).transform(c);
+        part.x += c.x() * (1f - SURFACE_LIFT);
+        part.y += c.y() * (1f - SURFACE_LIFT);
+        part.z += c.z() * (1f - SURFACE_LIFT);
+        part.xScale *= SURFACE_LIFT;
+        part.yScale *= SURFACE_LIFT;
+        part.zScale *= SURFACE_LIFT;
+    }
+
+    /** Carry a part posed in the rig's own space into the frame the rig body was drawn in. */
+    private static void inDrawnFrame(ModelPart part, float[] drawn) {
+        // The body draws offset by drawn[1..3] px, then scaled by drawn[0] about the feet pivot (1.501 blocks).
+        float scale = drawn[0], pivot = 1.501f * 16f;
+        part.x = (part.x + drawn[1]) * scale;
+        part.y = (part.y + drawn[2] - pivot) * scale + pivot;
+        part.z = (part.z + drawn[3]) * scale;
+        part.xScale *= scale;
+        part.yScale *= scale;
+        part.zScale *= scale;
+    }
+
+    private static void copyPart(ModelPart target, ModelPart source) {
+        target.copyFrom(source);
+        target.xScale = source.xScale;
+        target.yScale = source.yScale;
+        target.zScale = source.zScale;
+    }
+
     /**
      * Pose {@code target} onto {@code source}'s rest position, with rotation = (this frame's look when
      * {@code trackLook}, else the source bone's rest rotation) plus the adjust's rotation delta. The

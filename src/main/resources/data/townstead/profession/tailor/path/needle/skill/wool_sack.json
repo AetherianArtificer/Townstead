@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.wool_sack"
+  },
+  "icon": "minecraft:white_wool",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.wool_sack.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shear_clean"
+  ]
+}

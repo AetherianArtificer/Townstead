@@ -1,0 +1,114 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.pitons"
+  },
+  "icon": "minecraft:iron_nugget",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.pitons.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:outfitter_utility",
+  "power": {
+    "type": "pheno:ability",
+    "ability": "climbing",
+    "mode": "toggle",
+    "slot": 1
+  },
+  "companions": {
+    "drain": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:stamina",
+        "amount": 3
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:leatherworker/outfitter/pitons"
+          },
+          {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:leatherworker/outfitter/expedition_kit"
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 16,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:nothing"
+      }
+    },
+    "belay": {
+      "type": "pheno:damage_modifier",
+      "modifier": 0.0,
+      "damage_tag": "minecraft:is_fall",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:leatherworker/outfitter/pitons"
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "minecraft:leatherworker/outfitter/belay"
+          }
+        ]
+      }
+    },
+    "release": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:leatherworker/outfitter/pitons"
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:resource",
+              "resource": "townstead:stamina",
+              "min": 3
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:set_toggle",
+            "power": "minecraft:leatherworker/outfitter/pitons",
+            "enabled": false
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.chain.break",
+            "volume": 0.8,
+            "pitch": 1.2
+          }
+        ]
+      }
+    }
+  }
+}

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "focus"
+    "windage"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:draw",
-      "min": 50
+      "min": 25
     },
     "action": {
       "type": "pheno:and",
@@ -37,15 +37,15 @@
           "radius": 32,
           "include_self": false,
           "target": "hostile",
-          "bientity_condition": {
-            "type": "pheno:relative_rotation",
-            "max_angle": 30
-          },
           "action": {
             "type": "pheno:apply_effect",
             "effect": "minecraft:glowing",
             "duration": 50,
             "amplifier": 0
+          },
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 30
           }
         }
       ]

@@ -7,8 +7,8 @@
   "description": {
     "translate": "skill.townstead.weaponsmith.honer.sharpen_arms.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:honer_forge",
+  "cost": 2,
+  "skill_group": "townstead:honer_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
@@ -16,19 +16,141 @@
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
-      "amount": 20
+      "amount": 30
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 6,
-      "include_self": true,
-      "target": "non_hostile",
-      "action": {
-        "type": "pheno:apply_effect",
-        "effect": "minecraft:strength",
-        "duration": 400,
-        "amplifier": 0
-      }
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:weaponsmith/honer/perfect_edge"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:strength",
+                "duration": 200,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 6,
+                "include_self": false,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:strength",
+                      "duration": 200,
+                      "amplifier": 1
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:enchanted_hit",
+                          "count": 8,
+                          "spread": 0.4
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:strength",
+                "duration": 200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 6,
+                "include_self": false,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:strength",
+                      "duration": 200,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:enchanted_hit",
+                          "count": 8,
+                          "spread": 0.4
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:weaponsmith/honer/warband"
+                },
+                "if_action": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 3,
+                  "include_self": false,
+                  "target": "non_hostile",
+                  "action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:strength",
+                    "duration": 200,
+                    "amplifier": 1
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:honer_sharpened",
+          "duration": 200
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:enchanted_hit",
+              "count": 8,
+              "spread": 0.4
+            }
+          ]
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.grindstone.use",
+          "volume": 1.0,
+          "pitch": 1.3
+        }
+      ]
     }
   }
 }

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.lodge"
+  },
+  "icon": "minecraft:iron_nugget",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.lodge.description"
+  },
+  "cost": 1,
+  "requires": [
+    "throw_cleaver"
+  ]
+}

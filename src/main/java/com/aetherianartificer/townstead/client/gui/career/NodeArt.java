@@ -89,8 +89,9 @@ final class NodeArt {
      * <p>Drawn rather than blitted. The frame used to come from an authored atlas, which meant every
      * size needed its own hand-rasterised circle and a zoom step that was not a power of two came
      * out mush. Four nested rectangles survive any scale, and the frame's OUTLINE is now free to say
-     * what kind of mark this is: plain for a skill and chamfered for a Combo Skill that belongs to
-     * two careers at once.</p>
+     * what kind of mark this is: plain for a skill, chamfered for a Combo Skill that belongs to
+     * two careers at once, double-framed for a tool (the skill you equip and press), and peaked
+     * at the top for a keystone (the skill that changes both tools above it).</p>
      */
     static void drawMark(GuiGraphics g, CareerGraphS2CPayload.Node node, int x, int y,
                          MarkStyle style, float zoom) {
@@ -103,12 +104,29 @@ final class NodeArt {
         int bottom = top + size;
 
         g.fill(left + unit, top + 2 * unit, right + unit, bottom + 2 * unit, 0x66000000);
+        if (isTool(node)) {
+            // A second frame outside the first: the heavier border is the thing you press.
+            g.fill(left - 2 * unit, top - 2 * unit, right + 2 * unit, bottom + 2 * unit, Palette.DESK_EDGE);
+            g.fill(left - unit, top - unit, right + unit, bottom + unit, style.rim());
+        }
         g.fill(left, top, right, bottom, Palette.DESK_EDGE);
         g.fill(left + unit, top + unit, right - unit, bottom - unit, style.rim());
         g.fill(left + 2 * unit, top + 2 * unit, right - 2 * unit, bottom - 2 * unit, style.inner());
         // The lit bevel, on the same side the whole board is lit from.
         g.fill(left + unit, top + unit, right - unit, top + 2 * unit, style.edge());
 
+        if (isKeystone(node)) {
+            // A keystone carries a peak on its top edge. It is added, not cut out: the frame's outer
+            // line is the same dark as a cut would be, so a cut corner cannot be seen.
+            int middle = left + size / 2;
+            for (int step = 0; step < 3; step++) {
+                int reach = (3 - step) * unit;
+                int rowTop = top - (step + 1) * unit;
+                g.fill(middle - reach - unit, rowTop, middle + reach + unit, rowTop + unit, Palette.DESK_EDGE);
+                g.fill(middle - reach, rowTop, middle + reach, rowTop + unit, style.rim());
+            }
+            g.fill(middle - unit, top - 4 * unit, middle + unit, top - 3 * unit, Palette.DESK_EDGE);
+        }
         int nub = 2 * unit;
         if (node.kind() == CareerGraphS2CPayload.KIND_COMBO) {
             g.fill(left, top, left + nub, top + nub, Palette.DESK_EDGE);
@@ -116,6 +134,25 @@ final class NodeArt {
             g.fill(left, bottom - nub, left + nub, bottom, Palette.DESK_EDGE);
             g.fill(right - nub, bottom - nub, right, bottom, Palette.DESK_EDGE);
         }
+    }
+
+    /**
+     * A tool is a skill you equip: one of the two that share a column's group, or a base skill with
+     * an active ability. A held tool has no cast to describe, so the group is what names it.
+     */
+    static boolean isTool(CareerGraphS2CPayload.Node node) {
+        if (node.kind() != CareerGraphS2CPayload.KIND_SKILL) return false;
+        return (node.group() != null && !node.group().isEmpty())
+                || (node.ability() != null && node.ability().present());
+    }
+
+    /**
+     * A keystone is the one skill that is priced like a tool and is not one. Passives and upgrades
+     * cost 1; tools and keystones cost 2.
+     */
+    static boolean isKeystone(CareerGraphS2CPayload.Node node) {
+        return node.kind() == CareerGraphS2CPayload.KIND_SKILL && !isTool(node) && node.points() >= 2
+                && node.path().present();
     }
 
     /** The room inside a frame, which is what an icon may draw into. */

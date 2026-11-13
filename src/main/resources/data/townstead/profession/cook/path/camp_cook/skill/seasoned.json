@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.seasoned"
+  },
+  "icon": "minecraft:bowl",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.seasoned.description"
+  },
+  "cost": 1,
+  "requires": [
+    "smoke_signal"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "resource_cost": {
+      "resource": "townstead:simmer",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:simmer",
+      "min": 25
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": true,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:hunger"
+          },
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:nausea"
+          }
+        ]
+      }
+    }
+  }
+}

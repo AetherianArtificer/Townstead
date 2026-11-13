@@ -1,0 +1,217 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.sure_footed"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.sure_footed.description"
+  },
+  "cost": 2,
+  "requires": [
+    "hitch"
+  ],
+  "skill_group": "townstead:saddler_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:leatherworker/saddler/horse_lord"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:riding"
+            },
+            "if_action": {
+              "type": "pheno:riding_action",
+              "action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:slow_falling",
+                    "duration": 1200,
+                    "amplifier": 0
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:dolphins_grace",
+                    "duration": 1200,
+                    "amplifier": 0
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:leatherworker/saddler/leap"
+                      }
+                    },
+                    "if_action": {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:jump_boost",
+                      "duration": 1200,
+                      "amplifier": 2
+                    },
+                    "else_action": {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:jump_boost",
+                      "duration": 1200,
+                      "amplifier": 0
+                    }
+                  }
+                ]
+              }
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slow_falling",
+                  "duration": 1200,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:dolphins_grace",
+                  "duration": 1200,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:leatherworker/saddler/leap"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:jump_boost",
+                    "duration": 1200,
+                    "amplifier": 2
+                  },
+                  "else_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:jump_boost",
+                    "duration": 1200,
+                    "amplifier": 0
+                  }
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:riding"
+            },
+            "if_action": {
+              "type": "pheno:riding_action",
+              "action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:slow_falling",
+                    "duration": 600,
+                    "amplifier": 0
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:dolphins_grace",
+                    "duration": 600,
+                    "amplifier": 0
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:leatherworker/saddler/leap"
+                      }
+                    },
+                    "if_action": {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:jump_boost",
+                      "duration": 600,
+                      "amplifier": 2
+                    },
+                    "else_action": {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:jump_boost",
+                      "duration": 600,
+                      "amplifier": 0
+                    }
+                  }
+                ]
+              }
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slow_falling",
+                  "duration": 600,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:dolphins_grace",
+                  "duration": 600,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:leatherworker/saddler/leap"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:jump_boost",
+                    "duration": 600,
+                    "amplifier": 2
+                  },
+                  "else_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:jump_boost",
+                    "duration": 600,
+                    "amplifier": 0
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.horse.breathe",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

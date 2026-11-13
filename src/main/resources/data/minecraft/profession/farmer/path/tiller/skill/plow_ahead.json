@@ -7,22 +7,552 @@
   "description": {
     "translate": "skill.townstead.farmer.tiller.plow_ahead.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:tiller_charge",
+  "cost": 2,
+  "skill_group": "townstead:tiller_utility",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 160,
-    "slot": 2,
+    "slot": 1,
     "ai_trigger": "never",
     "resource_cost": {
       "resource": "townstead:stamina",
       "amount": 20
     },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:ingredient",
+        "tag": "minecraft:hoes"
+      }
+    },
     "action": {
-      "type": "pheno:add_velocity",
-      "relative": true,
-      "z": 1.4,
-      "y": 0.15
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:farmer/tiller/breaking_ground"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:at",
+                "blocks": [
+                  {
+                    "radius": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "around": {
+                      "offset": [
+                        0,
+                        -1,
+                        1
+                      ],
+                      "space": "facing"
+                    },
+                    "where": {
+                      "type": "pheno:and",
+                      "conditions": [
+                        {
+                          "type": "pheno:or",
+                          "conditions": [
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:grass_block"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:coarse_dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt_path"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:offset",
+                          "y": 1,
+                          "condition": {
+                            "type": "pheno:air"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "radius": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "around": {
+                      "offset": [
+                        0,
+                        -1,
+                        2
+                      ],
+                      "space": "facing"
+                    },
+                    "where": {
+                      "type": "pheno:and",
+                      "conditions": [
+                        {
+                          "type": "pheno:or",
+                          "conditions": [
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:grass_block"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:coarse_dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt_path"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:offset",
+                          "y": 1,
+                          "condition": {
+                            "type": "pheno:air"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "radius": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "around": {
+                      "offset": [
+                        0,
+                        -1,
+                        3
+                      ],
+                      "space": "facing"
+                    },
+                    "where": {
+                      "type": "pheno:and",
+                      "conditions": [
+                        {
+                          "type": "pheno:or",
+                          "conditions": [
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:grass_block"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:coarse_dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt_path"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:offset",
+                          "y": 1,
+                          "condition": {
+                            "type": "pheno:air"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "radius": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "around": {
+                      "offset": [
+                        0,
+                        -1,
+                        4
+                      ],
+                      "space": "facing"
+                    },
+                    "where": {
+                      "type": "pheno:and",
+                      "conditions": [
+                        {
+                          "type": "pheno:or",
+                          "conditions": [
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:grass_block"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:coarse_dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt_path"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:offset",
+                          "y": 1,
+                          "condition": {
+                            "type": "pheno:air"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "radius": [
+                      1,
+                      0,
+                      1
+                    ],
+                    "around": {
+                      "offset": [
+                        0,
+                        -1,
+                        5
+                      ],
+                      "space": "facing"
+                    },
+                    "where": {
+                      "type": "pheno:and",
+                      "conditions": [
+                        {
+                          "type": "pheno:or",
+                          "conditions": [
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:grass_block"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:coarse_dirt"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:dirt_path"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:offset",
+                          "y": 1,
+                          "condition": {
+                            "type": "pheno:air"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "do": {
+                  "type": "pheno:set_block",
+                  "block": "minecraft:farmland"
+                },
+                "optional": true
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "mainhand",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": 5
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:at",
+            "blocks": [
+              {
+                "radius": [
+                  0,
+                  0,
+                  0
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    -1,
+                    1
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:dirt"
+                        },
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:grass_block"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:offset",
+                      "y": 1,
+                      "condition": {
+                        "type": "pheno:air"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "radius": [
+                  0,
+                  0,
+                  0
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    -1,
+                    2
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:dirt"
+                        },
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:grass_block"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:offset",
+                      "y": 1,
+                      "condition": {
+                        "type": "pheno:air"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "radius": [
+                  0,
+                  0,
+                  0
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    -1,
+                    3
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:dirt"
+                        },
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:grass_block"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:offset",
+                      "y": 1,
+                      "condition": {
+                        "type": "pheno:air"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "radius": [
+                  0,
+                  0,
+                  0
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    -1,
+                    4
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:dirt"
+                        },
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:grass_block"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:offset",
+                      "y": 1,
+                      "condition": {
+                        "type": "pheno:air"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "radius": [
+                  0,
+                  0,
+                  0
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    -1,
+                    5
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:dirt"
+                        },
+                        {
+                          "type": "pheno:block",
+                          "block": "minecraft:grass_block"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:offset",
+                      "y": 1,
+                      "condition": {
+                        "type": "pheno:air"
+                      }
+                    }
+                  ]
+                }
+              }
+            ],
+            "do": {
+              "type": "pheno:set_block",
+              "block": "minecraft:farmland"
+            },
+            "optional": true
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:farmer/tiller/seed_drill"
+          },
+          "if_action": {
+            "type": "pheno:at",
+            "blocks": {
+              "radius": [
+                3,
+                1,
+                3
+              ],
+              "where": {
+                "type": "pheno:block",
+                "block": "minecraft:farmland"
+              }
+            },
+            "do": {
+              "type": "pheno:modify_block_state",
+              "property": "moisture",
+              "value": "7"
+            },
+            "optional": true
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:dash",
+          "distance": 5,
+          "ticks": 6,
+          "max_hits": 0,
+          "stop_on_hit": false
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.rooted_dirt.break",
+          "volume": 1.0,
+          "pitch": 0.6
+        }
+      ]
     }
   }
 }

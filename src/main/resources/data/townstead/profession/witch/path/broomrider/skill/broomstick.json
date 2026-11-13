@@ -7,17 +7,67 @@
   "description": {
     "translate": "skill.townstead.witch.broomrider.broomstick.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "moonlight"
+    "side_saddle"
   ],
+  "skill_group": "townstead:broomrider_utility",
   "power": {
-    "type": "pheno:ability",
-    "ability": "creative_flight",
-    "condition": {
-      "type": "pheno:resource",
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
       "resource": "townstead:hex",
-      "min": 1
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:witch/broomrider/wild_hunt"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:broomrider_broom",
+                "duration": 2400
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:broomrider_landing",
+                "duration": 2600
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:broomrider_broom",
+                "duration": 600
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:broomrider_landing",
+                "duration": 800
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.witch.celebrate",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
     }
   }
 }

@@ -7,46 +7,19 @@
   "description": {
     "translate": "skill.townstead.butcher.cleaver.hemorrhage.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "deep_cuts"
+    "carve_up"
   ],
   "power": {
-    "type": "pheno:trigger",
-    "trigger": "when_attack",
-    "target": "other",
-    "condition": {
-      "type": "pheno:and",
-      "conditions": [
-        {
-          "type": "pheno:equipped_item",
-          "slot": "mainhand",
-          "item_condition": {
-            "type": "or",
-            "conditions": [
-              {
-                "type": "ingredient",
-                "tag": "townstead:butcher_cleavers"
-              },
-              {
-                "type": "ingredient",
-                "tag": "minecraft:axes"
-              }
-            ]
-          }
-        },
-        {
-          "type": "pheno:resource",
-          "resource": "townstead:cut",
-          "min": 75
-        }
-      ]
-    },
-    "action": {
-      "type": "pheno:apply_effect",
-      "effect": "minecraft:wither",
-      "duration": 60,
-      "amplifier": 0
+    "type": "pheno:damage_modifier",
+    "modifier": 0.8,
+    "damage_condition": {
+      "type": "pheno:attacker",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:bleeding"
+      }
     }
   }
 }

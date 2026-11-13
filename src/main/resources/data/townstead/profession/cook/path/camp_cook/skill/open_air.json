@@ -1,0 +1,39 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.open_air"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.open_air.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:block_in_radius",
+          "radius": 4,
+          "block_condition": {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:campfires"
+          }
+        },
+        {
+          "type": "pheno:block",
+          "y": 0,
+          "block_condition": {
+            "type": "exposed_to_sky"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 2
+    }
+  }
+}

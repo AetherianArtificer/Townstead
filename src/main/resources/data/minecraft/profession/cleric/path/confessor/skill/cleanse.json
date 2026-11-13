@@ -7,8 +7,8 @@
   "description": {
     "translate": "skill.townstead.cleric.confessor.cleanse.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:confessor_cleanse",
+  "cost": 2,
+  "skill_group": "townstead:confessor_utility",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
@@ -19,51 +19,170 @@
       "amount": 20
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 4,
-      "include_self": true,
-      "target": "non_hostile",
-      "action": {
-        "type": "pheno:and",
-        "actions": [
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:poison"
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:cleric/confessor/miracle"
           },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:wither"
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 16,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:poison"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:wither"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:hunger"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:weakness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:slowness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:nausea"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:blindness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:mining_fatigue"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:darkness"
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:cleric/confessor/absolve"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:extinguish"
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:splash",
+                  "count": 6,
+                  "spread": 0.4
+                }
+              ]
+            }
           },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:hunger"
-          },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:weakness"
-          },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:slowness"
-          },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:nausea"
-          },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:blindness"
-          },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:mining_fatigue"
-          },
-          {
-            "type": "pheno:clear_effect",
-            "effect": "minecraft:darkness"
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 6,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:poison"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:wither"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:hunger"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:weakness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:slowness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:nausea"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:blindness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:mining_fatigue"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:darkness"
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:cleric/confessor/absolve"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:extinguish"
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:splash",
+                  "count": 6,
+                  "spread": 0.4
+                }
+              ]
+            }
           }
-        ]
-      }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bottle.empty",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
     }
   }
 }

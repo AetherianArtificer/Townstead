@@ -39,6 +39,11 @@ import java.util.Locale;
  * <p>{@code bientity_condition} tests (bearer, counterpart) and fails when there is no counterpart,
  * so a lifesteal can skip foes that do not bleed.</p>
  *
+ * <p>{@code when_event} fires when another mod reports an event of its own, such as
+ * {@code my_mod:treated}; {@code events} (one or a list) is required. The event's counterpart,
+ * when it has one, is {@code other}; {@code item_condition} tests its item, block actions anchor at
+ * its block, and its amount reads as {@code pheno:event_damage}.</p>
+ *
  * <p>{@code ai} fires for villagers only, from their ability AI, while its {@code ai_trigger} holds
  * ({@code when_flying}, {@code when_threatened}, {@code when_hurt}, {@code when_hurt_nearby},
  * {@code always}) and its {@code condition} passes. Paired with {@code pheno:keypress} it lets a
@@ -52,7 +57,7 @@ public final class TriggerGeneType implements GeneType {
 
     public enum Trigger { WHEN_HURT, WHEN_ATTACK, WHEN_KILL, WHEN_DEATH, WHEN_LAND, WHEN_WAKE_UP, WHEN_SLEEP, WHEN_RESTED,
         WHEN_JUMP, WHEN_STRUCK_BY_LIGHTNING, WHEN_EQUIP, WHEN_ITEM_USE, WHEN_ENTER_DIMENSION, PRESS,
-        WHEN_WORK, WHEN_CRAFT, WHEN_DEATH_PREVENTED, AI }
+        WHEN_WORK, WHEN_CRAFT, WHEN_DEATH_PREVENTED, AI, WHEN_EVENT }
 
     public enum Target { SELF, OTHER }
 
@@ -134,16 +139,19 @@ public final class TriggerGeneType implements GeneType {
                 : null;
         if (json.has("item_condition") && (itemCondition == null
                 || (trigger != Trigger.WHEN_ITEM_USE && trigger != Trigger.WHEN_WORK
-                        && trigger != Trigger.WHEN_CRAFT))) return null;
+                        && trigger != Trigger.WHEN_CRAFT && trigger != Trigger.WHEN_EVENT))) return null;
         java.util.List<String> verbs = new java.util.ArrayList<>();
-        if (trigger == Trigger.WHEN_WORK && json.has("verbs")) {
-            var raw = json.get("verbs");
+        String verbsKey = trigger == Trigger.WHEN_EVENT ? (json.has("events") ? "events" : "event") : "verbs";
+        if ((trigger == Trigger.WHEN_WORK || trigger == Trigger.WHEN_EVENT) && json.has(verbsKey)) {
+            var raw = json.get(verbsKey);
             if (raw.isJsonArray()) {
                 for (var element : raw.getAsJsonArray()) verbs.add(element.getAsString());
             } else {
                 verbs.add(raw.getAsString());
             }
         }
+        // An event trigger names its events; one that heard every mod's events would be a mistake.
+        if (trigger == Trigger.WHEN_EVENT && verbs.isEmpty()) return null;
         var bientityCondition = json.has("bientity_condition")
                 ? com.aetherianartificer.townstead.pheno.condition.bientity.BiEntityConditions.parse(
                         json.get("bientity_condition"))
@@ -180,6 +188,7 @@ public final class TriggerGeneType implements GeneType {
             case "when_craft", "on_craft", "craft" -> Trigger.WHEN_CRAFT;
             case "when_death_prevented", "on_death_prevented", "death_prevented", "when_saved" ->
                     Trigger.WHEN_DEATH_PREVENTED;
+            case "when_event", "on_event", "event" -> Trigger.WHEN_EVENT;
             default -> null;
         };
     }

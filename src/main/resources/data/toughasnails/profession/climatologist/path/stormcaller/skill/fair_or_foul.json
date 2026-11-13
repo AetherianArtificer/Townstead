@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.fair_or_foul"
+  },
+  "icon": "minecraft:sunflower",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.fair_or_foul.description"
+  },
+  "cost": 1,
+  "requires": [
+    "weather_vane"
+  ]
+}

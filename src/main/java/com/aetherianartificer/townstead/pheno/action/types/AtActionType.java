@@ -37,12 +37,14 @@ public final class AtActionType implements ActionType {
         BlockSelector selector = json.has("blocks") ? BlockSelectors.parse(json.get("blocks")) : null;
         BlockAction action = json.has("do") ? BlockActions.parse(json.get("do")) : null;
         if (selector == null || action == null) return null;
+        // "optional": finding no block is not a failure, so the rest of the ability still runs.
+        boolean optional = net.minecraft.util.GsonHelper.getAsBoolean(json, "optional", false);
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return;
             SelectorContext sc = SelectorContext.of(ctx);
             List<BlockPos> selected = selector.select(sc);
             if (selected.isEmpty()) {
-                ctx.fail();
+                if (!optional) ctx.fail();
                 return;
             }
             for (BlockPos pos : selected) {

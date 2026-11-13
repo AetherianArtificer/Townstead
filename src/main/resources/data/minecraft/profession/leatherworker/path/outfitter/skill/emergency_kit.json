@@ -1,0 +1,275 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.emergency_kit"
+  },
+  "icon": "minecraft:red_dye",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.emergency_kit.description"
+  },
+  "cost": 2,
+  "requires": [
+    "cover_our_tracks"
+  ],
+  "skill_group": "townstead:outfitter_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/outfitter/grand_outfitter"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:hide",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:hide",
+                "amount": -10
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:add_velocity",
+                      "away_from_other": -1.4,
+                      "y": 0.3
+                    },
+                    {
+                      "type": "pheno:extinguish"
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:poison"
+                        },
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:wither"
+                        },
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:hunger"
+                        },
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:weakness"
+                        },
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:slowness"
+                        },
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:nausea"
+                        },
+                        {
+                          "type": "pheno:clear_effect",
+                          "effect": "minecraft:blindness"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:ward",
+                      "id": "emergency_kit",
+                      "amount": 12,
+                      "duration": 200
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:leatherworker/outfitter/stretcher"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:delay",
+                            "ticks": 8,
+                            "action": {
+                              "type": "pheno:mount"
+                            }
+                          },
+                          {
+                            "type": "pheno:delay",
+                            "ticks": 200,
+                            "action": {
+                              "type": "pheno:dismount"
+                            }
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:heart",
+                      "count": 4,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                },
+                "on": {
+                  "type": "pheno:ray",
+                  "distance": 16
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": -1.4,
+                  "y": 0.3
+                },
+                {
+                  "type": "pheno:extinguish"
+                },
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:poison"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:wither"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:hunger"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:weakness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:slowness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:nausea"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:blindness"
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:ward",
+                  "id": "emergency_kit",
+                  "amount": 6,
+                  "duration": 200
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:leatherworker/outfitter/stretcher"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 8,
+                        "action": {
+                          "type": "pheno:mount"
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 200,
+                        "action": {
+                          "type": "pheno:dismount"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:heart",
+                  "count": 4,
+                  "spread": 0.4
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 16
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.armor.equip_leather",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

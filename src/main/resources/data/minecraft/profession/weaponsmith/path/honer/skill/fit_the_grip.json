@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.fit_the_grip"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.fit_the_grip.description"
+  },
+  "cost": 1,
+  "requires": [
+    "field_forge"
+  ]
+}

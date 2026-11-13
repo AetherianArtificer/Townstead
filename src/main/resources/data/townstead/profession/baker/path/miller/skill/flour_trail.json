@@ -1,0 +1,695 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.flour_trail"
+  },
+  "icon": "minecraft:white_carpet",
+  "description": {
+    "translate": "skill.townstead.baker.miller.flour_trail.description"
+  },
+  "cost": 2,
+  "requires": [
+    "clean_sweep"
+  ],
+  "skill_group": "townstead:miller_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/miller/windmill"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:proof",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:proof",
+                "amount": -10
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:baker/miller/paw_prints"
+                },
+                "if_action": {
+                  "type": "pheno:haze",
+                  "kind": "townstead:flour_trail_paw",
+                  "blocks": [
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          2
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          3
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          4
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          5
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          6
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          7
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          8
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          9
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          10
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          11
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          12
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          13
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          14
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          15
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          16
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          17
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          18
+                        ],
+                        "space": "facing"
+                      }
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:haze",
+                  "kind": "townstead:flour_trail",
+                  "blocks": [
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          1
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          2
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          3
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          4
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          5
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          6
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          7
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          8
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          9
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          10
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          11
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          12
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          13
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          14
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          15
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          16
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          17
+                        ],
+                        "space": "facing"
+                      }
+                    },
+                    {
+                      "radius": 0,
+                      "around": {
+                        "offset": [
+                          0,
+                          0,
+                          18
+                        ],
+                        "space": "facing"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:baker/miller/paw_prints"
+            },
+            "if_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:flour_trail_paw",
+              "blocks": [
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      2
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      3
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      4
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      5
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      6
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      7
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      8
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      9
+                    ],
+                    "space": "facing"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:flour_trail",
+              "blocks": [
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      1
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      2
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      3
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      4
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      5
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      6
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      7
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      8
+                    ],
+                    "space": "facing"
+                  }
+                },
+                {
+                  "radius": 0,
+                  "around": {
+                    "offset": [
+                      0,
+                      0,
+                      9
+                    ],
+                    "space": "facing"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.sand.place",
+          "volume": 1.0,
+          "pitch": 1.3
+        }
+      ]
+    }
+  }
+}

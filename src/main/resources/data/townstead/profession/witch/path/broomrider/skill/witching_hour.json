@@ -9,51 +9,34 @@
   },
   "cost": 1,
   "requires": [
-    "nightmare_flight"
+    "sky_witch"
   ],
-  "skill_group": "townstead:broom_night",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 500,
-    "slot": 2,
-    "ai_trigger": "when_threatened",
+    "type": "pheno:action_over_time",
+    "interval": 20,
     "resource_cost": {
       "resource": "townstead:hex",
-      "amount": 40
+      "amount": 0
     },
-    "action": {
+    "condition": {
       "type": "pheno:and",
-      "actions": [
+      "conditions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 12,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:weakness",
-                "duration": 300,
-                "amplifier": 1
-              },
-              {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:slowness",
-                "duration": 300,
-                "amplifier": 1
-              }
-            ]
-          }
+          "type": "pheno:resource",
+          "resource": "townstead:hex",
+          "min": 50
         },
         {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:entity.witch.celebrate",
-          "volume": 1.0,
-          "pitch": 1.0
+          "type": "pheno:time_of_day",
+          "min": 17000,
+          "max": 19000
         }
       ]
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:hex",
+      "amount": 5
     }
   }
 }

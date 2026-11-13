@@ -8,9 +8,6 @@
     "translate": "skill.townstead.farmer.tiller.rootbound.description"
   },
   "cost": 1,
-  "requires": [
-    "wide_furrow"
-  ],
   "power": {
     "type": "pheno:attribute",
     "attribute": "minecraft:generic.knockback_resistance",

@@ -1,0 +1,113 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.plunge"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.plunge.description"
+  },
+  "cost": 2,
+  "requires": [
+    "deep_lungs"
+  ],
+  "skill_group": "townstead:heavy_weight",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:temper",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:movement",
+        "movement": "grounded"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:add_velocity",
+          "y": -2.5
+        },
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:plunging",
+          "duration": 200
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.trident.riptide_1",
+          "volume": 0.8,
+          "pitch": 0.6
+        }
+      ]
+    }
+  },
+  "companions": {
+    "no_fall": {
+      "type": "pheno:damage_modifier",
+      "modifier": 0.0,
+      "damage_tag": "minecraft:is_fall",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:plunging"
+      }
+    },
+    "landing": {
+      "type": "pheno:trigger",
+      "trigger": "when_land",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:plunging"
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:set_flag",
+            "flag": "townstead:plunging",
+            "duration": 3
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.anvil.land",
+            "volume": 1.0,
+            "pitch": 0.6
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:campfire_cosy_smoke",
+            "count": 16,
+            "spread": 1.5
+          },
+          {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:armorer/heavyweight/earthshaker"
+            },
+            "if_action": {
+              "type": "pheno:area_of_effect",
+              "radius": 4,
+              "include_self": false,
+              "target": "hostile",
+              "action": {
+                "type": "pheno:add_velocity",
+                "y": 0.9
+              }
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            }
+          }
+        ]
+      }
+    }
+  }
+}

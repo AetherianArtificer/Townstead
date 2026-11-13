@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.back_to_pasture"
+  },
+  "icon": "minecraft:grass_block",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.back_to_pasture.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stampede"
+  ]
+}

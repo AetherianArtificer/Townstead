@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.shockwave"
+  },
+  "icon": "minecraft:piston",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.shockwave.description"
+  },
+  "cost": 1,
+  "requires": [
+    "dive"
+  ]
+}

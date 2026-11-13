@@ -1,0 +1,18 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.spinner"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.spinner.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spiders_step"
+  ],
+  "power": {
+    "type": "pheno:modify_harvest",
+    "block": "minecraft:cobweb"
+  }
+}

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "stomp"
+    "good_earth"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -25,14 +25,14 @@
           "type": "pheno:block",
           "y": -1,
           "block_condition": {
-            "type": "or",
+            "type": "pheno:or",
             "conditions": [
               {
-                "type": "in_tag",
+                "type": "pheno:in_tag",
                 "tag": "minecraft:dirt"
               },
               {
-                "type": "block",
+                "type": "pheno:block",
                 "block": "minecraft:farmland"
               }
             ]
@@ -41,7 +41,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:grit",
-          "min": 75
+          "min": 50
         }
       ]
     },

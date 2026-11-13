@@ -1,0 +1,174 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.drive"
+  },
+  "icon": "minecraft:piston",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.drive.description"
+  },
+  "cost": 2,
+  "requires": [
+    "strong_back"
+  ],
+  "skill_group": "townstead:tenderizer_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:gamemode",
+            "gamemode": "adventure"
+          }
+        },
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "pheno:ingredient",
+            "tag": "townstead:butcher_hammers"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:butcher/tenderizer/wedge"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:butcher/tenderizer/iron_butcher"
+                },
+                {
+                  "type": "pheno:resource",
+                  "resource": "townstead:cut",
+                  "min": 10
+                }
+              ]
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:change_resource",
+                  "resource": "townstead:cut",
+                  "amount": -10
+                },
+                {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "type": "pheno:ray",
+                    "distance": 4
+                  },
+                  "do": {
+                    "type": "pheno:shove",
+                    "max": 6
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:at",
+              "blocks": {
+                "type": "pheno:ray",
+                "distance": 4
+              },
+              "do": {
+                "type": "pheno:shove",
+                "max": 3
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:butcher/tenderizer/iron_butcher"
+                },
+                {
+                  "type": "pheno:resource",
+                  "resource": "townstead:cut",
+                  "min": 10
+                }
+              ]
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:change_resource",
+                  "resource": "townstead:cut",
+                  "amount": -10
+                },
+                {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "type": "pheno:ray",
+                    "distance": 4
+                  },
+                  "do": {
+                    "type": "pheno:shove",
+                    "max": 6
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:at",
+              "blocks": {
+                "type": "pheno:ray",
+                "distance": 4
+              },
+              "do": {
+                "type": "pheno:shove",
+                "max": 1
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.anvil.land",
+          "volume": 0.5,
+          "pitch": 0.7
+        },
+        {
+          "type": "pheno:swing_hand"
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:poof",
+          "count": 8,
+          "spread": 0.4
+        }
+      ]
+    }
+  }
+}

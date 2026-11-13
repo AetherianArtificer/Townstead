@@ -9,7 +9,7 @@ import com.google.gson.JsonObject;
  * {@code pheno:hostile}: the entity is a threat to the other party (a monster, a mob targeting
  * it, or hostile by disposition; see {@link Hostility}). Inside a selector's {@code where} the
  * candidate is the entity and the one selecting is the other, so this reads "hostile to me".
- * False when there is no other.
+ * With no other party (a haze cell, a block's area), only a monster counts.
  *
  * <p>JSON: {@code { "type":"pheno:hostile" }}</p>
  */
@@ -23,6 +23,10 @@ public final class HostileConditionType implements ConditionType {
 
     @Override
     public Condition parse(JsonObject json) {
-        return ctx -> ctx.entity() != null && ctx.other() != null && Hostility.toward(ctx.other(), ctx.entity());
+        return ctx -> {
+            if (ctx.entity() == null) return false;
+            if (ctx.other() != null) return Hostility.toward(ctx.other(), ctx.entity());
+            return ctx.entity() instanceof net.minecraft.world.entity.monster.Enemy;
+        };
     }
 }

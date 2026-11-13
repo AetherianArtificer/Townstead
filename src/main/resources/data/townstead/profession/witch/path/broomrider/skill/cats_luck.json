@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.cats_luck"
+  },
+  "icon": "minecraft:black_dye",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.cats_luck.description"
+  },
+  "cost": 1,
+  "requires": [
+    "moon_phase"
+  ],
+  "power": {
+    "type": "pheno:prevent",
+    "what": "death",
+    "condition": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:broomrider_luck"
+      }
+    },
+    "action": {
+      "type": "pheno:set_flag",
+      "flag": "townstead:broomrider_luck",
+      "duration": 6000
+    }
+  }
+}

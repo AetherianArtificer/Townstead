@@ -19,37 +19,67 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fletcher/trapper/catch"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fletcher/trapper/snare_ring"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fletcher/trapper/ambush"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:fletcher",
+            "at_least": 80
           },
           {
-            "type": "pheno:entity_in_radius",
-            "radius": 8,
-            "condition": {
-              "type": "pheno:and",
-              "conditions": [
-                {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "sneaking"
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 16,
+                "condition": {
                   "type": "pheno:hostile"
-                },
-                {
-                  "type": "pheno:status_effect",
-                  "effect": "minecraft:slowness"
                 }
-              ]
-            }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:draw",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:draw",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:fletcher",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:biome",
+                "biome_tag": "minecraft:is_forest"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 16,
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                }
+              }
+            ]
           }
         ]
       },
@@ -63,28 +93,28 @@
   "skills": [
     [
       "light_feet",
-      "snare",
-      "scent_mask"
-    ],
-    [
-      "game_trails",
-      "snare_line",
-      "pitfall"
-    ],
-    [
-      "catch",
-      "snare_ring",
+      "bait",
       "ambush"
     ],
     [
-      "stalker",
-      "trapfield",
+      "game_trails",
+      "scent_mask",
       "flush_out"
     ],
     [
+      "patience",
+      "tripwire",
+      "deadfall"
+    ],
+    [
+      "camouflage",
+      "bell_line",
+      "counterweight"
+    ],
+    [
       "apex_trapper",
-      "grand_trap",
-      "hunters_moon"
+      "trapline",
+      "grand_trap"
     ]
   ]
 }

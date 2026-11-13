@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.straw_man"
+  },
+  "icon": "minecraft:arrow",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.straw_man.description"
+  },
+  "cost": 1,
+  "requires": [
+    "scarecrows_post"
+  ]
+}

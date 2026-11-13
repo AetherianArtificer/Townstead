@@ -1,0 +1,177 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.kick_the_pot"
+  },
+  "icon": "minecraft:cauldron",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.kick_the_pot.description"
+  },
+  "cost": 2,
+  "requires": [
+    "hot_soup"
+  ],
+  "skill_group": "townstead:camp_cook_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:simmer",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bucket.empty",
+          "volume": 1.0,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:cook/camp_cook/cast_iron"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:ward",
+                "id": "cast_iron",
+                "amount": 1000,
+                "fraction": 0.5,
+                "duration": 100
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 60,
+                "amplifier": 1
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:splash",
+          "count": 30,
+          "spread": 2.0
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:cook/camp_cook/slippery"
+          },
+          "if_action": {
+            "type": "pheno:haze",
+            "kind": "townstead:soup",
+            "blocks": [
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "space": "facing"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    2
+                  ],
+                  "space": "facing"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    4
+                  ],
+                  "space": "facing"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    5
+                  ],
+                  "space": "facing"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    6
+                  ],
+                  "space": "facing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 4,
+                "source": "other"
+              },
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": 1.2,
+                "y": 0.2
+              }
+            ]
+          },
+          "bientity_condition": {
+            "type": "pheno:relative_rotation",
+            "max_angle": 35
+          }
+        }
+      ]
+    }
+  }
+}

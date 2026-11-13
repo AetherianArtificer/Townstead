@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.rally_point"
+  },
+  "icon": "minecraft:bell",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.rally_point.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stand_fast"
+  ]
+}

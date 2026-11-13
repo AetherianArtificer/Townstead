@@ -34,6 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ResourceValues {
 
     static final String STORAGE_KEY = "TownsteadResources";
+    private static final String LEGACY_FOCUS = "townstead:focus";
     static final String VALUES_KEY = "values";
     static final int STORAGE_VERSION = 1;
 
@@ -290,7 +291,10 @@ public final class ResourceValues {
     private static Integer readStored(LivingEntity entity, ResourceLocation resourceId) {
         CompoundTag values = valuesTag(readStorage(entity));
         String key = resourceId.toString();
-        return values.contains(key, Tag.TAG_INT) ? values.getInt(key) : null;
+        if (values.contains(key, Tag.TAG_INT)) return values.getInt(key);
+        // Focus was saved as townstead:insight before it got its own id.
+        return LEGACY_FOCUS.equals(key) && values.contains("townstead:insight", Tag.TAG_INT)
+                ? values.getInt("townstead:insight") : null;
     }
 
     private static void writeStored(LivingEntity entity, ResourceLocation resourceId, int value) {

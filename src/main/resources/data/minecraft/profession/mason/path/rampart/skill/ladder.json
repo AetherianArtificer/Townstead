@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.rampart.ladder"
+  },
+  "icon": "minecraft:ladder",
+  "description": {
+    "translate": "skill.townstead.mason.rampart.ladder.description"
+  },
+  "cost": 1,
+  "requires": [
+    "scaffold"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.dress_the_part"
+  },
+  "icon": "minecraft:armor_stand",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.dress_the_part.description"
+  },
+  "cost": 1,
+  "requires": [
+    "wardrobe"
+  ]
+}

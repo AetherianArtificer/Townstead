@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.banked_fire"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.banked_fire.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cure"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:cut",
+      "min": 25
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 4,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:block_entity"
+            },
+            {
+              "type": "pheno:in_tag",
+              "tag": "minecraft:campfires"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:accelerate",
+        "ticks": 5
+      },
+      "optional": true
+    }
+  }
+}

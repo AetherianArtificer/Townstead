@@ -1,0 +1,54 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.catalog"
+  },
+  "icon": "minecraft:chest",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.catalog.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 6,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:block_entity"
+            },
+            {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:chest"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:trapped_chest"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:barrel"
+                }
+              ]
+            }
+          ]
+        },
+        "limit": 16
+      },
+      "do": {
+        "type": "pheno:spawn_particles",
+        "particle": "minecraft:wax_on",
+        "count": 4,
+        "spread": 0.4
+      },
+      "optional": true
+    }
+  }
+}

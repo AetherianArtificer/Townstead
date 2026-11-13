@@ -7,42 +7,16 @@
   "description": {
     "translate": "skill.townstead.tailor.clothier.master_of_disguise.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "masquerade"
+    "dress_the_part"
   ],
-  "skill_group": "townstead:clothier_costume",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 1200,
-    "slot": 1,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:stitch",
-      "amount": 40
-    },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:wear_cosmetic",
-          "slot": "head",
-          "item": [
-            "minecraft:zombie_head",
-            "minecraft:creeper_head",
-            "minecraft:skeleton_skull",
-            "minecraft:piglin_head",
-            "minecraft:wither_skeleton_skull"
-          ],
-          "duration": 800
-        },
-        {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:item.armor.equip_leather",
-          "volume": 1.0,
-          "pitch": 1.2
-        }
-      ]
+    "type": "pheno:attack_modifier",
+    "modifier": 0.5,
+    "condition": {
+      "type": "pheno:wearing_cosmetic",
+      "slot": "head"
     }
   }
 }

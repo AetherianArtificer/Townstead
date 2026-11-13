@@ -1,0 +1,40 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.sea_dog"
+  },
+  "icon": "minecraft:nautilus_shell",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.sea_dog.description"
+  },
+  "cost": 1,
+  "requires": [
+    "taut_line"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:tide",
+          "min": 25
+        },
+        {
+          "type": "pheno:wet"
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:set_flag",
+      "flag": "townstead:harpooner_far",
+      "duration": 15
+    }
+  }
+}

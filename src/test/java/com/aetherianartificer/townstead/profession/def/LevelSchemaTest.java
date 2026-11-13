@@ -43,9 +43,9 @@ class LevelSchemaTest {
         }
         assertFalse(cook.skills().contains(id("townstead:cook/open_flame")),
                 "removed paths must not leak their orphaned skills into the general pool");
-        assertTrue(cook.skills().contains(id("townstead:cook/pizzaiolo/pizza_craft")),
+        assertTrue(cook.skills().contains(id("townstead:cook/pizzaiolo/high_bar")),
                 "path skills pool like any other skill; the path steers who buys them");
-        assertTrue(cook.skills().contains(id("townstead:cook/pizzaiolo/pizza_spin")),
+        assertTrue(cook.skills().contains(id("townstead:cook/pizzaiolo/peel_slam")),
                 "ability skills are ordinary skills; only their power block differs");
         // One path of fifteen options (five ranks of three columns) plus the two skills belonging
         // to no path, which compete for the same picks.

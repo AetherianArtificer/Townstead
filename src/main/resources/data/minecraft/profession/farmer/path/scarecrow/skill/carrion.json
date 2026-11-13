@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.carrion"
+  },
+  "icon": "minecraft:rotten_flesh",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.carrion.description"
+  },
+  "cost": 1,
+  "requires": [
+    "crows"
+  ]
+}

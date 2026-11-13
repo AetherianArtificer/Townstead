@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "watchful"
+    "crows_eye"
   ],
   "power": {
     "type": "pheno:scare_mob",
@@ -29,11 +29,21 @@
       "minecraft:vindicator"
     ],
     "condition": {
-      "type": "pheno:not",
-      "condition": {
-        "type": "pheno:movement",
-        "movement": "moving"
-      }
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:movement",
+            "movement": "moving"
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:grit",
+          "min": 25
+        }
+      ]
     }
   }
 }

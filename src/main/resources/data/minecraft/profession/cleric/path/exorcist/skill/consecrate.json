@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.consecrate"
+  },
+  "icon": "minecraft:enchanted_book",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.consecrate.description"
+  },
+  "cost": 2,
+  "requires": [
+    "vigil_candle"
+  ]
+}

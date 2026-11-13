@@ -17,7 +17,7 @@
   "work_sound": "minecraft:entity.villager.work_shepherd",
   "skills": [
     "layered",
-    "quick_stitch"
+    "dye_job"
   ],
   "unlock_model": "experiential"
 }

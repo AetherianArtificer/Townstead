@@ -8,21 +8,26 @@
     "translate": "skill.townstead.toolsmith.tinker.spring_boots.description"
   },
   "cost": 1,
-  "skill_group": "townstead:tinker_gadget",
+  "requires": [
+    "self_repair"
+  ],
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 400,
-    "slot": 2,
-    "ai_trigger": "never",
+    "type": "pheno:action_over_time",
+    "interval": 20,
     "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 20
+      "resource": "townstead:knack",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:knack",
+      "min": 25
     },
     "action": {
       "type": "pheno:apply_effect",
       "effect": "minecraft:jump_boost",
-      "duration": 300,
-      "amplifier": 2
+      "duration": 30,
+      "amplifier": 1
     }
   }
 }

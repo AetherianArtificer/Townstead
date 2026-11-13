@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.terroir"
+  },
+  "icon": "minecraft:grass_block",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.terroir.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bouquet"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:vintage",
+          "min": 25
+        },
+        {
+          "type": "pheno:village",
+          "home": true
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:set_flag",
+      "flag": "townstead:winemaker_home",
+      "duration": 15
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "shape": "layer",
+  "color": "#F4F0E6",
+  "texture": "townstead:haze/layer",
+  "duration": 600,
+  "inside": {
+    "interval": 10,
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:glowing",
+      "duration": 600,
+      "amplifier": 0
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.fine_grind"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.baker.miller.fine_grind.description"
+  },
+  "cost": 1,
+  "requires": [
+    "threshing_floor"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:proof",
+      "min": 25
+    },
+    "action": {
+      "type": "pheno:set_flag",
+      "flag": "townstead:miller_fine",
+      "duration": 15
+    }
+  }
+}

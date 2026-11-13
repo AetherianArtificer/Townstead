@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "piping_hand"
+    "sweet_tooth"
   ],
   "power": {
     "type": "pheno:action_over_time",

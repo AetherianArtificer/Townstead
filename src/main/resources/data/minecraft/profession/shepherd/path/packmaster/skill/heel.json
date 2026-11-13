@@ -7,8 +7,8 @@
   "description": {
     "translate": "skill.townstead.shepherd.packmaster.heel.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:pack_command",
+  "cost": 2,
+  "skill_group": "townstead:packmaster_utility",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 200,
@@ -22,20 +22,103 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 24,
-          "include_self": false,
-          "target": "non_hostile",
-          "action": {
-            "type": "pheno:if_else",
-            "condition": {
-              "type": "pheno:tamed"
-            },
-            "if_action": {
-              "type": "pheno:add_velocity",
-              "away_from_other": -1.4,
-              "y": 0.3
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "sneaking"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/packmaster/stay"
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 24,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:tamed"
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:slowness",
+                    "duration": 600,
+                    "amplifier": 5
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:note",
+                    "count": 2,
+                    "spread": 0.2
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
             }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 24,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:tamed"
+              },
+              "if_action": {
+                "type": "pheno:add_velocity",
+                "away_from_other": -1.4,
+                "y": 0.3
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:shepherd/packmaster/pack_bond"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 24,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:tamed"
+              },
+              "if_action": {
+                "type": "pheno:share_damage",
+                "id": "pack_bond",
+                "fraction": 0.3,
+                "duration": 600,
+                "reach": 32
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {

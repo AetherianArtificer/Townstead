@@ -1,0 +1,22 @@
+{
+  "duration": 300,
+  "inside": {
+    "interval": 10,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:blindness",
+      "duration": 60,
+      "amplifier": 0
+    }
+  },
+  "shape": "cloud",
+  "color": "#EDE6D6",
+  "conceals": true,
+  "fog": {
+    "distance": 2.5
+  },
+  "particle": "minecraft:white_ash"
+}

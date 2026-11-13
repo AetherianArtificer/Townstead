@@ -8,19 +8,58 @@
     "translate": "skill.townstead.scribe.diplomat.composure.description"
   },
   "cost": 1,
+  "requires": [
+    "safe_conduct"
+  ],
   "power": {
-    "type": "pheno:action_over_time",
-    "interval": 60,
-    "condition": {
-      "type": "pheno:health",
-      "max": 0.5,
-      "relative": true
+    "type": "pheno:modifier",
+    "target": "status_effect_duration",
+    "operation": "multiply",
+    "value": 0.5,
+    "effect": "minecraft:poison"
+  },
+  "companions": {
+    "wither": {
+      "type": "pheno:modifier",
+      "target": "status_effect_duration",
+      "operation": "multiply",
+      "value": 0.5,
+      "effect": "minecraft:wither"
     },
-    "action": {
-      "type": "pheno:apply_effect",
-      "effect": "minecraft:regeneration",
-      "duration": 100,
-      "amplifier": 0
+    "weakness": {
+      "type": "pheno:modifier",
+      "target": "status_effect_duration",
+      "operation": "multiply",
+      "value": 0.5,
+      "effect": "minecraft:weakness"
+    },
+    "slowness": {
+      "type": "pheno:modifier",
+      "target": "status_effect_duration",
+      "operation": "multiply",
+      "value": 0.5,
+      "effect": "minecraft:slowness"
+    },
+    "blindness": {
+      "type": "pheno:modifier",
+      "target": "status_effect_duration",
+      "operation": "multiply",
+      "value": 0.5,
+      "effect": "minecraft:blindness"
+    },
+    "nausea": {
+      "type": "pheno:modifier",
+      "target": "status_effect_duration",
+      "operation": "multiply",
+      "value": 0.5,
+      "effect": "minecraft:nausea"
+    },
+    "hunger": {
+      "type": "pheno:modifier",
+      "target": "status_effect_duration",
+      "operation": "multiply",
+      "value": 0.5,
+      "effect": "minecraft:hunger"
     }
   }
 }

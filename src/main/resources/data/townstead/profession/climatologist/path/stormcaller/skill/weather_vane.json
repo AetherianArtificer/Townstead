@@ -1,0 +1,135 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.weather_vane"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.weather_vane.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:stormcaller_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:front",
+          "min": 50
+        },
+        {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:skill",
+              "skill": "townstead:climatologist/stormcaller/stormbringer"
+            },
+            {
+              "type": "pheno:resource",
+              "resource": "townstead:front",
+              "min": 25
+            }
+          ]
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "sneaking"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/stormcaller/fair_or_foul"
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:execute_command",
+            "command": "weather clear 6000"
+          },
+          "else_action": {
+            "type": "pheno:if_else_list",
+            "actions": [
+              {
+                "condition": {
+                  "type": "pheno:environment",
+                  "weather": "thunder"
+                },
+                "action": {
+                  "type": "pheno:execute_command",
+                  "command": "weather clear 6000"
+                }
+              },
+              {
+                "condition": {
+                  "type": "pheno:environment",
+                  "weather": [
+                    "rain",
+                    "thunder"
+                  ]
+                },
+                "action": {
+                  "type": "pheno:execute_command",
+                  "command": "weather thunder 6000"
+                }
+              }
+            ],
+            "fallback_action": {
+              "type": "pheno:execute_command",
+              "command": "weather rain 6000"
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:climatologist/stormcaller/stormbringer"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:front",
+                "amount": -25
+              },
+              {
+                "type": "pheno:execute_command",
+                "command": "summon minecraft:lightning_bolt ~ ~ ~"
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:front",
+            "amount": -50
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.elytra.flying",
+          "volume": 0.4,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "head_for_heights"
+    "surveyors_marks"
   ],
   "power": {
     "type": "pheno:action_over_time",

@@ -3,7 +3,7 @@
   "display_name": {
     "translate": "skill.townstead.climatologist.frostkeeper.hoarfrost"
   },
-  "icon": "minecraft:white_dye",
+  "icon": "minecraft:prismarine_shard",
   "description": {
     "translate": "skill.townstead.climatologist.frostkeeper.hoarfrost.description"
   },
@@ -11,37 +11,48 @@
   "requires": [
     "cold_snap"
   ],
-  "skill_group": "townstead:frost_cold",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 360,
-    "slot": 1,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 30
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:frostkeeper_frozen"
+      }
     },
     "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:haze",
-          "kind": "townstead:frost",
-          "blocks": {
-            "radius": 3,
-            "around": "above",
-            "where": {
-              "type": "air"
+      "type": "pheno:target_action",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:delay",
+            "ticks": 11,
+            "action": {
+              "type": "pheno:damage",
+              "amount": 6
             }
+          },
+          {
+            "type": "pheno:set_flag",
+            "flag": "townstead:frostkeeper_frozen",
+            "duration": 0
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.glass.break",
+            "volume": 0.6,
+            "pitch": 1.6
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:snowflake",
+            "count": 16,
+            "spread": 0.5
           }
-        },
-        {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:block.glass.break",
-          "volume": 0.6,
-          "pitch": 1.6
-        }
-      ]
+        ]
+      }
     }
   }
 }

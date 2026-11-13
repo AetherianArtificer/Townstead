@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "taut_line"
+    "barbed_hook"
   ],
   "power": {
     "type": "pheno:modifier",

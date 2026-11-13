@@ -9,13 +9,15 @@
   },
   "cost": 1,
   "power": {
-    "type": "pheno:attack_modifier",
-    "modifier": 1.5,
+    "type": "pheno:modifier",
+    "target": "damage_dealt",
+    "operation": "add",
+    "value": 4.0,
     "condition": {
       "type": "pheno:equipped_item",
       "slot": "mainhand",
       "item_condition": {
-        "type": "ingredient",
+        "type": "pheno:ingredient",
         "tag": "minecraft:hoes"
       }
     }

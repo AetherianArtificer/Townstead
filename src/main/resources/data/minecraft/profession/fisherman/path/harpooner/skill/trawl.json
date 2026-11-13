@@ -7,15 +7,15 @@
   "description": {
     "translate": "skill.townstead.fisherman.harpooner.trawl.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "gaff"
+    "snag"
   ],
-  "skill_group": "townstead:harpooner_hook",
+  "skill_group": "townstead:harpooner_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:tide",
@@ -25,18 +25,127 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 12,
-          "include_self": false,
-          "target": "hostile",
-          "bientity_condition": {
-            "type": "pheno:relative_rotation",
-            "max_angle": 35
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:flag",
+                "flag": "townstead:harpooner_far"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/harpooner/leviathans_line"
+              }
+            ]
           },
-          "action": {
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 24,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": -1.4,
+                  "y": 0.25
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:wet"
+                      },
+                      {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:fisherman/harpooner/keelhaul"
+                        }
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": 4,
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "bientity_condition": {
+              "type": "pheno:relative_rotation",
+              "max_angle": 35
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 12,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": -1.4,
+                  "y": 0.25
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:wet"
+                      },
+                      {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:fisherman/harpooner/keelhaul"
+                        }
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": 4,
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "bientity_condition": {
+              "type": "pheno:relative_rotation",
+              "max_angle": 35
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fisherman/harpooner/leviathans_line"
+          },
+          "if_action": {
             "type": "pheno:add_velocity",
-            "away_from_other": -1.4,
-            "y": 0.25
+            "relative": true,
+            "z": 0.7,
+            "y": 0.1
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {

@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:flock",
-      "min": 75
+      "min": 50
     },
     "action": {
       "type": "pheno:area_of_effect",
@@ -43,12 +43,16 @@
               "amplifier": 1
             },
             {
-              "type": "pheno:apply_effect",
-              "effect": "minecraft:resistance",
-              "duration": 30,
-              "amplifier": 1
+              "type": "pheno:ward",
+              "id": "pack_leader",
+              "amount": 1000,
+              "fraction": 0.3,
+              "duration": 30
             }
           ]
+        },
+        "else_action": {
+          "type": "pheno:nothing"
         }
       }
     }

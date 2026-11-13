@@ -9,36 +9,42 @@
   },
   "cost": 1,
   "requires": [
-    "iron_liver"
+    "cool_head"
   ],
   "power": {
     "type": "pheno:action_over_time",
     "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:ferment",
-      "amount": 0
-    },
-    "condition": {
-      "type": "pheno:block_in_radius",
-      "radius": 6,
-      "block_condition": {
-        "type": "pheno:or",
-        "conditions": [
-          {
-            "type": "pheno:block",
-            "block": "minecraft:barrel"
-          },
-          {
-            "type": "pheno:block",
-            "block": "minecraft:brewing_stand"
-          }
-        ]
-      }
-    },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:ferment",
-      "amount": 3
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 3,
+        "where": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:block_entity"
+            },
+            {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:brewing_stand"
+                },
+                {
+                  "type": "pheno:work_station",
+                  "profession": "townstead:beverage_artisan"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:accelerate",
+        "ticks": 5
+      },
+      "optional": true
     }
   }
 }

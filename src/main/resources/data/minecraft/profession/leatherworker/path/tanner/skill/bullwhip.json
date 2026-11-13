@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.bullwhip"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.bullwhip.description"
+  },
+  "cost": 2,
+  "requires": [
+    "long_arm"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.invisible_mending"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.invisible_mending.description"
+  },
+  "cost": 1,
+  "requires": [
+    "mend"
+  ]
+}

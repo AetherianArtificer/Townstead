@@ -1,0 +1,128 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.fall_back"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.fall_back.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:outfitter_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 240,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/outfitter/grand_outfitter"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:hide",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:hide",
+                "amount": -10
+              },
+              {
+                "type": "pheno:spawn_entity",
+                "entity": "minecraft:armor_stand",
+                "count": 1,
+                "radius": 0,
+                "owner": true,
+                "follow": false,
+                "allied": false,
+                "duration": 80,
+                "on_spawn": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 8,
+                  "include_self": false,
+                  "target": "all",
+                  "action": {
+                    "type": "pheno:set_attack_target"
+                  }
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:leatherworker/outfitter/cover_our_tracks"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:slowness",
+              "duration": 60,
+              "amplifier": 3
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 10,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:add_velocity",
+            "relative": true,
+            "z": -1.3,
+            "y": 0.3
+          }
+        },
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": -1.4,
+          "y": 0.3
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:cloud",
+          "count": 10,
+          "spread": 0.5
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.horse.jump",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.scree_slope"
+  },
+  "icon": "minecraft:gravel",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.scree_slope.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rockfall"
+  ]
+}

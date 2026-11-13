@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.trapline"
+  },
+  "icon": "minecraft:string",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.trapline.description"
+  },
+  "cost": 2,
+  "requires": [
+    "bell_line"
+  ]
+}

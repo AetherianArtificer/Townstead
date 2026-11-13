@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.clean_air"
+  },
+  "icon": "minecraft:white_dye",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.clean_air.description"
+  },
+  "cost": 1,
+  "requires": [
+    "smoke_out"
+  ]
+}

@@ -1,0 +1,204 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.stampede"
+  },
+  "icon": "minecraft:hay_block",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.stampede.description"
+  },
+  "cost": 2,
+  "requires": [
+    "hook"
+  ],
+  "skill_group": "townstead:herder_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 12,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:entity_type",
+              "tag": "townstead:livestock"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 60,
+                  "amplifier": 2
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 6,
+                  "action": {
+                    "type": "pheno:add_velocity",
+                    "away_from_other": -1.2,
+                    "y": 0.2
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:shepherd/herder/back_to_pasture"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:delay",
+                    "ticks": 60,
+                    "action": {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 100,
+                      "amplifier": 3
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:shepherd/herder/good_shepherd"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 12,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:entity_type",
+                "tag": "townstead:livestock"
+              },
+              "if_action": {
+                "type": "pheno:share_damage",
+                "id": "good_shepherd",
+                "fraction": 1.0,
+                "duration": 100,
+                "reach": 24
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:cloud",
+          "count": 16,
+          "spread": 1.0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.ravager.step",
+          "volume": 1.0,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "compare_to": 3,
+            "condition": {
+              "type": "pheno:entity_type",
+              "tag": "townstead:livestock"
+            }
+          },
+          "if_action": {
+            "type": "pheno:dash",
+            "distance": 8,
+            "ticks": 10,
+            "max_hits": 6,
+            "stop_on_hit": false,
+            "hit_radius": 2.0,
+            "on_hit": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.2,
+                  "y": 0.35
+                },
+                {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 60,
+                  "amplifier": 2
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:dash",
+            "distance": 8,
+            "ticks": 10,
+            "max_hits": 6,
+            "stop_on_hit": false,
+            "hit_radius": 1.0,
+            "on_hit": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.2,
+                  "y": 0.35
+                },
+                {
+                  "type": "pheno:damage",
+                  "amount": 4,
+                  "source": "other"
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 60,
+                  "amplifier": 2
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

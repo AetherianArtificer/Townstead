@@ -1,0 +1,56 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.ice_bridge"
+  },
+  "icon": "minecraft:ice",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.ice_bridge.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:frostkeeper_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:climatologist/frostkeeper/snow_shoes"
+          },
+          "if_action": {
+            "type": "pheno:set_flag",
+            "flag": "townstead:frostkeeper_bridge",
+            "duration": 800
+          },
+          "else_action": {
+            "type": "pheno:set_flag",
+            "flag": "townstead:frostkeeper_bridge",
+            "duration": 400
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.glass.break",
+          "volume": 0.6,
+          "pitch": 1.6
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:snowflake",
+          "count": 12,
+          "spread": 0.6
+        }
+      ]
+    }
+  }
+}

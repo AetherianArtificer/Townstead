@@ -15,13 +15,13 @@
     "type": "pheno:action_over_time",
     "interval": 40,
     "resource_cost": {
-      "resource": "townstead:insight",
+      "resource": "townstead:focus",
       "amount": 0
     },
     "condition": {
       "type": "pheno:resource",
-      "resource": "townstead:insight",
-      "min": 75
+      "resource": "townstead:focus",
+      "min": 50
     },
     "action": {
       "type": "pheno:and",

@@ -16,6 +16,8 @@
     "target": "farmland_trample",
     "operation": "set",
     "value": 0,
-    "applies_to": { "radius": 8 }
+    "applies_to": {
+      "radius": 8
+    }
   }
 }

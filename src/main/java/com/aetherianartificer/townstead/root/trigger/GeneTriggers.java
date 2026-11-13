@@ -146,6 +146,46 @@ public final class GeneTriggers {
         }
     }
 
+    private static final ThreadLocal<int[]> EVENT_DEPTH = ThreadLocal.withInitial(() -> new int[1]);
+
+    /**
+     * Another mod's event: {@code bearer} did or met {@code event} (for example {@code my_mod:treated}), with
+     * {@code other} as the counterpart when there is one. Runs the bearer's {@code when_event} triggers that name
+     * it. {@code pos} anchors block actions; {@code item} is what {@code item_condition} tests; {@code amount} is
+     * the event's size, read as {@code pheno:event_damage}. An event an event's action reports goes only a few
+     * deep, so two triggers cannot feed each other forever.
+     */
+    public static void onEvent(LivingEntity bearer, String event, @Nullable LivingEntity other,
+                               @Nullable net.minecraft.core.BlockPos pos,
+                               @Nullable net.minecraft.world.item.ItemStack item, float amount) {
+        if (bearer == null || event == null || bearer.level().isClientSide) return;
+        List<TriggerGeneType.Instance> triggers = Powers.componentsOf(bearer, TriggerGeneType.Instance.class);
+        if (triggers.isEmpty()) return;
+        int[] depth = EVENT_DEPTH.get();
+        if (depth[0] >= 4) return;
+        net.minecraft.world.item.ItemStack subject = item == null ? net.minecraft.world.item.ItemStack.EMPTY : item;
+        depth[0]++;
+        try {
+            ConditionContext ctx = null;
+            for (TriggerGeneType.Instance t : triggers) {
+                if (t.trigger() != Trigger.WHEN_EVENT || !t.acceptsVerb(event)) continue;
+                if (t.itemCondition() != null && !t.itemCondition().test(bearer.level(), subject)) continue;
+                LivingEntity primary = t.target() == Target.OTHER ? other : bearer;
+                if (primary == null) continue;
+                if (t.condition() != null) {
+                    if (ctx == null) ctx = new ConditionContext(bearer);
+                    if (!t.condition().test(ctx)) continue;
+                }
+                if (t.bientityCondition() != null && (other == null || !t.bientityCondition().test(bearer, other))) continue;
+                LivingEntity counterpart = primary == bearer ? other : bearer;
+                PhenoEvent.during(new PhenoEvent.Frame(amount, null, subject),
+                        () -> t.action().run(new ActionContext(primary, counterpart).withFocusBlock(pos)));
+            }
+        } finally {
+            depth[0]--;
+        }
+    }
+
     /**
      * The bearer took a crafted item. {@code result} is the stack being handed over, so a trigger's
      * {@code item_action} changes what the bearer receives.

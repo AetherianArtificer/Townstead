@@ -101,6 +101,7 @@ public final class CareerProgression {
         if (insight > 0 && worker instanceof VillagerEntityMCA) {
             SkillPoints.autoSpend(worker, affected);
         }
+        respendAfterRespec(worker);
         if ((insight > 0 || boost.capScale() > 1) && worker instanceof net.minecraft.server.level.ServerPlayer player) {
             com.aetherianartificer.townstead.rebirth.Relearning.restore(player);
         }
@@ -109,6 +110,14 @@ public final class CareerProgression {
                     workPos, output == null ? net.minecraft.world.item.ItemStack.EMPTY : output);
         }
         return result;
+    }
+
+    /** A villager whose skills were reset by a respec spends its Insight again, in every career. */
+    private static void respendAfterRespec(LivingEntity worker) {
+        if (!(worker instanceof VillagerEntityMCA)) return;
+        CareerProfile profile = CareerProfiles.of(worker);
+        if (profile == null || !profile.takeRespecPending()) return;
+        SkillPoints.autoSpend(worker, ProfessionDefs.all().keySet());
     }
 
     /**
@@ -137,6 +146,7 @@ public final class CareerProgression {
         notifyInsight(worker, career, insight, result.tierUp());
         if (result.tierUp()) notifyComboUnlocks(worker, combosBefore);
         if (insight > 0 && worker instanceof VillagerEntityMCA) SkillPoints.autoSpend(worker, Set.of(career));
+        respendAfterRespec(worker);
         if ((insight > 0 || boost.capScale() > 1) && worker instanceof net.minecraft.server.level.ServerPlayer player) {
             com.aetherianartificer.townstead.rebirth.Relearning.restore(player);
         }

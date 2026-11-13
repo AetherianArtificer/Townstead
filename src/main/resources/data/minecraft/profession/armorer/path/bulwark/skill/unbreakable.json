@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:temper",
-      "min": 75
+      "min": 50
     }
   }
 }

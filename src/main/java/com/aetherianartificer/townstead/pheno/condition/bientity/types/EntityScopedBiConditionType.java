@@ -37,10 +37,11 @@ public final class EntityScopedBiConditionType implements BiEntityConditionType 
         Condition inner = Conditions.parse(json.get("condition"));
         if (inner == null) return null;
         return (actor, target) -> switch (scope) {
-            case ACTOR -> inner.test(new ConditionContext(actor));
-            case TARGET -> inner.test(new ConditionContext(target));
-            case BOTH -> inner.test(new ConditionContext(actor)) && inner.test(new ConditionContext(target));
-            case EITHER -> inner.test(new ConditionContext(actor)) || inner.test(new ConditionContext(target));
+            // Each side sees the other as its counterpart, so "hostile" and "other" read as expected.
+            case ACTOR -> inner.test(new ConditionContext(actor, target));
+            case TARGET -> inner.test(new ConditionContext(target, actor));
+            case BOTH -> inner.test(new ConditionContext(actor, target)) && inner.test(new ConditionContext(target, actor));
+            case EITHER -> inner.test(new ConditionContext(actor, target)) || inner.test(new ConditionContext(target, actor));
         };
     }
 }

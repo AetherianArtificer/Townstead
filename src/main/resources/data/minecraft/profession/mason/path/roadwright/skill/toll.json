@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.toll"
+  },
+  "icon": "minecraft:gold_nugget",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.toll.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tollgate"
+  ]
+}

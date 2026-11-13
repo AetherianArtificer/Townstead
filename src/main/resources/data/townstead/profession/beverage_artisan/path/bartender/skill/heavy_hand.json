@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "running_tab"
+    "bar_stool"
   ],
   "power": {
     "type": "pheno:trigger",

@@ -1,0 +1,68 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.threshold_salt"
+  },
+  "icon": "minecraft:sugar",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.threshold_salt.description"
+  },
+  "cost": 1,
+  "requires": [
+    "planted"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:block_in_radius",
+          "radius": 2,
+          "block_condition": {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:doors"
+          }
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 5,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 5,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:entity_group",
+              "group": "undead"
+            },
+            {
+              "type": "pheno:state",
+              "state": "townstead_state:vampire"
+            }
+          ]
+        },
+        "if_action": {
+          "type": "pheno:add_velocity",
+          "away_from_other": 0.7,
+          "y": 0.15
+        },
+        "else_action": {
+          "type": "pheno:nothing"
+        }
+      }
+    }
+  }
+}

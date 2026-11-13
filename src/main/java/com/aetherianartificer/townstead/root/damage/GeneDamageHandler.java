@@ -66,7 +66,8 @@ public final class GeneDamageHandler {
             }
         }
         // Wards spare what is left after every multiplier, so they protect a fixed amount of health.
-        return com.aetherianartificer.townstead.pheno.combat.Wards.absorb(victim, source, Math.max(0f, result));
+        float warded = com.aetherianartificer.townstead.pheno.combat.Wards.absorb(victim, source, Math.max(0f, result));
+        return com.aetherianartificer.townstead.pheno.combat.Guards.share(victim, source, warded);
     }
 
     private static boolean matches(DamageSource source, DamageModifierGeneType.Instance gene) {

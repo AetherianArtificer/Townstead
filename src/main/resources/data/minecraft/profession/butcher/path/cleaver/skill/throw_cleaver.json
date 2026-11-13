@@ -1,0 +1,772 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.throw_cleaver"
+  },
+  "icon": "minecraft:iron_axe",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.throw_cleaver.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:cleaver_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:ingredient",
+            "tag": "townstead:butcher_cleavers"
+          },
+          {
+            "type": "pheno:ingredient",
+            "tag": "minecraft:axes"
+          }
+        ]
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:at",
+          "blocks": [
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  1
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  2
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  3
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  4
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  5
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  6
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  7
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  8
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  9
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  10
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  11
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            },
+            {
+              "radius": [
+                0,
+                1,
+                0
+              ],
+              "around": {
+                "offset": [
+                  0,
+                  1,
+                  12
+                ],
+                "space": "facing"
+              },
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:cobweb"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:vine"
+                  },
+                  {
+                    "type": "pheno:block",
+                    "block": "minecraft:tripwire"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  }
+                ]
+              }
+            }
+          ],
+          "do": {
+            "type": "pheno:destroy",
+            "drop_item": true
+          },
+          "optional": true
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:hostile"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:damage",
+                  "amount": 3,
+                  "source": "other"
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:butcher/cleaver/lodge"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:slowness",
+                    "duration": 60,
+                    "amplifier": 2
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:butcher/cleaver/slaughterhouse"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:set_flag",
+                        "flag": "townstead:bleeding",
+                        "duration": 130
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 20,
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": 1,
+                              "source": "other"
+                            },
+                            {
+                              "type": "pheno:spawn_particles",
+                              "particle": "minecraft:falling_dripstone_lava",
+                              "count": 3,
+                              "spread": 0.2
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 40,
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": 1,
+                              "source": "other"
+                            },
+                            {
+                              "type": "pheno:spawn_particles",
+                              "particle": "minecraft:falling_dripstone_lava",
+                              "count": 3,
+                              "spread": 0.2
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 60,
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": 1,
+                              "source": "other"
+                            },
+                            {
+                              "type": "pheno:spawn_particles",
+                              "particle": "minecraft:falling_dripstone_lava",
+                              "count": 3,
+                              "spread": 0.2
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 80,
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": 1,
+                              "source": "other"
+                            },
+                            {
+                              "type": "pheno:spawn_particles",
+                              "particle": "minecraft:falling_dripstone_lava",
+                              "count": 3,
+                              "spread": 0.2
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 100,
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": 1,
+                              "source": "other"
+                            },
+                            {
+                              "type": "pheno:spawn_particles",
+                              "particle": "minecraft:falling_dripstone_lava",
+                              "count": 3,
+                              "spread": 0.2
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 120,
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:damage",
+                              "amount": 1,
+                              "source": "other"
+                            },
+                            {
+                              "type": "pheno:spawn_particles",
+                              "particle": "minecraft:falling_dripstone_lava",
+                              "count": 3,
+                              "spread": 0.2
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:crit",
+                  "count": 6,
+                  "spread": 0.3
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 12
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/cleaver/slaughterhouse"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:cut",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:cut",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:swing_hand"
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.trident.throw",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

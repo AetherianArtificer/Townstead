@@ -1,0 +1,125 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.icing"
+  },
+  "icon": "minecraft:snow",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.icing.description"
+  },
+  "cost": 2,
+  "requires": [
+    "sparklers"
+  ],
+  "skill_group": "townstead:pastry_chef_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/pastry_chef/grand_finale"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:proof",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:proof",
+                "amount": -10
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:baker/pastry_chef/royal_icing"
+                },
+                "if_action": {
+                  "type": "pheno:haze",
+                  "kind": "townstead:icing_royal_long",
+                  "blocks": {
+                    "radius": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "around": "looking_at"
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:haze",
+                  "kind": "townstead:icing_long",
+                  "blocks": {
+                    "radius": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "around": "looking_at"
+                  }
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:baker/pastry_chef/royal_icing"
+            },
+            "if_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:icing_royal",
+              "blocks": {
+                "radius": [
+                  1,
+                  1,
+                  1
+                ],
+                "around": "looking_at"
+              }
+            },
+            "else_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:icing",
+              "blocks": {
+                "radius": [
+                  1,
+                  1,
+                  1
+                ],
+                "around": "looking_at"
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.snow.place",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

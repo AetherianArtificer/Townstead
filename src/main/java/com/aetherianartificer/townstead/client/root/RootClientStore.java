@@ -57,7 +57,7 @@ public final class RootClientStore {
     /** Current origin id for the target, or empty string if unknown. */
     public static String get(int entityId) {
         if (rootsOff()) return "";
-        return BY_ENTITY.getOrDefault(entityId, "");
+        return BY_ENTITY.getOrDefault(shown(entityId), "");
     }
 
     /** With Roots switched off in this world everyone reads as the default Root, with no genes. */
@@ -124,7 +124,7 @@ public final class RootClientStore {
 
     /** Whether MCA's native hair layer is enabled for this individual (true while unsynced). */
     public static boolean usesHair(LivingEntity entity) {
-        return entity == null || HAIR.getOrDefault(entity.getId(), true);
+        return entity == null || HAIR.getOrDefault(shown(entity.getId()), true);
     }
 
     /** Set a preview dummy's effective root policy before its realized per-entity sync exists. */
@@ -140,11 +140,12 @@ public final class RootClientStore {
 
     public static com.aetherianartificer.townstead.root.appearance.HairSettings hairSettings(LivingEntity entity) {
         if (entity == null) return com.aetherianartificer.townstead.root.appearance.HairSettings.DEFAULT;
+        int id = shown(entity.getId());
         return new com.aetherianartificer.townstead.root.appearance.HairSettings(
-                HAIR.getOrDefault(entity.getId(), true),
-                HAIR_COLORS.getOrDefault(entity.getId(), List.of()),
-                HAIR_PALETTES.getOrDefault(entity.getId(), List.of()),
-                HAIR_GRADIENTS.getOrDefault(entity.getId(), List.of()));
+                HAIR.getOrDefault(id, true),
+                HAIR_COLORS.getOrDefault(id, List.of()),
+                HAIR_PALETTES.getOrDefault(id, List.of()),
+                HAIR_GRADIENTS.getOrDefault(id, List.of()));
     }
 
     /**
@@ -164,7 +165,7 @@ public final class RootClientStore {
     /** The gene ids the entity expresses, or an empty set if not yet synced (or it does not express). */
     public static Set<String> expressedGenes(int entityId) {
         if (rootsOff() || !expressesById(entityId)) return Set.of();
-        return EXPRESSED.getOrDefault(entityId, Set.of());
+        return EXPRESSED.getOrDefault(shown(entityId), Set.of());
     }
 
     /**
@@ -202,12 +203,12 @@ public final class RootClientStore {
     }
 
     public static boolean hasExpressionSync(LivingEntity entity) {
-        return entity != null && EXPRESSED.containsKey(entity.getId());
+        return entity != null && EXPRESSED.containsKey(shown(entity.getId()));
     }
 
     public static Set<String> expressedGenes(LivingEntity entity) {
         if (entity == null || rootsOff() || !expresses(entity)) return Set.of();
-        Set<String> synced = EXPRESSED.get(entity.getId());
+        Set<String> synced = EXPRESSED.get(shown(entity.getId()));
         if (synced != null) return synced;
         if (entity instanceof VillagerEntityMCA villager) {
             return geneIdsOf(TownsteadVillagerState.snapshotExpressedAlleles(villager));
@@ -251,7 +252,7 @@ public final class RootClientStore {
 
     /** The entity's rolled variant id per variant-gene id, or an empty map if not yet synced. */
     public static Map<String, String> carriedVariants(int entityId) {
-        return VARIANTS.getOrDefault(entityId, Map.of());
+        return VARIANTS.getOrDefault(shown(entityId), Map.of());
     }
 
     /** Override one carried variant client-side (the editor's live preview before the server commits). */
@@ -262,7 +263,7 @@ public final class RootClientStore {
     /** Whether the entity is known to express the given gene id. */
     public static boolean expresses(int entityId, String geneId) {
         if (rootsOff()) return false;
-        return EXPRESSED.getOrDefault(entityId, Set.of()).contains(geneId);
+        return EXPRESSED.getOrDefault(shown(entityId), Set.of()).contains(geneId);
     }
 
     /** Store the gene ids whose toggle-mode ability is currently ON for the entity. */
@@ -304,7 +305,13 @@ public final class RootClientStore {
     /** The seed for a gene's pick when the entity has no synced variant for it. */
     public static int variantSeed(LivingEntity entity) {
         java.util.UUID shown = STAND_INS.get(entity.getId());
+        if (shown == null) shown = com.aetherianartificer.townstead.compat.cybernetics.FaceplateDisguiseClient.shownWhileRendering(entity);
         return (shown != null ? shown : entity.getUUID()).hashCode();
+    }
+
+    /** The id an entity's look is read from: a disguised player's shown Root while they render. */
+    private static int shown(int entityId) {
+        return com.aetherianartificer.townstead.compat.cybernetics.FaceplateDisguiseClient.dataId(entityId);
     }
 
     // Shares the value: the copy only ever reads it, and follows the source's in-place edits.
@@ -328,6 +335,7 @@ public final class RootClientStore {
     }
 
     public static void clear() {
+        com.aetherianartificer.townstead.compat.cybernetics.FaceplateDisguiseClient.clear();
         BY_ENTITY.clear();
         EXPRESSED.clear();
         TOGGLES.clear();

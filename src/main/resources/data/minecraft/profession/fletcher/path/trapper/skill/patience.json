@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.patience"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.patience.description"
+  },
+  "cost": 1,
+  "requires": [
+    "game_trails"
+  ],
+  "power": {
+    "type": "pheno:stacking_effect",
+    "effect": "minecraft:strength",
+    "min_stacks": 0,
+    "max_stacks": 120,
+    "stacks_per_level": 60,
+    "condition": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:movement",
+        "movement": "moving"
+      }
+    }
+  }
+}

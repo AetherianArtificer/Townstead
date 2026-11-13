@@ -10,6 +10,34 @@
   "color": "#8B1A1A",
   "powers": [
     {
+      "type": "pheno:trigger",
+      "trigger": "when_kill",
+      "condition": {
+        "type": "pheno:career_xp",
+        "career": "townstead:hunter",
+        "at_least": 160
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:vigil",
+        "amount": 15
+      }
+    },
+    {
+      "type": "pheno:trigger",
+      "trigger": "when_attack",
+      "condition": {
+        "type": "pheno:career_xp",
+        "career": "townstead:hunter",
+        "at_least": 160
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:vigil",
+        "amount": 5
+      }
+    },
+    {
       "type": "pheno:action_over_time",
       "interval": 20,
       "resource_cost": {
@@ -20,25 +48,13 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:hunter/slayer/blood_scent"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:hunter/slayer/through_the_heart"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:hunter/slayer/no_quarter"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "townstead:hunter",
+            "at_least": 160
           },
           {
             "type": "pheno:entity_in_radius",
-            "radius": 12,
+            "radius": 8,
             "condition": {
               "type": "pheno:hostile"
             }
@@ -50,33 +66,156 @@
         "resource": "townstead:vigil",
         "amount": 1
       }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:skill",
+            "skill": "townstead:hunter/slayer/quarry"
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 32,
+            "condition": {
+              "type": "pheno:flag",
+              "flag": "townstead:slayer_tracked"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:speed",
+        "duration": 30,
+        "amplifier": 0
+      }
+    },
+    {
+      "type": "pheno:attack_modifier",
+      "modifier": 1.25,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:slayer_vow"
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:hunter/slayer/no_quarter"
+            }
+          }
+        ]
+      },
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:slayer_quarry"
+        }
+      }
+    },
+    {
+      "type": "pheno:attack_modifier",
+      "modifier": 0.75,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:slayer_vow"
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:hunter/slayer/no_quarter"
+            }
+          }
+        ]
+      },
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:slayer_quarry"
+          }
+        }
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 40,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:slayer_vow"
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "townstead:hunter/slayer/no_quarter"
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:area_of_effect",
+        "radius": 64,
+        "include_self": false,
+        "target": "all",
+        "action": {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:slayer_quarry"
+          },
+          "if_action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:glowing",
+            "duration": 60,
+            "amplifier": 0
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        }
+      }
     }
   ],
   "skills": [
     [
       "hunters_grip",
-      "stake_thrust",
-      "pounce"
+      "fresh_tracks",
+      "stake_thrust"
     ],
     [
       "second_wind",
-      "heartseeker",
-      "harry"
+      "quarry",
+      "heartseeker"
     ],
     [
-      "blood_scent",
-      "through_the_heart",
-      "no_quarter"
+      "stake_ready",
+      "vow",
+      "pounce"
     ],
     [
       "relentless",
-      "executioner",
-      "silver_arc"
+      "trophy",
+      "harry"
     ],
     [
       "nightbane",
-      "final_rite",
-      "hunters_fury"
+      "no_quarter",
+      "final_rite"
     ]
   ]
 }

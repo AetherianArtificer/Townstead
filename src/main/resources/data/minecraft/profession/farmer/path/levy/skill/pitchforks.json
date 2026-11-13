@@ -1,0 +1,205 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.pitchforks"
+  },
+  "icon": "minecraft:trident",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.pitchforks.description"
+  },
+  "cost": 2,
+  "requires": [
+    "sweep_the_rows"
+  ],
+  "skill_group": "townstead:levy_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 500,
+    "slot": 2,
+    "ai_trigger": "when_hurt_nearby",
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:farmer/levy/levee_en_masse"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 24,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:ward",
+                  "id": "pitchforks",
+                  "amount": 1000,
+                  "fraction": 0,
+                  "duration": 300,
+                  "on_absorb": {
+                    "type": "pheno:target_action",
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:damage",
+                          "amount": 3
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:crit",
+                          "count": 4,
+                          "spread": 0.3
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:farmer/levy/hold_the_line"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:ward",
+                    "id": "hold_the_line",
+                    "amount": 6,
+                    "duration": 300
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:farmer/levy/levee_en_masse"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:share_damage",
+                    "id": "levee",
+                    "fraction": 0.5,
+                    "duration": 300,
+                    "reach": 24
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:angry_villager",
+                  "count": 3,
+                  "spread": 0.4
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 12,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:ward",
+                  "id": "pitchforks",
+                  "amount": 1000,
+                  "fraction": 0,
+                  "duration": 300,
+                  "on_absorb": {
+                    "type": "pheno:target_action",
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:damage",
+                          "amount": 3
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:crit",
+                          "count": 4,
+                          "spread": 0.3
+                        }
+                      ]
+                    }
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:farmer/levy/hold_the_line"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:ward",
+                    "id": "hold_the_line",
+                    "amount": 6,
+                    "duration": 300
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:farmer/levy/levee_en_masse"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:share_damage",
+                    "id": "levee",
+                    "fraction": 0.5,
+                    "duration": 300,
+                    "reach": 12
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:angry_villager",
+                  "count": 3,
+                  "spread": 0.4
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bell.use",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

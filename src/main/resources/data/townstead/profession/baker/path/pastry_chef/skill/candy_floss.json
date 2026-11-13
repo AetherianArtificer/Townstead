@@ -7,31 +7,117 @@
   "description": {
     "translate": "skill.townstead.baker.pastry_chef.candy_floss.description"
   },
-  "cost": 1,
-  "requires": [
-    "sugar_dust"
-  ],
-  "skill_group": "townstead:pastry_sugar",
+  "cost": 2,
+  "skill_group": "townstead:pastry_chef_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 400,
-    "slot": 1,
+    "cooldown": 300,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:proof",
-      "amount": 30
+      "resource": "townstead:stamina",
+      "amount": 25
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 8,
-      "include_self": false,
-      "target": "hostile",
-      "action": {
-        "type": "pheno:apply_effect",
-        "effect": "minecraft:levitation",
-        "duration": 40,
-        "amplifier": 1
-      }
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 6,
+          "include_self": false,
+          "target": "hostile",
+          "action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:levitation",
+                "duration": 40,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "townstead:baker/pastry_chef/sticky_clouds"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:weakness",
+                  "duration": 40,
+                  "amplifier": 4
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "townstead:baker/pastry_chef/spun_sugar_storm"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:delay",
+                  "ticks": 55,
+                  "action": {
+                    "type": "pheno:damage",
+                    "amount": 3
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:cloud",
+                "count": 6,
+                "spread": 0.3
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:baker/pastry_chef/spun_sugar_storm"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:levitation",
+                "duration": 40,
+                "amplifier": 1
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slow_falling",
+                "duration": 100,
+                "amplifier": 0
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.wool.place",
+          "volume": 1.0,
+          "pitch": 1.5
+        }
+      ]
     }
   }
 }

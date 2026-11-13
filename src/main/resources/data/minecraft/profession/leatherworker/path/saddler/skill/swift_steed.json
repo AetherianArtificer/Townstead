@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "long_ride"
+    "saddlebags"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -27,7 +27,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:hide",
-          "min": 50
+          "min": 25
         }
       ]
     },
@@ -37,7 +37,7 @@
         "type": "pheno:apply_effect",
         "effect": "minecraft:speed",
         "duration": 30,
-        "amplifier": 1
+        "amplifier": 0
       }
     }
   }

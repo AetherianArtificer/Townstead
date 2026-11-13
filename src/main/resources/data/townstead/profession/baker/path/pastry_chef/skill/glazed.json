@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.glazed"
+  },
+  "icon": "minecraft:glass",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.glazed.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fine_crumb"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.9,
+    "damage_condition": {
+      "type": "pheno:constant",
+      "value": true
+    },
+    "condition": {
+      "type": "pheno:warded",
+      "min": 0.1
+    }
+  }
+}

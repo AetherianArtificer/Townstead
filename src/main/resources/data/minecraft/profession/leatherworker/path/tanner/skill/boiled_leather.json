@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "tough_work"
+    "whipcord"
   ],
   "power": {
     "type": "pheno:damage_modifier",
@@ -25,14 +25,14 @@
           "type": "pheno:equipped_item",
           "slot": "chest",
           "item_condition": {
-            "type": "ingredient",
+            "type": "pheno:ingredient",
             "item": "minecraft:leather_chestplate"
           }
         },
         {
           "type": "pheno:resource",
           "resource": "townstead:hide",
-          "min": 50
+          "min": 25
         }
       ]
     }

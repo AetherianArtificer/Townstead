@@ -1,0 +1,221 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.spring_trap"
+  },
+  "icon": "minecraft:piston",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.spring_trap.description"
+  },
+  "cost": 2,
+  "requires": [
+    "smoke_and_mirrors"
+  ],
+  "skill_group": "townstead:tinker_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:add_velocity",
+                    "y": 1.3
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:poof",
+                    "count": 8,
+                    "spread": 0.3
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:toolsmith/tinker/clockwork"
+                      }
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:slowness",
+                          "duration": 120,
+                          "amplifier": 1
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 30,
+                          "action": {
+                            "type": "pheno:damage",
+                            "amount": 4
+                          }
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:and",
+                        "conditions": [
+                          {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:toolsmith/tinker/contraption"
+                          },
+                          {
+                            "type": "pheno:resource",
+                            "resource": "townstead:knack",
+                            "min": 10
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:flag",
+                      "flag": "townstead:tinker_dazzled"
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 4,
+                  "include_self": false,
+                  "target": "hostile",
+                  "action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:tinker_dazzled"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:add_velocity",
+                          "y": 1.3
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:poof",
+                          "count": 8,
+                          "spread": 0.3
+                        },
+                        {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:origin",
+                            "condition": {
+                              "type": "pheno:skill",
+                              "skill": "minecraft:toolsmith/tinker/clockwork"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 120,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:delay",
+                                "ticks": 30,
+                                "action": {
+                                  "type": "pheno:damage",
+                                  "amount": 4
+                                }
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 12
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/tinker/contraption"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:knack",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:knack",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.piston.extend",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.hush.feather_step"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.librarian.hush.feather_step.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hold_breath"
+  ]
+}

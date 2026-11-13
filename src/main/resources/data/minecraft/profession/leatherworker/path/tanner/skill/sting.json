@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.sting"
+  },
+  "icon": "minecraft:cactus",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.sting.description"
+  },
+  "cost": 1,
+  "requires": [
+    "whirl"
+  ]
+}

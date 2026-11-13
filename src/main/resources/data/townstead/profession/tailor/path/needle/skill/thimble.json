@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.thimble"
+  },
+  "icon": "minecraft:iron_nugget",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.thimble.description"
+  },
+  "cost": 1,
+  "requires": [
+    "keen_shears"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.9,
+    "damage_condition": {
+      "type": "pheno:constant",
+      "value": true
+    }
+  }
+}

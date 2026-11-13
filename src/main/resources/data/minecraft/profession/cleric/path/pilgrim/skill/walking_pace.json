@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.walking_pace"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.walking_pace.description"
+  },
+  "cost": 1,
+  "requires": [
+    "staff_sweep"
+  ]
+}

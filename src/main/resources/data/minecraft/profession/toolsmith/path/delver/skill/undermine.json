@@ -1,0 +1,449 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.undermine"
+  },
+  "icon": "minecraft:coarse_dirt",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.undermine.description"
+  },
+  "cost": 2,
+  "requires": [
+    "dust_up"
+  ],
+  "skill_group": "townstead:delver_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:origin",
+              "condition": {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/delver/deep_dweller"
+              }
+            },
+            "if_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:block",
+                  "y": 0,
+                  "block_condition": {
+                    "type": "height",
+                    "max": 62
+                  }
+                }
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:slowness",
+                    "duration": 200,
+                    "amplifier": 6
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:jump_boost",
+                    "duration": 200,
+                    "amplifier": 128
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:toolsmith/delver/backfill"
+                      }
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 20,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 40,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 60,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 80,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 100,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 120,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 140,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 160,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 180,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        },
+                        {
+                          "type": "pheno:delay",
+                          "ticks": 200,
+                          "action": {
+                            "type": "pheno:if_else",
+                            "condition": {
+                              "type": "pheno:health",
+                              "max": 0.5,
+                              "relative": true
+                            },
+                            "if_action": {
+                              "type": "pheno:damage",
+                              "amount": 2
+                            },
+                            "else_action": {
+                              "type": "pheno:nothing"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:poof",
+                    "count": 16,
+                    "spread": 0.6
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 100,
+                  "amplifier": 6
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:jump_boost",
+                  "duration": 100,
+                  "amplifier": 128
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:toolsmith/delver/backfill"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 20,
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:health",
+                            "max": 0.5,
+                            "relative": true
+                          },
+                          "if_action": {
+                            "type": "pheno:damage",
+                            "amount": 2
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 40,
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:health",
+                            "max": 0.5,
+                            "relative": true
+                          },
+                          "if_action": {
+                            "type": "pheno:damage",
+                            "amount": 2
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 60,
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:health",
+                            "max": 0.5,
+                            "relative": true
+                          },
+                          "if_action": {
+                            "type": "pheno:damage",
+                            "amount": 2
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 80,
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:health",
+                            "max": 0.5,
+                            "relative": true
+                          },
+                          "if_action": {
+                            "type": "pheno:damage",
+                            "amount": 2
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 100,
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:health",
+                            "max": 0.5,
+                            "relative": true
+                          },
+                          "if_action": {
+                            "type": "pheno:damage",
+                            "amount": 2
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:poof",
+                  "count": 16,
+                  "spread": 0.6
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 12
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.gravel.break",
+          "volume": 1.0,
+          "pitch": 0.5
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.rooted_dirt.break",
+          "volume": 1.0,
+          "pitch": 0.6
+        }
+      ]
+    }
+  }
+}

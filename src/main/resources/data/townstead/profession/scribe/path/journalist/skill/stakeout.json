@@ -13,16 +13,26 @@
   ],
   "power": {
     "type": "pheno:action_over_time",
-    "interval": 100,
+    "interval": 10,
     "condition": {
-      "type": "pheno:brightness",
-      "max": 4
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:movement",
+          "movement": "sneaking"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        }
+      ]
     },
     "action": {
-      "type": "pheno:apply_effect",
-      "effect": "minecraft:night_vision",
-      "duration": 300,
-      "amplifier": 0
+      "type": "pheno:show_health",
+      "on": {
+        "type": "pheno:ray",
+        "distance": 24
+      }
     }
   }
 }

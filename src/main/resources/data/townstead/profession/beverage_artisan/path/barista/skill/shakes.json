@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.shakes"
+  },
+  "icon": "minecraft:redstone",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.shakes.description"
+  },
+  "cost": 1,
+  "requires": [
+    "jitters"
+  ]
+}

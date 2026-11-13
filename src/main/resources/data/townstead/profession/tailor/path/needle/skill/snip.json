@@ -1,0 +1,244 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.needle.snip"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.tailor.needle.snip.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:needle_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:tailor/needle/thousand_stitches"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:tailor/needle/thread_the_needle"
+                },
+                "if_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 3,
+                            "source": "other"
+                          },
+                          {
+                            "type": "pheno:clear_effect",
+                            "category": "beneficial"
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:crit",
+                            "count": 5,
+                            "spread": 0.3
+                          }
+                        ]
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 11,
+                        "action": {
+                          "type": "pheno:damage",
+                          "amount": 3,
+                          "source": "other"
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 22,
+                        "action": {
+                          "type": "pheno:damage",
+                          "amount": 3,
+                          "source": "other"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  },
+                  "on": {
+                    "type": "pheno:ray",
+                    "distance": 5,
+                    "pierce": true
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 3,
+                            "source": "other"
+                          },
+                          {
+                            "type": "pheno:clear_effect",
+                            "category": "beneficial"
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:crit",
+                            "count": 5,
+                            "spread": 0.3
+                          }
+                        ]
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 11,
+                        "action": {
+                          "type": "pheno:damage",
+                          "amount": 3,
+                          "source": "other"
+                        }
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 22,
+                        "action": {
+                          "type": "pheno:damage",
+                          "amount": 3,
+                          "source": "other"
+                        }
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  },
+                  "on": {
+                    "type": "pheno:ray",
+                    "distance": 5
+                  }
+                }
+              },
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:stitch",
+                "amount": -10
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:tailor/needle/thread_the_needle"
+            },
+            "if_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:damage",
+                    "amount": 3,
+                    "source": "other"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "category": "beneficial"
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:crit",
+                    "count": 5,
+                    "spread": 0.3
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              },
+              "on": {
+                "type": "pheno:ray",
+                "distance": 5,
+                "pierce": true
+              }
+            },
+            "else_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:damage",
+                    "amount": 3,
+                    "source": "other"
+                  },
+                  {
+                    "type": "pheno:clear_effect",
+                    "category": "beneficial"
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:crit",
+                    "count": 5,
+                    "spread": 0.3
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              },
+              "on": {
+                "type": "pheno:ray",
+                "distance": 5
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.sheep.shear",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

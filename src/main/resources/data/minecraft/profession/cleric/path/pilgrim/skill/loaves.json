@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.loaves"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.loaves.description"
+  },
+  "cost": 1,
+  "requires": [
+    "share_water"
+  ]
+}

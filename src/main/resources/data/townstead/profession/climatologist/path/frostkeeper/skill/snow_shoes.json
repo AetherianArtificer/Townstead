@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.frostkeeper.snow_shoes"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.climatologist.frostkeeper.snow_shoes.description"
+  },
+  "cost": 1,
+  "requires": [
+    "ice_bridge"
+  ]
+}

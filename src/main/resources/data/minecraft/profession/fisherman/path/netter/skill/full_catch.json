@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.full_catch"
+  },
+  "icon": "minecraft:bucket",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.full_catch.description"
+  },
+  "cost": 1,
+  "requires": [
+    "landing_net"
+  ]
+}

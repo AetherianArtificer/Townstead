@@ -7,8 +7,8 @@
   "min": 0,
   "max": 100,
   "start": 0,
-  "regen": -2,
-  "regen_interval": 20,
+  "regen": -1,
+  "regen_interval": 120,
   "color": "#C8873E",
   "display": {
     "shape": "horizontal",

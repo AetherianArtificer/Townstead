@@ -213,6 +213,14 @@ public final class RoomHeat {
         return sample(level, position, false, true);
     }
 
+    /**
+     * As {@link #at}, for readers that ask often and everywhere, such as crops on every growth tick. A room it finds
+     * counts as found by discovery, not read, so at the room cap it gives way before a room someone stands in.
+     */
+    public static OptionalDouble passiveAt(ServerLevel level, BlockPos position) {
+        return sample(level, position, false, false);
+    }
+
     public static OptionalDouble airAt(ServerLevel level, BlockPos position) {
         return sample(level, position, true, true);
     }
@@ -363,9 +371,11 @@ public final class RoomHeat {
             }
             world.remove(r);
         }
-        // At the room cap, the room read least recently gives way.
+        // At the room cap, rooms only discovery found give way first, least recently used first. A room someone reads gives
+        // way only to another someone reads: discovery keeps finding caves, and each new one would otherwise be fresher.
         while (world.regions.size() >= MAX_ROOMS) {
-            Region stalest = world.regions.stream().min(Comparator.comparingLong(r -> r.lastUsed)).orElse(null);
+            Region stalest = world.regions.stream().filter(r -> r.discovered).min(Comparator.comparingLong(r -> r.lastUsed)).orElse(null);
+            if (stalest == null && query) stalest = world.regions.stream().min(Comparator.comparingLong(r -> r.lastUsed)).orElse(null);
             if (stalest == null || now - stalest.lastUsed < 20) return null;
             if (world.residual.size() > MAX_CELLS * 2) world.residual.clear();
             var cells = stalest.shape.cells().iterator();

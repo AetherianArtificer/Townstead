@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.packmaster.flank"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.shepherd.packmaster.flank.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sic_em"
+  ]
+}

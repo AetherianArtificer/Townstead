@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.plating"
+  },
+  "icon": "minecraft:bowl",
+  "description": {
+    "translate": "skill.townstead.cook.chef.plating.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:modifier",
+    "target": "status_effect_duration",
+    "operation": "multiply",
+    "value": 1.5
+  }
+}

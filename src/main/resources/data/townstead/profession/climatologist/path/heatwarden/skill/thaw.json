@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.heatwarden.thaw"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.climatologist.heatwarden.thaw.description"
+  },
+  "cost": 1,
+  "requires": [
+    "kindle"
+  ]
+}

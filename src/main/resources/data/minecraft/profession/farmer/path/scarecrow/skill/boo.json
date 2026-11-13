@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.farmer.scarecrow.boo.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:scarecrow_fright",
+  "cost": 2,
+  "skill_group": "townstead:scarecrow_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -31,14 +31,73 @@
             "actions": [
               {
                 "type": "pheno:add_velocity",
-                "away_from_other": 0.6,
+                "away_from_other": 0.8,
                 "y": 0.3
               },
               {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:slowness",
-                "duration": 60,
-                "amplifier": 0
+                "type": "pheno:flee",
+                "duration": 60
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:farmer/scarecrow/startle"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:blindness",
+                  "duration": 40,
+                  "amplifier": 0
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:farmer/scarecrow/dread_harvest"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:delay",
+                      "ticks": 20,
+                      "action": {
+                        "type": "pheno:damage",
+                        "amount": 2
+                      }
+                    },
+                    {
+                      "type": "pheno:delay",
+                      "ticks": 40,
+                      "action": {
+                        "type": "pheno:damage",
+                        "amount": 2
+                      }
+                    },
+                    {
+                      "type": "pheno:delay",
+                      "ticks": 60,
+                      "action": {
+                        "type": "pheno:damage",
+                        "amount": 2
+                      }
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
               }
             ]
           }

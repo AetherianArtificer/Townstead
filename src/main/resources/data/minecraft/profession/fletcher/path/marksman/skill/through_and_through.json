@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.through_and_through"
+  },
+  "icon": "minecraft:arrow",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.through_and_through.description"
+  },
+  "cost": 1,
+  "requires": [
+    "headshot"
+  ]
+}

@@ -7,44 +7,183 @@
   "description": {
     "translate": "skill.townstead.cook.pizzaiolo.peel_slam.description"
   },
-  "cost": 1,
-  "requires": [
-    "peel_vault"
-  ],
-  "skill_group": "townstead:pizzaiolo_peel",
+  "cost": 2,
+  "skill_group": "townstead:pizzaiolo_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 160,
+    "cooldown": 240,
     "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:char",
-      "amount": 30
+      "resource": "townstead:stamina",
+      "amount": 25
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 3,
-      "include_self": false,
-      "target": "hostile",
-      "bientity_condition": {
-        "type": "pheno:relative_rotation",
-        "max_angle": 30
-      },
-      "action": {
-        "type": "pheno:and",
-        "actions": [
-          {
-            "type": "pheno:damage",
-            "amount": 6,
-            "source": "other"
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:cook/pizzaiolo/peel_sweep"
           },
-          {
-            "type": "pheno:add_velocity",
-            "away_from_other": 1.2,
-            "y": 0.3
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 4,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:cook/pizzaiolo/into_the_oven"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:delay",
+                    "ticks": 20,
+                    "action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:on_fire"
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 6
+                          },
+                          {
+                            "type": "pheno:ignite",
+                            "seconds": 8
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:flame",
+                            "count": 12,
+                            "spread": 0.4
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:damage",
+                    "amount": 6,
+                    "source": "other"
+                  }
+                },
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.4,
+                  "y": 0.35
+                },
+                {
+                  "type": "pheno:change_resource",
+                  "resource": "townstead:char",
+                  "amount": 5,
+                  "on": "origin"
+                }
+              ]
+            },
+            "bientity_condition": {
+              "type": "pheno:relative_rotation",
+              "max_angle": 90
+            }
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 3,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:cook/pizzaiolo/into_the_oven"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:delay",
+                    "ticks": 20,
+                    "action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:on_fire"
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 6
+                          },
+                          {
+                            "type": "pheno:ignite",
+                            "seconds": 8
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:flame",
+                            "count": 12,
+                            "spread": 0.4
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:damage",
+                    "amount": 6,
+                    "source": "other"
+                  }
+                },
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.4,
+                  "y": 0.35
+                },
+                {
+                  "type": "pheno:change_resource",
+                  "resource": "townstead:char",
+                  "amount": 5,
+                  "on": "origin"
+                }
+              ]
+            },
+            "bientity_condition": {
+              "type": "pheno:relative_rotation",
+              "max_angle": 30
+            }
           }
-        ]
-      }
+        },
+        {
+          "type": "pheno:swing_hand"
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.knockback",
+          "volume": 1.0,
+          "pitch": 0.8
+        }
+      ]
     }
   }
 }

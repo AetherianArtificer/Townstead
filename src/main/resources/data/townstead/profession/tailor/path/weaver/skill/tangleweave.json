@@ -9,22 +9,17 @@
   },
   "cost": 1,
   "requires": [
-    "weave"
+    "spinner"
   ],
   "power": {
     "type": "pheno:trigger",
     "trigger": "when_attack",
     "target": "other",
-    "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:stitch",
-      "min": 50
-    },
     "action": {
       "type": "pheno:apply_effect",
       "effect": "minecraft:slowness",
       "duration": 60,
-      "amplifier": 2
+      "amplifier": 0
     }
   }
 }

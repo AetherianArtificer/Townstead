@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "broomstick"
+    "cats_luck"
   ],
   "power": {
     "type": "pheno:flight_speed",
@@ -17,7 +17,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:hex",
-      "min": 75
+      "min": 25
     }
   }
 }

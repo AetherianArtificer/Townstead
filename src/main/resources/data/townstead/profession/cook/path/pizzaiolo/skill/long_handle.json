@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.long_handle"
+  },
+  "icon": "minecraft:stick",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.long_handle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "long_reach"
+  ]
+}

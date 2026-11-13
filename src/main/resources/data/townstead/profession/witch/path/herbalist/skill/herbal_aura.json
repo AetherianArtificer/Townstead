@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "gather_herbs"
+    "antidote"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:hex",
-      "min": 50
+      "min": 25
     },
     "action": {
       "type": "pheno:area_of_effect",
@@ -29,8 +29,13 @@
       "include_self": true,
       "target": "non_hostile",
       "action": {
-        "type": "pheno:clear_effect",
-        "effect": "minecraft:poison"
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:poison"
+          }
+        ]
       }
     }
   }

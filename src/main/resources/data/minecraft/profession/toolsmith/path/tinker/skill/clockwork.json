@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.clockwork"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.clockwork.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spring_trap"
+  ]
+}

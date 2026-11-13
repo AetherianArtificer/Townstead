@@ -1,0 +1,51 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.trophy"
+  },
+  "icon": "minecraft:skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.trophy.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vow"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_kill",
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:slayer_quarry"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:change_resource",
+          "resource": "townstead:vigil",
+          "amount": 50
+        },
+        {
+          "type": "pheno:change_resource",
+          "resource": "townstead:stamina",
+          "amount": 50
+        },
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:slayer_vow",
+          "duration": 0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.levelup",
+          "volume": 0.7,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

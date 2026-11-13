@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.directed_blast"
+  },
+  "icon": "minecraft:iron_pickaxe",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.directed_blast.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blasting_charge"
+  ]
+}

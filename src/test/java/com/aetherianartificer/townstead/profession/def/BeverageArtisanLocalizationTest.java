@@ -19,8 +19,8 @@ class BeverageArtisanLocalizationTest {
             "career.townstead.beverage_artisan.description",
             "career.townstead.beverage_artisan.path.barista",
             "career.townstead.beverage_artisan.title.barista",
-            "skill.townstead.beverage_artisan.barista.coffee_service",
-            "skill.townstead.beverage_artisan.barista.coffee_service.description");
+            "skill.townstead.beverage_artisan.barista.morning_cup",
+            "skill.townstead.beverage_artisan.barista.morning_cup.description");
 
     @Test
     void beverageArtisanCareerKeysReachClientAndServerSyncedEnglish() {

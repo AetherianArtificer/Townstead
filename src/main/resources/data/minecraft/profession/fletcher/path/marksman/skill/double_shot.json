@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.fletcher.marksman.double_shot.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:marksman_volley",
+  "cost": 2,
+  "skill_group": "townstead:marksman_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 160,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,21 +22,102 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:fire_projectile",
-              "entity": "minecraft:arrow",
-              "speed": 2.5,
-              "inaccuracy": 3.0
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fletcher/marksman/deadeye"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:fire_projectile",
+                "entity": "minecraft:arrow",
+                "speed": 2.5,
+                "inaccuracy": 0.5
+              },
+              {
+                "type": "pheno:fire_projectile",
+                "entity": "minecraft:arrow",
+                "speed": 2.5,
+                "inaccuracy": 0.5
+              },
+              {
+                "type": "pheno:fire_projectile",
+                "entity": "minecraft:arrow",
+                "speed": 2.5,
+                "inaccuracy": 0.5
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:movement",
+                  "movement": "sneaking"
+                },
+                {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:fletcher/marksman/spread"
+                }
+              ]
             },
-            {
-              "type": "pheno:fire_projectile",
-              "entity": "minecraft:arrow",
-              "speed": 2.5,
-              "inaccuracy": 3.0
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:fire_projectile",
+                  "entity": "minecraft:arrow",
+                  "speed": 2.5,
+                  "inaccuracy": 12.0
+                },
+                {
+                  "type": "pheno:fire_projectile",
+                  "entity": "minecraft:arrow",
+                  "speed": 2.5,
+                  "inaccuracy": 12.0
+                },
+                {
+                  "type": "pheno:fire_projectile",
+                  "entity": "minecraft:arrow",
+                  "speed": 2.5,
+                  "inaccuracy": 12.0
+                },
+                {
+                  "type": "pheno:fire_projectile",
+                  "entity": "minecraft:arrow",
+                  "speed": 2.5,
+                  "inaccuracy": 12.0
+                },
+                {
+                  "type": "pheno:fire_projectile",
+                  "entity": "minecraft:arrow",
+                  "speed": 2.5,
+                  "inaccuracy": 12.0
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:fire_projectile",
+                  "entity": "minecraft:arrow",
+                  "speed": 2.5,
+                  "inaccuracy": 3.0
+                },
+                {
+                  "type": "pheno:fire_projectile",
+                  "entity": "minecraft:arrow",
+                  "speed": 2.5,
+                  "inaccuracy": 3.0
+                }
+              ]
             }
-          ]
+          }
         },
         {
           "type": "pheno:play_sound",

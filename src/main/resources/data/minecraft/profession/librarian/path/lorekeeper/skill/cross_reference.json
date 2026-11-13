@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.cross_reference"
+  },
+  "icon": "minecraft:bookshelf",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.cross_reference.description"
+  },
+  "cost": 1,
+  "requires": [
+    "marginalia"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 16,
+      "condition": {
+        "type": "pheno:hostile"
+      }
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 16,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:entity_in_radius",
+          "radius": 6,
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:lorekeeper_identified"
+          }
+        },
+        "if_action": {
+          "type": "pheno:set_flag",
+          "flag": "townstead:lorekeeper_identified",
+          "duration": 6000
+        },
+        "else_action": {
+          "type": "pheno:nothing"
+        }
+      }
+    }
+  }
+}

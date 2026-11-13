@@ -1,0 +1,20 @@
+{
+  "inside": {
+    "interval": 5,
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:slowness",
+          "duration": 30,
+          "amplifier": 4
+        }
+      ]
+    }
+  },
+  "shape": "layer",
+  "color": "#D9A441",
+  "texture": "townstead:haze/jam",
+  "duration": 1200
+}

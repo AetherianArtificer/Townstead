@@ -16,27 +16,16 @@
     "type": "pheno:active_ability",
     "cooldown": 400,
     "slot": 1,
-    "ai_trigger": "when_threatened",
+    "ai_trigger": "never",
     "resource_cost": {
       "resource": "townstead:stamina",
       "amount": 25
     },
     "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:dolphins_grace",
-          "duration": 300,
-          "amplifier": 0
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:speed",
-          "duration": 300,
-          "amplifier": 0
-        }
-      ]
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:dolphins_grace",
+      "duration": 300,
+      "amplifier": 0
     }
   }
 }

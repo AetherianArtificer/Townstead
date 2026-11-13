@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "slow_boil"
+    "bee_friend"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -28,7 +28,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:proof",
-          "min": 50
+          "min": 25
         }
       ]
     },

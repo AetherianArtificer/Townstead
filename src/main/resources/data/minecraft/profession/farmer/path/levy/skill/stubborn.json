@@ -1,0 +1,24 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.stubborn"
+  },
+  "icon": "minecraft:oak_log",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.stubborn.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hamstring"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:grit",
+      "min": 25
+    }
+  }
+}

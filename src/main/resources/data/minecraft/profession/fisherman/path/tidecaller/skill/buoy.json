@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.buoy"
+  },
+  "icon": "minecraft:lily_pad",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.buoy.description"
+  },
+  "cost": 1,
+  "requires": [
+    "deep_breath"
+  ]
+}

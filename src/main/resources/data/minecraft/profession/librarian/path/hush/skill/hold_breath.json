@@ -1,0 +1,73 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.hush.hold_breath"
+  },
+  "icon": "minecraft:glass_bottle",
+  "description": {
+    "translate": "skill.townstead.librarian.hush.hold_breath.description"
+  },
+  "cost": 2,
+  "requires": [
+    "whisper"
+  ],
+  "skill_group": "townstead:hush_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:focus",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:librarian/hush/great_silence"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:focus",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:focus",
+                "amount": -10
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:hush_breath",
+                "duration": 800
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:set_flag",
+            "flag": "townstead:hush_breath",
+            "duration": 400
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.breath",
+          "volume": 0.8,
+          "pitch": 0.8
+        }
+      ]
+    }
+  }
+}

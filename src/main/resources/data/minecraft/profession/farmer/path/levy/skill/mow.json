@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.mow"
+  },
+  "icon": "minecraft:hay_block",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.mow.description"
+  },
+  "cost": 1,
+  "requires": [
+    "clear_ground"
+  ]
+}

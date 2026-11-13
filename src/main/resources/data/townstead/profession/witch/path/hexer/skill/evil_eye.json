@@ -13,12 +13,29 @@
     "trigger": "when_hurt",
     "target": "other",
     "action": {
-      "type": "pheno:invert",
-      "action": {
-        "type": "pheno:change_collection",
-        "collection": "townstead:hexed",
-        "operation": "add"
-      }
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:invert",
+          "action": {
+            "type": "pheno:change_collection",
+            "collection": "townstead:hexed",
+            "operation": "add",
+            "time_limit": 1200
+          }
+        },
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:hexer_hexed",
+          "duration": 1200
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:witch",
+          "count": 6,
+          "spread": 0.4
+        }
+      ]
     }
   }
 }

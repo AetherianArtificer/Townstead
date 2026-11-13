@@ -7,61 +7,919 @@
   "description": {
     "translate": "skill.townstead.fisherman.tidecaller.whirlpool.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
     "undertow"
   ],
-  "skill_group": "townstead:tidecaller_current",
+  "skill_group": "townstead:tidecaller_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:tide",
       "amount": 30
     },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:skill",
+          "skill": "minecraft:fisherman/tidecaller/maelstrom"
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 16,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 8,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fisherman/tidecaller/maelstrom"
+          },
+          "if_action": {
             "type": "pheno:and",
             "actions": [
               {
-                "type": "pheno:add_velocity",
-                "away_from_other": -1.0,
-                "y": 0.0
+                "type": "pheno:delay",
+                "ticks": 0,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 8,
+                      "include_self": false,
+                      "target": "hostile",
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:tidecaller_soaked",
+                            "duration": 200
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.generic.splash",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:splash",
+                          "count": 20,
+                          "spread": 1.2
+                        }
+                      ]
+                    }
+                  ]
+                }
               },
               {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:slowness",
-                "duration": 100,
-                "amplifier": 1
+                "type": "pheno:delay",
+                "ticks": 20,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 8,
+                      "include_self": false,
+                      "target": "hostile",
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:tidecaller_soaked",
+                            "duration": 200
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.generic.splash",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:splash",
+                          "count": 20,
+                          "spread": 1.2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 40,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 8,
+                      "include_self": false,
+                      "target": "hostile",
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:tidecaller_soaked",
+                            "duration": 200
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.generic.splash",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:splash",
+                          "count": 20,
+                          "spread": 1.2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 60,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 8,
+                      "include_self": false,
+                      "target": "hostile",
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:tidecaller_soaked",
+                            "duration": 200
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.generic.splash",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:splash",
+                          "count": 20,
+                          "spread": 1.2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 80,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 8,
+                      "include_self": false,
+                      "target": "hostile",
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:tidecaller_soaked",
+                            "duration": 200
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.generic.splash",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:splash",
+                          "count": 20,
+                          "spread": 1.2
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 100,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 8,
+                      "include_self": false,
+                      "target": "hostile",
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:tidecaller_soaked",
+                            "duration": 200
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.generic.splash",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:splash",
+                          "count": 20,
+                          "spread": 1.2
+                        }
+                      ]
+                    }
+                  ]
+                }
               }
             ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:hostile"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:delay",
+                  "ticks": 0,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 6,
+                        "include_self": false,
+                        "target": "all",
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:not",
+                            "condition": {
+                              "type": "pheno:entity_type",
+                              "entity_type": "minecraft:player"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:bubble_pop",
+                        "count": 20,
+                        "spread": 2.0
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:entity.generic.splash",
+                            "volume": 1.0,
+                            "pitch": 1.0
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:splash",
+                            "count": 20,
+                            "spread": 1.2
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 20,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 6,
+                        "include_self": false,
+                        "target": "all",
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:not",
+                            "condition": {
+                              "type": "pheno:entity_type",
+                              "entity_type": "minecraft:player"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:bubble_pop",
+                        "count": 20,
+                        "spread": 2.0
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:entity.generic.splash",
+                            "volume": 1.0,
+                            "pitch": 1.0
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:splash",
+                            "count": 20,
+                            "spread": 1.2
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 40,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 6,
+                        "include_self": false,
+                        "target": "all",
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:not",
+                            "condition": {
+                              "type": "pheno:entity_type",
+                              "entity_type": "minecraft:player"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:bubble_pop",
+                        "count": 20,
+                        "spread": 2.0
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:entity.generic.splash",
+                            "volume": 1.0,
+                            "pitch": 1.0
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:splash",
+                            "count": 20,
+                            "spread": 1.2
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 60,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 6,
+                        "include_self": false,
+                        "target": "all",
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:not",
+                            "condition": {
+                              "type": "pheno:entity_type",
+                              "entity_type": "minecraft:player"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:bubble_pop",
+                        "count": 20,
+                        "spread": 2.0
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:entity.generic.splash",
+                            "volume": 1.0,
+                            "pitch": 1.0
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:splash",
+                            "count": 20,
+                            "spread": 1.2
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 80,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 6,
+                        "include_self": false,
+                        "target": "all",
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:not",
+                            "condition": {
+                              "type": "pheno:entity_type",
+                              "entity_type": "minecraft:player"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:bubble_pop",
+                        "count": 20,
+                        "spread": 2.0
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:entity.generic.splash",
+                            "volume": 1.0,
+                            "pitch": 1.0
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:splash",
+                            "count": 20,
+                            "spread": 1.2
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 100,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 6,
+                        "include_self": false,
+                        "target": "all",
+                        "action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:not",
+                            "condition": {
+                              "type": "pheno:entity_type",
+                              "entity_type": "minecraft:player"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:add_velocity",
+                                "away_from_other": -0.9,
+                                "y": 0.05
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:slowness",
+                                "duration": 30,
+                                "amplifier": 1
+                              },
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:nausea",
+                                "duration": 60,
+                                "amplifier": 0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:bubble_pop",
+                        "count": 20,
+                        "spread": 2.0
+                      },
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:play_sound",
+                            "sound": "minecraft:entity.generic.splash",
+                            "volume": 1.0,
+                            "pitch": 1.0
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:splash",
+                            "count": 20,
+                            "spread": 1.2
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 16
+            }
           }
         },
         {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:play_sound",
-              "sound": "minecraft:entity.generic.splash",
-              "volume": 1.0,
-              "pitch": 1.0
-            },
-            {
-              "type": "pheno:spawn_particles",
-              "particle": "minecraft:splash",
-              "count": 20,
-              "spread": 1.2
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fisherman/tidecaller/riptide"
+          },
+          "if_action": {
+            "type": "pheno:dash",
+            "distance": 6,
+            "ticks": 6,
+            "max_hits": 1,
+            "stop_on_hit": true,
+            "hit_radius": 1.0,
+            "on_hit": {
+              "type": "pheno:damage",
+              "amount": 4,
+              "source": "other"
             }
-          ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.bubble_column.whirlpool_inside",
+          "volume": 1.0,
+          "pitch": 0.8
         }
       ]
     }

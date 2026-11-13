@@ -16,7 +16,7 @@
   "icon": "minecraft:campfire",
   "skills": [
     "weathered",
-    "barometer"
+    "forecast"
   ],
   "unlock_model": "experiential"
 }

@@ -9,6 +9,49 @@
   "color": "#C8A04A",
   "powers": [
     {
+      "type": "pheno:trigger",
+      "trigger": "when_attack",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:weaponsmith",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:equipped_item",
+            "slot": "mainhand",
+            "item_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:swords"
+                },
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:axes"
+                }
+              ]
+            }
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:flag",
+              "flag": "townstead:honer_sharpened"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:edge",
+        "amount": 3
+      }
+    },
+    {
       "type": "pheno:action_over_time",
       "interval": 20,
       "resource_cost": {
@@ -19,47 +62,36 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:weaponsmith/honer/sharpening"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:weaponsmith/honer/tempered_blade"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:weaponsmith/honer/arm_the_village"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:weaponsmith",
+            "at_least": 80
           },
           {
             "type": "pheno:and",
             "conditions": [
               {
-                "type": "pheno:equipped_item",
-                "slot": "mainhand",
-                "item_condition": {
-                  "type": "or",
-                  "conditions": [
-                    {
-                      "type": "ingredient",
-                      "tag": "minecraft:swords"
-                    },
-                    {
-                      "type": "ingredient",
-                      "tag": "minecraft:axes"
-                    }
-                  ]
+                "type": "pheno:block_in_radius",
+                "radius": 3,
+                "block_condition": {
+                  "type": "pheno:block",
+                  "block": "minecraft:grindstone"
                 }
               },
               {
-                "type": "pheno:entity_in_radius",
-                "radius": 8,
-                "condition": {
-                  "type": "pheno:hostile"
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "minecraft:swords"
+                    },
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "minecraft:axes"
+                    }
+                  ]
                 }
               }
             ]
@@ -71,33 +103,96 @@
         "resource": "townstead:edge",
         "amount": 1
       }
+    },
+    {
+      "type": "pheno:modifier",
+      "target": "damage_dealt",
+      "operation": "add",
+      "value": 2.0,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:honer_whetted"
+          },
+          {
+            "type": "pheno:equipped_item",
+            "slot": "mainhand",
+            "item_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:swords"
+                },
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:axes"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "pheno:particle",
+      "particle": "minecraft:electric_spark",
+      "count": 1,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:honer_whetted"
+          },
+          {
+            "type": "pheno:equipped_item",
+            "slot": "mainhand",
+            "item_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:swords"
+                },
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:axes"
+                }
+              ]
+            }
+          }
+        ]
+      }
     }
   ],
   "skills": [
     [
       "honed_edge",
-      "quick_hone",
+      "field_forge",
       "sharpen_arms"
     ],
     [
       "keep_it_keen",
-      "keen_strike",
-      "field_forge"
-    ],
-    [
-      "sharpening",
-      "tempered_blade",
-      "arm_the_village"
-    ],
-    [
-      "building_edge",
-      "armor_breaker",
+      "fit_the_grip",
       "warband"
     ],
     [
+      "building_edge",
+      "whet",
+      "keen_strike"
+    ],
+    [
+      "edge_alignment",
+      "share_the_stone",
+      "armor_breaker"
+    ],
+    [
       "razor",
-      "perfect_edge",
-      "masterforged"
+      "masterforged",
+      "perfect_edge"
     ]
   ]
 }

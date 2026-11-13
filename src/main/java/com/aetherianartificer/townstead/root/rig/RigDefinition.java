@@ -112,8 +112,37 @@ public record RigDefinition(
         // Path swaps applied to a worn MCA skin when this body draws it ({"/normal/": "/zombie/"}): MCA's
         // outfit list holds only ordinary clothes, and its zombies draw each one's zombie counterpart.
         // A swap whose texture doesn't exist draws the original. Empty = drawn as worn.
-        Map<String, String> skinRemap
+        Map<String, String> skinRemap,
+        // Where each humanoid part (head, body, right_arm, left_arm, right_leg, left_leg) sits on this body
+        // while another mod's render layer draws on the player model (cyberware, worn gear): each entry
+        // re-poses that host part onto a rig bone plus a nudge. A part may list several placements (an arm on
+        // each front leg of a spider), and the layer then draws once per placement. A part left out is hidden
+        // for those layers, so an empty fit hides them all (an egg). Null = not declared: other mods' layers
+        // draw as they would.
+        @Nullable Map<String, List<Fit>> fit
 ) {
+    /** A rig with no fit for other mods' layers. */
+    public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
+                         Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,
+                         Face face, WornAnchor back, WornAnchor head, List<Boot> boots, Hold hold, boolean hair,
+                         Map<String, PoseState> poses, @Nullable Hitbox hitbox, Set<EquipmentSlot> disabledSlots,
+                         @Nullable String cameraBone, @Nullable EmoteMap emote, @Nullable Animation animation, String modelClass,
+                         float cameraHeightOffset, List<Overlay> overlays, List<String> skinParts,
+                         Set<EquipmentSlot> hiddenSlots, @Nullable List<Collider> colliders, Map<String, String> skinRemap) {
+        this(id, modelType, modelRef, modelLayer, texture, bones, armorType, armorInner, armorOuter, face, back, head,
+                boots, hold, hair, poses, hitbox, disabledSlots, cameraBone, emote, animation, modelClass,
+                cameraHeightOffset, overlays, skinParts, hiddenSlots, colliders, skinRemap, null);
+    }
+
+    /**
+     * One humanoid part placed on this body for other mods' layers: onto {@code bone} (empty = the
+     * part's own channel through {@link #boneFor}), then nudged by {@code adjust} in the bone's frame.
+     */
+    public record Fit(String bone, Adjust adjust) {}
+
+    /** The humanoid parts other mods' layers may draw on. */
+    public static final List<String> FIT_PARTS =
+            List.of("head", "body", "right_arm", "left_arm", "right_leg", "left_leg");
     /** A rig that draws worn skins as they are. */
     public RigDefinition(String id, ModelType modelType, String modelRef, String modelLayer, String texture,
                          Map<String, String> bones, ArmorType armorType, String armorInner, String armorOuter,

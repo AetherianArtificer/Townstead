@@ -22,11 +22,6 @@
       "type": "pheno:and",
       "conditions": [
         {
-          "type": "pheno:resource",
-          "resource": "townstead:knack",
-          "min": 75
-        },
-        {
           "type": "pheno:and",
           "conditions": [
             {
@@ -48,6 +43,11 @@
               }
             }
           ]
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:knack",
+          "min": 50
         }
       ]
     },

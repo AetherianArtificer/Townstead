@@ -9,29 +9,38 @@
   },
   "cost": 1,
   "requires": [
-    "fitting"
+    "fitted"
   ],
   "power": {
     "type": "pheno:action_over_time",
-    "interval": 20,
+    "interval": 40,
     "resource_cost": {
       "resource": "townstead:stitch",
       "amount": 0
     },
     "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:stitch",
-      "min": 50
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:stitch",
+          "min": 25
+        },
+        {
+          "type": "pheno:wearing_cosmetic",
+          "slot": "head"
+        }
+      ]
     },
     "action": {
       "type": "pheno:area_of_effect",
-      "radius": 8,
-      "include_self": true,
-      "target": "non_hostile",
+      "radius": 4,
+      "include_self": false,
+      "target": "hostile",
       "action": {
         "type": "pheno:apply_effect",
-        "effect": "minecraft:speed",
-        "duration": 30,
+        "effect": "minecraft:weakness",
+        "duration": 60,
         "amplifier": 0
       }
     }

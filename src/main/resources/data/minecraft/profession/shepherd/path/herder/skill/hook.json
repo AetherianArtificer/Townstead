@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.hook"
+  },
+  "icon": "minecraft:stick",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.hook.description"
+  },
+  "cost": 1,
+  "requires": [
+    "crook_swing"
+  ]
+}

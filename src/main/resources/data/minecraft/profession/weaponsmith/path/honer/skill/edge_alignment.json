@@ -1,0 +1,38 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.edge_alignment"
+  },
+  "icon": "minecraft:flint",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.edge_alignment.description"
+  },
+  "cost": 1,
+  "requires": [
+    "building_edge"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "durability_loss",
+    "operation": "multiply",
+    "value": 0.25,
+    "item_condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:ingredient",
+          "tag": "minecraft:swords"
+        },
+        {
+          "type": "pheno:ingredient",
+          "tag": "minecraft:axes"
+        }
+      ]
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:edge",
+      "min": 25
+    }
+  }
+}

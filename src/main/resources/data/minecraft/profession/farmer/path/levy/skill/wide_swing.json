@@ -9,29 +9,40 @@
   },
   "cost": 1,
   "requires": [
-    "toil"
+    "calloused_hands"
   ],
   "power": {
     "type": "pheno:trigger",
     "trigger": "when_work",
-    "verbs": ["townstead:harvested"],
+    "verbs": [
+      "townstead:harvested"
+    ],
     "condition": {
       "type": "pheno:or",
       "conditions": [
         {
           "type": "pheno:not",
-          "condition": { "type": "pheno:entity_type", "entity_type": "minecraft:player" }
+          "condition": {
+            "type": "pheno:entity_type",
+            "entity_type": "minecraft:player"
+          }
         },
         {
           "type": "pheno:equipped_item",
           "slot": "mainhand",
-          "item_condition": { "type": "ingredient", "tag": "minecraft:hoes" }
+          "item_condition": {
+            "type": "ingredient",
+            "tag": "minecraft:hoes"
+          }
         }
       ]
     },
     "action": {
       "type": "pheno:if_else",
-      "condition": { "type": "pheno:entity_type", "entity_type": "minecraft:player" },
+      "condition": {
+        "type": "pheno:entity_type",
+        "entity_type": "minecraft:player"
+      },
       "if_action": {
         "type": "pheno:at",
         "blocks": [
@@ -41,8 +52,16 @@
             "where": {
               "type": "pheno:and",
               "conditions": [
-                { "type": "pheno:mature" },
-                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } }
+                {
+                  "type": "pheno:mature"
+                },
+                {
+                  "type": "pheno:offset",
+                  "y": -1,
+                  "condition": {
+                    "type": "pheno:farmland"
+                  }
+                }
               ]
             }
           },
@@ -52,13 +71,24 @@
             "where": {
               "type": "pheno:and",
               "conditions": [
-                { "type": "pheno:mature" },
-                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } }
+                {
+                  "type": "pheno:mature"
+                },
+                {
+                  "type": "pheno:offset",
+                  "y": -1,
+                  "condition": {
+                    "type": "pheno:farmland"
+                  }
+                }
               ]
             }
           }
         ],
-        "do": { "type": "pheno:destroy", "collect": true }
+        "do": {
+          "type": "pheno:destroy",
+          "collect": true
+        }
       },
       "else_action": {
         "type": "pheno:at",
@@ -69,9 +99,20 @@
             "where": {
               "type": "pheno:and",
               "conditions": [
-                { "type": "pheno:mature" },
-                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } },
-                { "type": "pheno:in_work_area", "area": "townstead:field_post" }
+                {
+                  "type": "pheno:mature"
+                },
+                {
+                  "type": "pheno:offset",
+                  "y": -1,
+                  "condition": {
+                    "type": "pheno:farmland"
+                  }
+                },
+                {
+                  "type": "pheno:in_work_area",
+                  "area": "townstead:field_post"
+                }
               ]
             }
           },
@@ -81,14 +122,28 @@
             "where": {
               "type": "pheno:and",
               "conditions": [
-                { "type": "pheno:mature" },
-                { "type": "pheno:offset", "y": -1, "condition": { "type": "pheno:farmland" } },
-                { "type": "pheno:in_work_area", "area": "townstead:field_post" }
+                {
+                  "type": "pheno:mature"
+                },
+                {
+                  "type": "pheno:offset",
+                  "y": -1,
+                  "condition": {
+                    "type": "pheno:farmland"
+                  }
+                },
+                {
+                  "type": "pheno:in_work_area",
+                  "area": "townstead:field_post"
+                }
               ]
             }
           }
         ],
-        "do": { "type": "pheno:destroy", "collect": true }
+        "do": {
+          "type": "pheno:destroy",
+          "collect": true
+        }
       }
     }
   }

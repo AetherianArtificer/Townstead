@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.cast_iron"
+  },
+  "icon": "minecraft:iron_chestplate",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.cast_iron.description"
+  },
+  "cost": 2,
+  "requires": [
+    "slippery"
+  ]
+}

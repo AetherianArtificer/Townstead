@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.timber"
+  },
+  "icon": "minecraft:oak_log",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.timber.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fell"
+  ]
+}

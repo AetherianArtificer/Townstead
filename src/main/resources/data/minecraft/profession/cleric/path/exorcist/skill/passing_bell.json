@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.passing_bell"
+  },
+  "icon": "minecraft:soul_lantern",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.passing_bell.description"
+  },
+  "cost": 1,
+  "requires": [
+    "toll_the_bell"
+  ]
+}

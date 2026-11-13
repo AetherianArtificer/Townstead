@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.sparklers"
+  },
+  "icon": "minecraft:firework_star",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.sparklers.description"
+  },
+  "cost": 1,
+  "requires": [
+    "piping"
+  ]
+}

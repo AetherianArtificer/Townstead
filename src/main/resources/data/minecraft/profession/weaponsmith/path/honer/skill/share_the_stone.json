@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.share_the_stone"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.share_the_stone.description"
+  },
+  "cost": 1,
+  "requires": [
+    "whet"
+  ]
+}

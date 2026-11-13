@@ -26,15 +26,18 @@ public final class Wards {
 
     public record Spec(String id, float fraction, int durationTicks,
                        @Nullable DamageCondition damageCondition,
-                       @Nullable Action onAbsorb, @Nullable Action onBreak) {}
+                       @Nullable Action onAbsorb, @Nullable Action onBreak, @Nullable Action onEnd) {}
 
     private static final class Ward {
         final Spec spec;
         final long expiresAt;
+        final java.lang.ref.WeakReference<LivingEntity> caster;
         float remaining;
+        float spared;
 
-        Ward(Spec spec, long now, float budget) {
+        Ward(Spec spec, long now, float budget, @Nullable LivingEntity caster) {
             this.spec = spec;
+            this.caster = new java.lang.ref.WeakReference<>(caster);
             this.expiresAt = now + spec.durationTicks();
             this.remaining = budget;
         }
@@ -46,10 +49,15 @@ public final class Wards {
 
     /** Place {@code spec} on {@code entity} with {@code budget} health of protection. */
     public static void place(LivingEntity entity, Spec spec, float budget) {
+        place(entity, spec, budget, null);
+    }
+
+    /** As {@link #place(LivingEntity, Spec, float)}; the ward's reactions see {@code caster} as the origin. */
+    public static void place(LivingEntity entity, Spec spec, float budget, @Nullable LivingEntity caster) {
         if (entity.level().isClientSide || budget <= 0f || spec.durationTicks() <= 0) return;
         List<Ward> wards = WARDS.computeIfAbsent(entity, e -> new ArrayList<>());
         wards.removeIf(w -> w.spec.id().equals(spec.id()));
-        wards.add(new Ward(spec, entity.level().getGameTime(), budget));
+        wards.add(new Ward(spec, entity.level().getGameTime(), budget, caster));
     }
 
     /** Remove {@code id}, or every ward when {@code id} is null. */
@@ -78,7 +86,17 @@ public final class Wards {
         List<Ward> wards = WARDS.get(victim);
         if (wards == null || wards.isEmpty() || amount <= 0f) return amount;
         long now = victim.level().getGameTime();
-        wards.removeIf(w -> w.expiresAt <= now || w.remaining <= 0f);
+        expire(victim, wards, now);
+        wards.removeIf(w -> w.remaining <= 0f);
+        // A ward with fraction 0 spares nothing. It only reacts, on every matching hit, whichever
+        // ward spares that hit.
+        LivingEntity striker = source.getEntity() instanceof LivingEntity le ? le : null;
+        for (Ward w : new ArrayList<>(wards)) {
+            if (w.spec.fraction() > 0f || w.spec.onAbsorb() == null) continue;
+            if (w.spec.damageCondition() != null && !w.spec.damageCondition().test(source, amount)) continue;
+            PhenoEvent.during(new PhenoEvent.Frame(amount, source, ItemStack.EMPTY),
+                    () -> w.spec.onAbsorb().run(context(victim, striker, w)));
+        }
         List<Candidate> candidates = new ArrayList<>(wards.size());
         for (Ward w : wards) {
             boolean eligible = w.spec.damageCondition() == null || w.spec.damageCondition().test(source, amount);
@@ -89,13 +107,14 @@ public final class Wards {
         Ward best = wards.get(chosen);
         float bestSpared = candidates.get(chosen).spares(amount);
         best.remaining -= bestSpared;
+        best.spared += bestSpared;
         if (best.remaining <= 0f) wards.remove(best);
         LivingEntity attacker = source.getEntity() instanceof LivingEntity le ? le : null;
         Ward ward = best;
         PhenoEvent.during(new PhenoEvent.Frame(bestSpared, source, ItemStack.EMPTY), () -> {
-            if (ward.spec.onAbsorb() != null) ward.spec.onAbsorb().run(new ActionContext(victim, attacker));
+            if (ward.spec.onAbsorb() != null) ward.spec.onAbsorb().run(context(victim, attacker, ward));
             if (ward.remaining <= 0f && ward.spec.onBreak() != null) {
-                ward.spec.onBreak().run(new ActionContext(victim, attacker));
+                ward.spec.onBreak().run(context(victim, attacker, ward));
             }
         });
         return amount - bestSpared;
@@ -126,12 +145,35 @@ public final class Wards {
     public static void tick(LivingEntity entity) {
         List<Ward> wards = WARDS.get(entity);
         if (wards == null) return;
-        long now = entity.level().getGameTime();
-        wards.removeIf(w -> w.expiresAt <= now);
+        expire(entity, wards, entity.level().getGameTime());
         if (wards.isEmpty()) WARDS.remove(entity);
+    }
+
+    private static ActionContext context(LivingEntity wearer, @Nullable LivingEntity attacker, Ward ward) {
+        LivingEntity caster = ward.caster.get();
+        return new ActionContext(wearer, attacker, caster != null && caster.isAlive() ? caster : wearer);
+    }
+
+    /** Drops wards whose time is up. {@code on_end} runs with the total the ward spared as the event damage. */
+    private static void expire(LivingEntity wearer, List<Ward> wards, long now) {
+        List<Ward> ended = null;
+        for (Ward w : wards) {
+            if (w.expiresAt > now) continue;
+            if (ended == null) ended = new ArrayList<>();
+            ended.add(w);
+        }
+        if (ended == null) return;
+        wards.removeAll(ended);
+        for (Ward w : ended) {
+            if (w.spec.onEnd() == null || w.remaining <= 0f || !wearer.isAlive()) continue;
+            PhenoEvent.during(new PhenoEvent.Frame(w.spared, null, ItemStack.EMPTY),
+                    () -> w.spec.onEnd().run(context(wearer, null, w)));
+        }
     }
 
     public static void clearAll() {
         WARDS.clear();
+        Guards.clearAll();
+        Fears.clearAll();
     }
 }

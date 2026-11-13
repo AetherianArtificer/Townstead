@@ -1,0 +1,72 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.blood_trail"
+  },
+  "icon": "minecraft:redstone",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.blood_trail.description"
+  },
+  "cost": 2,
+  "requires": [
+    "lodge"
+  ],
+  "skill_group": "townstead:cleaver_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:cut",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:cleaver_trail",
+          "duration": 600
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/cleaver/slaughterhouse"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:cut",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:cut",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.wolf.growl",
+          "volume": 0.7,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:falling_dripstone_lava",
+          "count": 12,
+          "spread": 0.6
+        }
+      ]
+    }
+  }
+}

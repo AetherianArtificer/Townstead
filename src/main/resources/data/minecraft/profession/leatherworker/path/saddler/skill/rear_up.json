@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.saddler.rear_up"
+  },
+  "icon": "minecraft:saddle",
+  "description": {
+    "translate": "skill.townstead.leatherworker.saddler.rear_up.description"
+  },
+  "cost": 1,
+  "requires": [
+    "barding"
+  ]
+}
