@@ -36,6 +36,11 @@ public final class BodyValues {
     private static final List<Source> SOURCES = new ArrayList<>();
     private static final Map<LivingEntity, Map<String, Float>> SENT = java.util.Collections.synchronizedMap(new WeakHashMap<>());
     private static final Map<Integer, Map<String, Float>> CLIENT = new ConcurrentHashMap<>();
+    // What a client shows: each value eases toward the last one received, since they arrive in steps a few
+    // ticks apart and a sac that swells in steps looks like it's bouncing. Value, then when it was last eased.
+    private static final Map<Integer, Map<String, double[]>> SHOWN = new ConcurrentHashMap<>();
+    // How fast a shown value catches up, in seconds to close most of the gap.
+    private static final double EASE_SECONDS = 0.18;
 
     static {
         register(BodyValues::wornResources);
@@ -56,10 +61,23 @@ public final class BodyValues {
         if (entity.level().isClientSide) {
             Map<String, Float> values = CLIENT.get(entity.getId());
             Float value = values == null ? null : values.get(key);
-            return value == null ? fallback : value;
+            return value == null ? fallback : eased(entity.getId(), key, value);
         }
         Float value = current(entity).get(key);
         return value == null ? fallback : value;
+    }
+
+    /** The value a client shows for this key: easing from what it showed toward {@code target}. */
+    private static float eased(int entityId, String key, float target) {
+        double[] shown = SHOWN.computeIfAbsent(entityId, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(key, k -> new double[]{target, System.nanoTime()});
+        long now = System.nanoTime();
+        double seconds = Math.max(0.0, (now - shown[1]) / 1e9);
+        shown[1] = now;
+        // Long unseen, it just takes the value: nobody watched it get there.
+        if (seconds > 1.0) shown[0] = target;
+        else shown[0] += (target - shown[0]) * (1.0 - Math.exp(-seconds / EASE_SECONDS));
+        return (float) shown[0];
     }
 
     /** Every value last received for an entity, or null. Client only. */
@@ -79,6 +97,7 @@ public final class BodyValues {
         BodyPose.tickClips(entity);
         BodyPoseSim.tick(entity);
         if (entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager) BodyFit.tick(villager);
+        SoftBodies.tick(entity);
         // A part that folds can't stay spread in flight where it no longer fits.
         if (entity.isFallFlying() && BodyVolumes.folded(entity)) {
             if (entity instanceof net.minecraft.world.entity.player.Player player) player.stopFallFlying();
@@ -111,13 +130,17 @@ public final class BodyValues {
     }
 
     public static void receive(int entityId, Map<String, Float> values) {
-        if (values.isEmpty()) CLIENT.remove(entityId);
+        if (values.isEmpty()) {
+            CLIENT.remove(entityId);
+            SHOWN.remove(entityId);
+        }
         else CLIENT.put(entityId, values);
     }
 
     /** Forgets everything received; the ids mean nothing in the next world. */
     public static void clear() {
         CLIENT.clear();
+        SHOWN.clear();
     }
 
     private static Map<String, Float> current(LivingEntity entity) {

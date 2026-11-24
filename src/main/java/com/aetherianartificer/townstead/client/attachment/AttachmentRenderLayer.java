@@ -59,6 +59,12 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
         if (fade <= 0f) return;
         int fadeAlpha = Math.round(fade * 255f);
         List<Expressed> attachments = resolve(entity);
+        // See-through parts last: they don't write depth, so anything drawn after them would show on top even
+        // from behind (an ear through a clear sac). Drawn last, they blend over what's already there instead.
+        if (attachments.size() > 1) {
+            attachments = new ArrayList<>(attachments);
+            attachments.sort(java.util.Comparator.comparingInt(e -> e.def().opacity() < 1f ? 1 : 0));
+        }
         // Bench Link: a capture request or the held tool also needs bones and points drawn
         // or recorded on entities that wear no attachments.
         BenchAnchorCapture.Frame bench = BenchAnchorCapture.wants(entity.getId())
@@ -135,7 +141,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
             // One attachment can fill several points (a tag matching both ears), so render an
             // instance at each resolved anchor. A mirror point renders the mirrored re-bake.
             List<Anchor> anchors = anchorsFor(def, RigModels.rigBaseFor(entity));
-            if (colliders == null && !def.physics().isEmpty()) {
+            if (colliders == null && (!def.physics().isEmpty() || def.body().soft() != null)) {
                 colliders = AttachmentColliders.gather(entity, pose, bones);
                 if (gizmos) AttachmentColliders.draw(entity, pose, buffers, colliders);
             }
@@ -232,12 +238,38 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                         : applyBoneOffsets(geo, animSample.positions(), anchor.mirror());
                 List<SavedScale> scaled = animSample == null ? List.of()
                         : applyBoneScales(geo, animSample.scales());
+                // Chains rest against the body and against any soft part it wears (ears on a swollen sac).
+                List<com.aetherianartificer.townstead.root.attachment.ChainSim.Capsule> chainColliders =
+                        colliders == null ? List.of() : colliders;
+                if (!def.physics().isEmpty()) {
+                    List<com.aetherianartificer.townstead.root.attachment.ChainSim.Capsule> soft = SoftLook.capsules(entity);
+                    if (!soft.isEmpty()) {
+                        chainColliders = new ArrayList<>(chainColliders);
+                        chainColliders.addAll(soft);
+                    }
+                }
                 List<AttachmentGeo.Bone> simulated = AttachmentPhysics.apply(entity, def, anchorIndex, geo,
-                        pose.last().pose(), partialTick, limbSwing, limbSwingAmount,
-                        colliders == null ? List.of() : colliders);
+                        pose.last().pose(), partialTick, limbSwing, limbSwingAmount, chainColliders);
                 if (gizmos && !simulated.isEmpty()) AttachmentPhysics.drawGizmos(entity, def, anchorIndex, pose, buffers);
                 LiveBoxes.capture(entity, def, activeSha, anchorIndex, anchors.size(), geo, pose.last().pose());
-                VertexConsumer buffer = buffers.getBuffer(renderType);
+                // A soft part squashes, sags and wobbles as drawn: every draw of it below is bent the same.
+                // A soft part gives way around the body and around the chains it wears (ears pressed on a sac).
+                List<com.aetherianartificer.townstead.root.attachment.ChainSim.Capsule> softBodies =
+                        colliders == null ? List.of() : colliders;
+                if (def.body().soft() != null) {
+                    List<com.aetherianartificer.townstead.root.attachment.ChainSim.Capsule> chains =
+                            AttachmentPhysics.capsules(entity, def.id());
+                    if (!chains.isEmpty()) {
+                        softBodies = new ArrayList<>(softBodies);
+                        softBodies.addAll(chains);
+                    }
+                }
+                AttachmentGeo.deformer(SoftLook.prepare(entity, def, anchorIndex, geo, pose.last().pose(), partialTick,
+                        softBodies));
+                // A see-through part waits for the pass after every solid thing, unless this is a menu preview.
+                VertexConsumer buffer = def.opacity() < 1f
+                        ? SeeThroughPass.consumer(renderType, drawTexture, buffers, inWorld(entity))
+                        : buffers.getBuffer(renderType);
                 geo.render(pose, buffer, light, OverlayTexture.NO_OVERLAY, (drawAlpha << 24) | vertexTint);
                 for (int s = 0; falling && s < splits; s++) {
                     int piece = anchorIndex * splits + s;
@@ -261,6 +293,7 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
                             light, OverlayTexture.NO_OVERLAY, (fadeAlpha << 24) | 0xFFFFFF);
                 }
                 if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnPart(entity, geo, def.id(), anchorIndex, geo::render, texture, pose, buffers, light, fadeAlpha);
+                AttachmentGeo.deformer(null);
                 for (AttachmentGeo.Bone simulatedBone : simulated) simulatedBone.physicsRotation = null;
                 for (SavedScale savedScale : scaled) savedScale.restore();
                 for (SavedOffset savedOffset : offset) savedOffset.restore();
@@ -570,6 +603,12 @@ public class AttachmentRenderLayer<T extends LivingEntity, M extends HumanoidMod
 
     /** The attachment defs the entity expresses (per-entity set first, origin grant list as fallback). */
     /** The definitions this entity wears right now, as the render pass resolves them. */
+    /** Whether this draw is of a body in the world, not a preview in a menu (which draws far larger). */
+    private static boolean inWorld(LivingEntity entity) {
+        org.joml.Matrix4f root = EntityRootFrames.rootFor(entity);
+        return root != null && root.getScale(new org.joml.Vector3f()).x <= 1.5f;
+    }
+
     public static List<AttachmentDef> worn(LivingEntity entity) {
         List<AttachmentDef> out = new ArrayList<>();
         for (Expressed expressed : resolve(entity)) out.add(expressed.def());

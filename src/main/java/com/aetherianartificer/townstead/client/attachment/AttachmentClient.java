@@ -84,6 +84,7 @@ public final class AttachmentClient {
         NAMED_ANIM.clear();
         AttachmentPoses.onManifest();
         AttachmentPhysics.onManifest();
+        SoftLook.onManifest();
         AttachmentAnimations.onManifest();
         manifests++;
         for (AttachmentDef def : defs) DEFS.put(def.id(), def);

@@ -219,8 +219,30 @@ public final class AttachmentPhysics {
         }
     }
 
+    /**
+     * Where this body's chains (ears, hair, tails) are as last simulated, as capsules from its feet in world
+     * axes, for soft parts to give way around. Leaves out the chains of {@code except}.
+     */
+    public static List<ChainSim.Capsule> capsules(LivingEntity entity, String except) {
+        EntityState entityState = STATES.get(entity.getId());
+        if (entityState == null) return List.of();
+        List<ChainSim.Capsule> out = new ArrayList<>();
+        for (Map.Entry<String, ChainSetState> entry : entityState.anchors.entrySet()) {
+            if (entry.getKey().endsWith("@gui") || entry.getKey().startsWith(except + "#")) continue;
+            for (ChainState chain : entry.getValue().chains) {
+                if (!chain.ready || chain.pos == null) continue;
+                for (int i = 0; i < chain.n; i++) {
+                    Vector3f from = new Vector3f(i == 0 ? chain.head : chain.pos[i - 1]);
+                    Vector3f to = new Vector3f(chain.pos[i]);
+                    out.add(new ChainSim.Capsule("chain", from, to, chain.halfThickness[i] / 16f));
+                }
+            }
+        }
+        return out;
+    }
+
     /** The configured quality; Reduce Motion caps it at low. */
-    private static PhysicsQuality quality() {
+    static PhysicsQuality quality() {
         PhysicsQuality quality;
         try {
             quality = TownsteadConfig.ATTACHMENT_PHYSICS.get();

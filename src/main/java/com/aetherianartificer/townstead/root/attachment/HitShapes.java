@@ -102,9 +102,9 @@ public final class HitShapes {
             Map<String, float[]> measured = clientMeasured.apply(entity);
             if (measured != null) {
                 float[] flat = measured.get(def.id());
-                return flat == null ? List.of() : unflatten(flat, 0.0, true);
+                return flat == null ? List.of() : soften(entity, def, unflatten(flat, 0.0, true));
             }
-            return unflatten(BodyPose.measure(entity, def), margin(def), true);
+            return soften(entity, def, unflatten(BodyPose.measure(entity, def), margin(def), true));
         }
         long tick = entity.level().getGameTime();
         Solved solved = SOLVED.get(entity);
@@ -112,7 +112,21 @@ public final class HitShapes {
             solved = new Solved(tick);
             SOLVED.put(entity, solved);
         }
-        return solved.byDef.computeIfAbsent(def.id(), id -> unflatten(BodyPose.measure(entity, def), margin(def), true));
+        return solved.byDef.computeIfAbsent(def.id(), id -> soften(entity, def, unflatten(BodyPose.measure(entity, def), margin(def), true)));
+    }
+
+    /** A soft part is hit where it is squashed to, not where its model would reach through a wall. */
+    private static List<AABB> soften(LivingEntity entity, AttachmentDef def, List<AABB> boxes) {
+        if (def.body().soft() == null || boxes.isEmpty()) return boxes;
+        SoftBodies.Shape shape = SoftBodies.of(entity, def);
+        if (shape == null) return boxes;
+        List<AABB> out = new ArrayList<>(boxes.size());
+        for (int i = 0; i < boxes.size(); i++) {
+            AABB box = boxes.get(i);
+            AABB lobe = shape.lobe(i);
+            out.add(box == null ? null : lobe != null ? lobe : box);
+        }
+        return out;
     }
 
     /** The pose worked out from data, the one the server judges by. */

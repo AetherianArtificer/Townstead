@@ -27,14 +27,23 @@ import java.util.WeakHashMap;
  */
 public final class BodyVolumes {
 
-    /** One box around its bearer, relative to the feet, and whose definition it came from. */
-    public record Placed(AttachmentDef def, AABB box) {}
+    /**
+     * One box around its bearer, relative to the feet, and whose definition it came from. A {@code soft} box is
+     * a soft part at its least (see {@link SoftBodies}): wedged, it lets the bearer go the way it's pushed.
+     */
+    public record Placed(AttachmentDef def, AABB box, boolean soft) {
+        public Placed(AttachmentDef def, AABB box) {
+            this(def, box, false);
+        }
+    }
 
     private record Cached(int tick, float yaw, List<Placed> blocking, List<Placed> folding, List<Placed> all) {}
 
     private static final Cached EMPTY = new Cached(0, 0f, List.of(), List.of(), List.of());
     // A wedged body still moves, but it's a squeeze.
     private static final double WEDGED_SPEED = 0.25;
+    // How far ahead a wedged soft part looks to judge a move, in blocks: about a tick's walk.
+    private static final double WEDGED_PROBE = 0.2;
     // The server gives way this far on a player's boxes. The client decided the move, and the two sides
     // may differ slightly on the body's turn; vanilla pulls a player back past a quarter block.
     private static final double SERVER_LENIENCE = 0.12;
@@ -52,22 +61,60 @@ public final class BodyVolumes {
         List<Placed> boxes = placed(living).blocking();
         if (boxes.isEmpty()) return move;
         boolean lenient = !living.level().isClientSide && living instanceof Player;
+        Vec3 push = Vec3.ZERO;
+        boolean anySoft = false;
+        for (Placed placed : boxes) anySoft |= placed.soft();
         Vec3 result = move;
+        if (anySoft) {
+            push = SoftBodies.push(living);
+            // A player decides their own moves, so their soft parts push them here, on their own side.
+            if (living instanceof Player player && player.isLocalPlayer() && living.onGround() && softPushOn()) {
+                result = result.add(push);
+            }
+        }
         for (Placed placed : boxes) {
             AABB box = placed.box().move(living.position());
             if (lenient) box = box.deflate(SERVER_LENIENCE);
-            result = throughBox(living, box, result);
+            result = throughBox(living, box, result, placed.soft() ? push : null);
         }
         return result;
     }
 
-    private static Vec3 throughBox(LivingEntity entity, AABB box, Vec3 move) {
+    private static boolean softPushOn() {
+        try {
+            return com.aetherianartificer.townstead.TownsteadConfig.SOFT_PART_PUSH.get();
+        } catch (IllegalStateException notLoaded) {
+            return true;
+        }
+    }
+
+    private static Vec3 throughBox(LivingEntity entity, AABB box, Vec3 move, @org.jetbrains.annotations.Nullable Vec3 push) {
         Level level = entity.level();
         double overlap = overlap(entity, box);
         if (overlap <= 0.0) return Entity.collideBoundingBox(entity, move, box, level, List.of());
+        if (push != null) {
+            // A soft part wedged even at its least lets the body go anywhere that doesn't press it further in,
+            // and always the way it's being pushed, so growing against a wall never traps anyone.
+            // Judged a short step at a time: a long move could jump a thin wall and look like it came out.
+            double probeX = Math.max(-WEDGED_PROBE, Math.min(WEDGED_PROBE, move.x));
+            double probeZ = Math.max(-WEDGED_PROBE, Math.min(WEDGED_PROBE, move.z));
+            boolean xOk = softWedgedMove(move.x * push.x, overlap, overlap(entity, box.move(probeX, 0.0, 0.0)));
+            boolean zOk = softWedgedMove(move.z * push.z, overlap, overlap(entity, box.move(0.0, 0.0, probeZ)));
+            return new Vec3(xOk ? move.x : 0.0, move.y, zOk ? move.z : 0.0);
+        }
         double x = VolumePlacement.wedgedMoveAllowed(overlap, overlap(entity, box.move(move.x, 0.0, 0.0))) ? move.x * WEDGED_SPEED : 0.0;
         double z = VolumePlacement.wedgedMoveAllowed(overlap, overlap(entity, box.move(0.0, 0.0, move.z))) ? move.z * WEDGED_SPEED : 0.0;
         return new Vec3(x, move.y, z);
+    }
+
+    /**
+     * A wedged soft part's move along one axis: always the way it's pushed; against the push only if it comes
+     * out further; across it (no push that way) as long as it goes no deeper.
+     */
+    static boolean softWedgedMove(double alongPush, double overlapNow, double overlapAfter) {
+        if (alongPush > 0.0) return true;
+        if (alongPush < 0.0) return overlapAfter < overlapNow - 1e-6;
+        return VolumePlacement.wedgedMoveAllowed(overlapNow, overlapAfter);
     }
 
     private static double overlap(LivingEntity entity, AABB box) {
@@ -129,9 +176,23 @@ public final class BodyVolumes {
 
     private static Cached build(LivingEntity entity, float yaw) {
         List<Placed> blocking = null, folding = null, all = null;
+        // Soft parts stop the body only at their least; turned to the yaw asked about from how they sit now.
+        for (SoftBodies.Shape shape : SoftBodies.of(entity)) {
+            double turn = yaw - entity.yBodyRot;
+            for (int i = 0; i < shape.showing().length; i++) {
+                if (!shape.showing()[i]) continue;
+                double[] b = Math.abs(turn) < 1e-3 ? java.util.Arrays.copyOfRange(shape.squeezed(), i * 6, i * 6 + 6)
+                        : SoftEnvelope.turned(shape.squeezed(), i * 6, turn);
+                Placed placed = new Placed(shape.def(), new AABB(b[0], b[1], b[2], b[3], b[4], b[5]), true);
+                if (all == null) all = new ArrayList<>();
+                all.add(placed);
+                if (blocking == null) blocking = new ArrayList<>();
+                blocking.add(placed);
+            }
+        }
         for (AttachmentDef def : WornAttachments.of(entity)) {
             AttachmentBody.Volume volume = def.body().volume();
-            if (volume == null) continue;
+            if (volume == null || def.body().soft() != null) continue;
             float[] grow = growOf(entity, def, volume);
             float width = 1f, height = 1f;
             RigHitboxes.Inputs inputs = RigHitboxes.inputs(entity);

@@ -34,6 +34,7 @@ public final class BodyBoxesRenderer {
     public static void onRenderLevel(RenderLevelStageEvent event) {
         try {
             FallingPieces.render(event);
+            SeeThroughPass.render(event);
             render(event);
         } catch (Throwable t) {
             // An exception mid-stage can make the level renderer skip later stages entirely.

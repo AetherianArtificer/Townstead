@@ -702,6 +702,8 @@
   "townstead.configuration.attachments.tooltip": "Options for tails, ears, hair and other attachments.",
   "townstead.configuration.attachments.physics": "Attachment Physics",
   "townstead.configuration.attachments.physics.tooltip": "Full moves attachments with the body, wind and water. Low moves only nearby bearers and skips wind. Off holds every attachment still. Reduce Motion caps this at Low.",
+  "townstead.configuration.attachments.softPush": "Soft Part Push",
+  "townstead.configuration.attachments.softPush.tooltip": "A soft part you wear, like a sac or belly, nudges you gently away from walls it presses on.",
   "townstead.configuration.accessibility": "Accessibility",
   "townstead.configuration.accessibility.tooltip": "Accessibility options for Townstead.",
   "townstead.configuration.accessibility.reduceMotion": "Reduce Motion",

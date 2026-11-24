@@ -72,6 +72,15 @@ public final class AttachmentSchemas {
                     .doc("Space the attachment takes up: { mode, boxes, pivot, grow, axes }. mode is block (stops the "
                             + "bearer moving), fold (folds away and stops flight where it does not fit), or none (hit "
                             + "boxes only). boxes are [x0,y0,z0,x1,y1,z1] in model pixels from the feet, +z behind."))
+            .field(of("soft", PhenoType.OBJECT)
+                    .doc("A part that gives, in place of volume: { bone, squash: { min, keep_volume }, push: { strength, max }, "
+                            + "squish, plates, segments, lobes, pivot, grow, axes }. It squashes where blocks are in its way (down to min of its "
+                            + "size, default 0.55), keeps its volume by bulging where there's room, pushes its bearer gently off "
+                            + "what it presses on, and wobbles and deforms as drawn. squish runs 0 firm to 1 jiggly. bone is "
+                            + "where the soft part starts (empty = all of it). lobes default to the model's own shape. plates is "
+                            + "{ texture_size: [w, h], areas: [[x0, y0, x1, y1], ...] }: areas of the texture, in pixels, that "
+                            + "stay rigid as drawn, like hard plates on a stretching membrane. segments name bones under bone that "
+                            + "bend on a joint of their own (a tip that droops off the sac it hangs from)."))
             .field(of("part", PhenoType.ANY)
                     .doc("How the attachment is wounded and lost: false for not at all, or { health, wounded_at, severable, sever_tags, damage_scale, "
                             + "regrow_ticks, heal_per_second, wounded, severed, drop, trace, on_hit, on_wounded, "

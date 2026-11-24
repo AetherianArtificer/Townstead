@@ -127,6 +127,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
+    public static final ModConfigSpec.BooleanValue SOFT_PART_PUSH;
     public static final ModConfigSpec.BooleanValue ENABLE_SEVERING;
     public static final ModConfigSpec.BooleanValue ENABLE_GORE;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
@@ -256,6 +257,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
+    public static final ForgeConfigSpec.BooleanValue SOFT_PART_PUSH;
     public static final ForgeConfigSpec.BooleanValue ENABLE_SEVERING;
     public static final ForgeConfigSpec.BooleanValue ENABLE_GORE;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
@@ -982,6 +984,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.attachments.physics")
                 .comment("Secondary motion on tails, ears, hair and other attachments: FULL, LOW (nearby bearers only, no wind) or OFF. Reduce Motion caps this at LOW.")
                 .defineEnum("physics", com.aetherianartificer.townstead.client.attachment.PhysicsQuality.FULL);
+        SOFT_PART_PUSH = clientBuilder
+                .translation("townstead.configuration.attachments.softPush")
+                .comment("Let a soft part you wear (a sac, a belly) nudge you gently away from walls it presses on.")
+                .define("softPush", true);
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");

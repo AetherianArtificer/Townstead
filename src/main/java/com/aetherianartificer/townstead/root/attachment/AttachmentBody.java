@@ -23,9 +23,14 @@ import java.util.Map;
  * "part": { "health":20, "severable":true, "regrow_ticks":48000, "severed":"examplepack:stump" }}.
  * A part's hit boxes come from its model as drawn, so {@code volume} is only about movement.</p>
  */
-public record AttachmentBody(Map<String, ValueSource> values, @Nullable Volume volume, @Nullable Part part) {
+public record AttachmentBody(Map<String, ValueSource> values, @Nullable Volume volume, @Nullable Part part,
+                             @Nullable Soft soft) {
 
-    public static final AttachmentBody NONE = new AttachmentBody(Map.of(), null, null);
+    public static final AttachmentBody NONE = new AttachmentBody(Map.of(), null, null, null);
+
+    public AttachmentBody(Map<String, ValueSource> values, @Nullable Volume volume, @Nullable Part part) {
+        this(values, volume, part, null);
+    }
 
     /** A channel read from live state: the source's fill from 0 to 1 maps onto {@code from}..{@code to}. */
     public record ValueSource(String key, float from, float to) {
@@ -43,6 +48,27 @@ public record AttachmentBody(Map<String, ValueSource> values, @Nullable Volume v
      */
     public record Volume(String mode, List<float[]> boxes, float[] pivot, String grow, float[] axes) {
         public static final String BLOCK = "block", FOLD = "fold", NONE = "none";
+    }
+
+    /**
+     * A part that gives: it squashes where blocks are in its way, keeping its volume where it can, and pushes
+     * its bearer gently off what it presses on. It replaces {@code volume} for movement and the drawn boxes for
+     * hits. Its shape is its model as posed and grown, one lobe per hit group, unless the pack lists
+     * {@code lobes}: {@code [x0,y0,z0,x1,y1,z1]} in model pixels from the feet, +z behind, grown about
+     * {@code pivot} by the {@code grow} channel times {@code axes}, as a volume is. {@code bone} is where the soft
+     * part starts: that bone and everything under it squashes and wobbles as drawn, and the rest stays rigid;
+     * empty means all of it. {@code min} is the least share of its size it squashes to, and only that much stops
+     * the bearer. {@code push} is how hard a squashed part pushes, in blocks a tick per block it's squashed, up
+     * to {@code pushMax}. {@code squish} runs from 0 (a taut, full balloon) to 1 (a slack one) and is only for
+     * how it looks. {@code plates} are areas of its texture, as shares of its width and height (u0, v0, u1, v1),
+     * that stay rigid as drawn, like hard plates on a stretching membrane: each moves and turns as one piece.
+     * {@code segments} name bones under {@code bone} that bend on a joint of their own, as drawn: each hangs from
+     * its pivot on the piece before it, so a tip can droop where the sac it hangs from doesn't.
+     */
+    public record Soft(String bone, List<float[]> lobes, float[] pivot, String grow, float[] axes, float min,
+                       boolean keepVolume, float push, float pushMax, float squish, List<float[]> plates,
+                       List<String> segments) {
+        public static final float MIN = 0.55f, PUSH = 0.03f, PUSH_MAX = 0.04f, SQUISH = 0.5f;
     }
 
     /**
@@ -77,7 +103,7 @@ public record AttachmentBody(Map<String, ValueSource> values, @Nullable Volume v
     }
 
     public boolean empty() {
-        return values.isEmpty() && volume == null && part == null;
+        return values.isEmpty() && volume == null && part == null && soft == null;
     }
 
     public static AttachmentBody parse(JsonObject json) {
@@ -94,9 +120,60 @@ public record AttachmentBody(Map<String, ValueSource> values, @Nullable Volume v
         }
         Volume volume = json.has("volume") && json.get("volume").isJsonObject()
                 ? parseVolume(json.getAsJsonObject("volume")) : null;
+        Soft soft = json.has("soft") && json.get("soft").isJsonObject() ? parseSoft(json.getAsJsonObject("soft")) : null;
         Part part = !json.has("part") || GsonHelper.isBooleanValue(json, "part") && GsonHelper.getAsBoolean(json, "part") ? Part.DEFAULT
                 : json.get("part").isJsonObject() ? parsePart(json.getAsJsonObject("part")) : null;
-        return values.isEmpty() && volume == null && part == null ? NONE : new AttachmentBody(Map.copyOf(values), volume, part);
+        return values.isEmpty() && volume == null && part == null && soft == null ? NONE
+                : new AttachmentBody(Map.copyOf(values), volume, part, soft);
+    }
+
+    private static Soft parseSoft(JsonObject json) {
+        List<float[]> lobes = new ArrayList<>();
+        if (json.has("lobes") && json.get("lobes").isJsonArray()) {
+            for (JsonElement element : json.getAsJsonArray("lobes")) {
+                if (!element.isJsonArray() || element.getAsJsonArray().size() != 6) continue;
+                JsonArray array = element.getAsJsonArray();
+                float[] box = new float[6];
+                for (int i = 0; i < 6; i++) box[i] = array.get(i).getAsFloat();
+                lobes.add(box);
+            }
+        }
+        JsonObject squash = json.has("squash") && json.get("squash").isJsonObject() ? json.getAsJsonObject("squash") : new JsonObject();
+        JsonObject push = json.has("push") && json.get("push").isJsonObject() ? json.getAsJsonObject("push") : new JsonObject();
+        float min = Math.max(0.05f, Math.min(1f, GsonHelper.getAsFloat(squash, "min", Soft.MIN)));
+        List<float[]> plates = new ArrayList<>();
+        if (json.has("plates") && json.get("plates").isJsonObject()) {
+            JsonObject plateJson = json.getAsJsonObject("plates");
+            float[] size = {64f, 64f};
+            if (plateJson.has("texture_size") && plateJson.get("texture_size").isJsonArray()
+                    && plateJson.getAsJsonArray("texture_size").size() == 2) {
+                size[0] = Math.max(1f, plateJson.getAsJsonArray("texture_size").get(0).getAsFloat());
+                size[1] = Math.max(1f, plateJson.getAsJsonArray("texture_size").get(1).getAsFloat());
+            }
+            if (plateJson.has("areas") && plateJson.get("areas").isJsonArray()) {
+                for (JsonElement element : plateJson.getAsJsonArray("areas")) {
+                    if (!element.isJsonArray() || element.getAsJsonArray().size() != 4) continue;
+                    JsonArray area = element.getAsJsonArray();
+                    plates.add(new float[]{area.get(0).getAsFloat() / size[0], area.get(1).getAsFloat() / size[1],
+                            area.get(2).getAsFloat() / size[0], area.get(3).getAsFloat() / size[1]});
+                }
+            }
+        }
+        return new Soft(GsonHelper.getAsString(json, "bone", ""), List.copyOf(lobes), vec(json, "pivot", 0f),
+                GsonHelper.getAsString(json, "grow", ""), vec(json, "axes", 1f), min,
+                GsonHelper.getAsBoolean(squash, "keep_volume", true),
+                Math.max(0f, GsonHelper.getAsFloat(push, "strength", Soft.PUSH)),
+                Math.max(0f, GsonHelper.getAsFloat(push, "max", Soft.PUSH_MAX)),
+                Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "squish", Soft.SQUISH))), List.copyOf(plates),
+                segments(json));
+    }
+
+    private static List<String> segments(JsonObject json) {
+        List<String> out = new ArrayList<>();
+        if (json.has("segments") && json.get("segments").isJsonArray()) {
+            for (JsonElement element : json.getAsJsonArray("segments")) out.add(element.getAsString());
+        }
+        return List.copyOf(out);
     }
 
     @Nullable
@@ -189,6 +266,28 @@ public record AttachmentBody(Map<String, ValueSource> values, @Nullable Volume v
             buf.writeBoolean(part.bleeds() != null);
             if (part.bleeds() != null) buf.writeUtf(part.bleeds());
         }
+        buf.writeBoolean(soft != null);
+        if (soft != null) {
+            buf.writeUtf(soft.bone());
+            buf.writeVarInt(soft.lobes().size());
+            for (float[] lobe : soft.lobes()) {
+                for (float value : lobe) buf.writeFloat(value);
+            }
+            for (float value : soft.pivot()) buf.writeFloat(value);
+            buf.writeUtf(soft.grow());
+            for (float value : soft.axes()) buf.writeFloat(value);
+            buf.writeFloat(soft.min());
+            buf.writeBoolean(soft.keepVolume());
+            buf.writeFloat(soft.push());
+            buf.writeFloat(soft.pushMax());
+            buf.writeFloat(soft.squish());
+            buf.writeVarInt(soft.plates().size());
+            for (float[] plate : soft.plates()) {
+                for (float value : plate) buf.writeFloat(value);
+            }
+            buf.writeVarInt(soft.segments().size());
+            for (String segment : soft.segments()) buf.writeUtf(segment);
+        }
     }
 
     public static AttachmentBody read(FriendlyByteBuf buf) {
@@ -230,7 +329,33 @@ public record AttachmentBody(Map<String, ValueSource> values, @Nullable Volume v
                     severed, drop, keepDrop, buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
                     buf.readUtf(), buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readBoolean() ? buf.readUtf() : null);
         }
-        if (valueCount == 0 && volume == null && part == null) return NONE;
-        return new AttachmentBody(Map.copyOf(values), volume, part);
+        Soft soft = null;
+        if (buf.readBoolean()) {
+            String bone = buf.readUtf();
+            int lobeCount = buf.readVarInt();
+            List<float[]> lobes = new ArrayList<>(lobeCount);
+            for (int i = 0; i < lobeCount; i++) {
+                float[] lobe = new float[6];
+                for (int j = 0; j < 6; j++) lobe[j] = buf.readFloat();
+                lobes.add(lobe);
+            }
+            float[] pivot = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+            String grow = buf.readUtf();
+            float[] axes = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
+            float min = buf.readFloat();
+            boolean keepVolume = buf.readBoolean();
+            float push = buf.readFloat(), pushMax = buf.readFloat(), squish = buf.readFloat();
+            int plateCount = buf.readVarInt();
+            List<float[]> plates = new ArrayList<>(plateCount);
+            for (int i = 0; i < plateCount; i++) {
+                plates.add(new float[]{buf.readFloat(), buf.readFloat(), buf.readFloat(), buf.readFloat()});
+            }
+            int segmentCount = buf.readVarInt();
+            List<String> segments = new ArrayList<>(segmentCount);
+            for (int i = 0; i < segmentCount; i++) segments.add(buf.readUtf());
+            soft = new Soft(bone, lobes, pivot, grow, axes, min, keepVolume, push, pushMax, squish, plates, segments);
+        }
+        if (valueCount == 0 && volume == null && part == null && soft == null) return NONE;
+        return new AttachmentBody(Map.copyOf(values), volume, part, soft);
     }
 }
