@@ -507,6 +507,9 @@ public final class AbilityWheelScreen extends Screen {
     public static void fire(int slot) {
         ClientAbilityLoadout.rememberUsed(slot);
         dispatch(slot);
+        // A held ability has no key held down here, so from the wheel it streams for a while instead.
+        AbilityLoadoutS2CPayload.Entry entry = ClientAbilityLoadout.slot(slot);
+        if (entry != null && entry.hold()) com.aetherianartificer.townstead.client.TownsteadKeybinds.stream(slot);
         Minecraft mc = Minecraft.getInstance();
         if (!Accessibility.isReduceMotion() && mc.player != null) {
             mc.player.playSound(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK.value(), 0.4f, 1.4f);

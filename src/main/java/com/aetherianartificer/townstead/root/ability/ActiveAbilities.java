@@ -477,7 +477,7 @@ public final class ActiveAbilities {
                     live == null || live.usable(),
                     live != null ? live.activeUntil() : 0L,
                     live != null ? live.activeTicks() : 0,
-                    assignable.descriptionWire()));
+                    assignable.descriptionWire(), isHold(player, id)));
         }
 
         List<AbilityLoadoutS2CPayload.Option> available = new ArrayList<>();
@@ -530,6 +530,16 @@ public final class ActiveAbilities {
     }
 
     /** Only OUR things can be toggles; a datapack action is always a one-shot. */
+    // Whether this ability keeps firing while its key is held.
+    private static boolean isHold(ServerPlayer player, ResourceLocation id) {
+        for (Slotted slotted : slottables(player)) {
+            if (slotted.geneId().equals(id)) {
+                return slotted.instance() instanceof ActiveAbilityGeneType.Instance active && active.hold();
+            }
+        }
+        return false;
+    }
+
     private static boolean isToggle(ServerPlayer player, ResourceLocation id) {
         for (Slotted slotted : slottables(player)) {
             if (slotted.geneId().equals(id)) return slotted.kind() == GeneInstanceKind.TOGGLE;

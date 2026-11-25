@@ -31,6 +31,9 @@ import java.util.Locale;
  * speed kept while winding up, {@code action} runs as the wind-up starts and an interruptible
  * wind-up is cancelled by taking damage. The cooldown starts on the press; an interrupted
  * wind-up gives it back and charges nothing.</p>
+ *
+ * <p>{@code hold} makes it fire again and again while its key is held, as often as its cooldown allows and paying
+ * its cost each time: a hose, a stream, a beam you sweep. Fired from the wheel it goes off once.</p>
  */
 public final class ActiveAbilityGeneType implements GeneType {
 
@@ -55,11 +58,12 @@ public final class ActiveAbilityGeneType implements GeneType {
     public record Instance(Action action, int cooldownTicks, @Nullable Condition condition,
                            int slot, AiTrigger aiTrigger,
                            @Nullable ResourceLocation costResource, int costAmount,
-                           com.aetherianartificer.townstead.pheno.combat.Casts.@Nullable Windup windup)
+                           com.aetherianartificer.townstead.pheno.combat.Casts.@Nullable Windup windup,
+                           boolean hold)
             implements GeneInstance, com.aetherianartificer.townstead.root.ability.ResourceConsumer {
         public Instance(Action action, int cooldownTicks, @Nullable Condition condition, int slot,
                         AiTrigger aiTrigger, @Nullable ResourceLocation costResource, int costAmount) {
-            this(action, cooldownTicks, condition, slot, aiTrigger, costResource, costAmount, null);
+            this(action, cooldownTicks, condition, slot, aiTrigger, costResource, costAmount, null, false);
         }
 
         @Override public String typeKey() { return KEY; }
@@ -91,7 +95,8 @@ public final class ActiveAbilityGeneType implements GeneType {
             windup = parseWindup(json.get("windup"));
             if (windup == null) return null;
         }
-        return new Instance(action, cooldown, condition, slot, aiTrigger, costResource, costAmount, windup);
+        boolean hold = GsonHelper.getAsBoolean(json, "hold", false);
+        return new Instance(action, cooldown, condition, slot, aiTrigger, costResource, costAmount, windup, hold);
     }
 
     private static com.aetherianartificer.townstead.pheno.combat.Casts.@Nullable Windup parseWindup(
