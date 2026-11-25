@@ -22,7 +22,8 @@ import net.minecraft.world.phys.Vec3;
  * whoever it struck and {@code on_block} on the block it met ({@code on_hit} also covers blocks when
  * {@code on_block} is left out). Those actions run with the impact as their place, so
  * {@code pheno:explode}, {@code pheno:cloud} and {@code pheno:area_of_effect} happen there rather than
- * on the thrower. {@code arc} aims that many degrees above where the thrower looks.
+ * on the thrower. {@code arc} aims that many degrees above where the thrower looks. {@code particle} is a trail
+ * left behind; {@code look} draws the shot as that data-pack particle's sprite instead of its item.
  *
  * <p>JSON: {@code { "type":"pheno:projectile", "item":"minecraft:slime_ball", "speed":1.2, "gravity":0.05,
  * "damage":4, "knockback":0.4, "particle":"minecraft:falling_honey",
@@ -48,12 +49,17 @@ public final class ProjectileActionType implements ActionType {
         float arc = GsonHelper.getAsFloat(json, "arc", 0f);
         Action onHit = json.has("on_hit") ? Actions.parse(json.get("on_hit")) : null;
         Action onBlock = json.has("on_block") ? Actions.parse(json.get("on_block")) : null;
-        ParticleOptions trail = particle(GsonHelper.getAsString(json, "particle", ""));
+        String trailId = GsonHelper.getAsString(json, "particle", "");
+        String lookId = GsonHelper.getAsString(json, "look", "");
         return ctx -> {
+            // Looked up when it fires: a pack's own particles load after its genes.
+            ParticleOptions trail = particle(trailId);
             LivingEntity shooter = ctx.entity();
             if (!(shooter.level() instanceof ServerLevel level)) return;
             Item item = itemId == null ? Items.SNOWBALL : BuiltInRegistries.ITEM.get(itemId);
-            ActionProjectile shot = new ActionProjectile(level, shooter, new ItemStack(item), gravity, damage, knockback,
+            ItemStack carried = new ItemStack(item);
+            if (!lookId.isEmpty()) com.aetherianartificer.townstead.pheno.combat.ProjectileLooks.mark(carried, lookId);
+            ActionProjectile shot = new ActionProjectile(level, shooter, carried, gravity, damage, knockback,
                     onHit, onBlock, trail);
             Vec3 look = shooter.getLookAngle();
             if (arc != 0f) {

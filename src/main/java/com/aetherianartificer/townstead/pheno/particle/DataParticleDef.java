@@ -38,7 +38,8 @@ import java.util.Locale;
  *   "pulse_rate": 1.1,
  *   "tumble": 0.6,          rocks back and forth by this many radians instead of spinning
  *   "flare": 1.6,           size multiplier for the last fifth of its life
- *   "fade_out_fraction": 0.34   fade over this share of its life (instead of fade_out ticks)
+ *   "fade_out_fraction": 0.34,  fade over this share of its life (instead of fade_out ticks)
+ *   "stretch": 3            drawn longer along the way it's moving, the faster the longer: liquid in flight
  * }
  * </pre>
  */
@@ -46,7 +47,8 @@ public record DataParticleDef(String texture, int frames, int frameTime, int lif
                               float sizeMin, float sizeMax, int[] colors, float alpha, boolean glow,
                               float gravity, float drag, int fadeIn, int fadeOut, boolean shrink,
                               float spin, float flicker, boolean collide, float sway, float swayRate,
-                              float pulse, float pulseRate, float tumble, float flare, float fadeOutFraction) {
+                              float pulse, float pulseRate, float tumble, float flare, float fadeOutFraction,
+                              float stretch) {
 
     public static @Nullable DataParticleDef parse(JsonObject json) {
         String texture = GsonHelper.getAsString(json, "texture", "");
@@ -75,7 +77,8 @@ public record DataParticleDef(String texture, int frames, int frameTime, int lif
                 GsonHelper.getAsFloat(json, "pulse_rate", 1f),
                 GsonHelper.getAsFloat(json, "tumble", 0f),
                 Math.max(0f, GsonHelper.getAsFloat(json, "flare", 1f)),
-                clamp01(GsonHelper.getAsFloat(json, "fade_out_fraction", 0f)));
+                clamp01(GsonHelper.getAsFloat(json, "fade_out_fraction", 0f)),
+                Math.max(0f, GsonHelper.getAsFloat(json, "stretch", 0f)));
     }
 
     private static int[] intRange(@Nullable JsonElement value, int fallback) {

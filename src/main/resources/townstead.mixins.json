@@ -199,6 +199,7 @@
     "compat.temperature.HomeostaticPlayerWetnessMixin"
   ],
   "client": [
+    "client.ThrownItemLookMixin",
     "client.FamilyTreeNodeNameMixin",
     "client.ClientLevelPartsAccessor",
     "client.ScreenRemovedHookMixin",

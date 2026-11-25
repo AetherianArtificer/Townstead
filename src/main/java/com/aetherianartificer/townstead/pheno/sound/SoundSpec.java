@@ -44,7 +44,11 @@ public final class SoundSpec {
             this.weight = weight;
         }
 
-        public SoundEvent sound() { return BuiltInRegistries.SOUND_EVENT.get(id); }
+        // A sound no mod registered can still come from a resource pack (its sounds.json), so it's sent by name.
+        public SoundEvent sound() {
+            SoundEvent registered = BuiltInRegistries.SOUND_EVENT.get(id);
+            return registered != null ? registered : SoundEvent.createVariableRangeEvent(id);
+        }
         public float volume() { return volume; }
         public float pitch() { return pitch; }
         public float chance() { return chance; }

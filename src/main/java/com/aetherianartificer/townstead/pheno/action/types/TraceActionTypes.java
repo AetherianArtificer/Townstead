@@ -14,7 +14,9 @@ public final class TraceActionTypes {
 
     /**
      * Throws a liquid from the body, the way the actor is facing, or from where something landed:
-     * {@code { "type":"pheno:spray_liquid", "liquid":"examplepack:ink", "amount":4 }}.
+     * {@code { "type":"pheno:spray_liquid", "liquid":"examplepack:ink", "amount":4 }}. Where something landed,
+     * {@code spread} fans that many splashes out around it ({@code rise} is how steeply); {@code "from":"eyes"} throws
+     * it from the mouth rather than the chest.
      */
     public static final class SprayLiquid implements ActionType {
         @Override public String key() { return "pheno:spray_liquid"; }
@@ -23,17 +25,31 @@ public final class TraceActionTypes {
         public Action parse(JsonObject json) {
             String liquid = GsonHelper.getAsString(json, "liquid", "");
             float amount = GsonHelper.getAsFloat(json, "amount", 4f);
+            // How many splashes fan out around a landing, and how steeply they rise.
+            int spread = Math.max(1, GsonHelper.getAsInt(json, "spread", 1));
+            double rise = GsonHelper.getAsDouble(json, "rise", spread > 1 ? 0.5 : 1.0);
+            boolean fromMouth = "eyes".equals(GsonHelper.getAsString(json, "from", "body"));
             if (liquid.isEmpty()) return null;
             return ctx -> {
                 var at = ctx.at();
                 if (at != null) {
-                    // A splash where it hit: up and outward, and then it falls back down.
-                    MessBridge.spray(ctx.entity(), liquid, at.add(0.0, 0.2, 0.0),
-                            new net.minecraft.world.phys.Vec3(0.0, 1.0, 0.0), amount);
+                    // A splash where it hit: up and outward, and then it falls back down. Spread over a ring of
+                    // directions, it runs out across the ground all round.
+                    var from = at.add(0.0, 0.2, 0.0);
+                    if (spread == 1) {
+                        MessBridge.spray(ctx.entity(), liquid, from, new net.minecraft.world.phys.Vec3(0.0, 1.0, 0.0), amount);
+                        return;
+                    }
+                    double turn = ctx.entity().getRandom().nextDouble() * Math.PI * 2;
+                    for (int i = 0; i < spread; i++) {
+                        double a = turn + i * Math.PI * 2 / spread;
+                        MessBridge.spray(ctx.entity(), liquid, from,
+                                new net.minecraft.world.phys.Vec3(Math.cos(a), rise, Math.sin(a)), amount);
+                    }
                 } else {
-                    MessBridge.spray(ctx.entity(), liquid,
-                            ctx.entity().position().add(0.0, ctx.entity().getBbHeight() * 0.6, 0.0),
-                            ctx.entity().getLookAngle(), amount);
+                    var from = fromMouth ? ctx.entity().getEyePosition().add(ctx.entity().getLookAngle().scale(0.3))
+                            : ctx.entity().position().add(0.0, ctx.entity().getBbHeight() * 0.6, 0.0);
+                    MessBridge.spray(ctx.entity(), liquid, from, ctx.entity().getLookAngle(), amount);
                 }
             };
         }

@@ -3188,6 +3188,8 @@ public class Townstead {
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.TraceActionTypes.SprayLiquid());
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
+                new com.aetherianartificer.townstead.pheno.action.types.TimedAttributeActionType());
+        com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
                 new com.aetherianartificer.townstead.pheno.action.types.TraceActionTypes.RestorePart());
         // Bi-entity actions (operate on actor=entity / target=other)
         com.aetherianartificer.townstead.pheno.action.ActionTypes.register(
