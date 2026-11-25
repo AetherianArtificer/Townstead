@@ -27,8 +27,8 @@ final class AttachmentRenderTypes extends RenderType {
                     .setWriteMaskState(RenderStateShard.COLOR_WRITE)
                     .createCompositeState(true)));
 
-    // The same faces again with no colour, only depth: drawn after the colour, so whatever comes later in the frame
-    // and sits behind the part (water, glass, particles) is hidden behind it rather than drawn over it.
+    // The same faces with no colour, only depth: drawn first, so the colour lands only on the part's nearest surface,
+    // and whatever comes later in the frame behind the part (water, glass, particles) stays behind it.
     private static final Function<ResourceLocation, RenderType> SEE_THROUGH_DEPTH = Util.memoize(texture -> create(
             "townstead_attachment_see_through_depth", DefaultVertexFormat.NEW_ENTITY, VertexFormat.Mode.QUADS, 1536, false, false,
             RenderType.CompositeState.builder()
