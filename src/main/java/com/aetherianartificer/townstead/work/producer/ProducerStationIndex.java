@@ -203,6 +203,13 @@ public final class ProducerStationIndex {
                 logSkip(role, villager, slot, "claimed");
                 continue;
             }
+            // The villager's own work site was already cleared against its plaque when they were
+            // seated; a wider scan must not walk them into someone else's private room.
+            if ((worksiteBounds == null || !worksiteBounds.contains(slot.pos().asLong()))
+                    && !com.aetherianartificer.townstead.storage.RoomOwnershipAccess.mayAccess(level, villager, slot.pos())) {
+                logSkip(role, villager, slot, "private");
+                continue;
+            }
 
             // Ranking is deliberately geometry-only. Pathfinding every station before knowing
             // whether its recipes, claim, state, order, or capacity can win made acquisition scale

@@ -318,6 +318,36 @@ public final class Heredity {
         inherit(child, a, b, random);
     }
 
+    /**
+     * As {@link #inheritFromEntities}, but a family parent that is not loaded falls back to the
+     * heredity saved when their baby item was made, so the child is not a copy of the other parent.
+     */
+    public static void inheritFromFamily(TownsteadVillager.Life child, List<Entity> loaded,
+                                         List<java.util.UUID> family,
+                                         net.minecraft.server.MinecraftServer server,
+                                         RandomSource random) {
+        List<Parent> sources = new java.util.ArrayList<>(2);
+        java.util.Set<java.util.UUID> seen = new java.util.HashSet<>();
+        for (Entity parent : loaded) {
+            if (sources.size() == 2) break;
+            Parent source = parentOf(parent, random);
+            if (source == null) continue;
+            sources.add(source);
+            seen.add(parent.getUUID());
+        }
+        ParentSnapshots snapshots = ParentSnapshots.get(server);
+        for (java.util.UUID id : family) {
+            if (sources.size() == 2) break;
+            if (id == null || !seen.add(id)) continue;
+            Parent saved = snapshots.recall(id);
+            if (saved != null) sources.add(saved);
+        }
+        if (sources.isEmpty()) return;
+        Parent a = sources.get(0);
+        Parent b = sources.size() > 1 ? sources.get(1) : a;
+        inherit(child, a, b, random);
+    }
+
     /** Seed a villager's genotype/heritage from its origin if it has neither yet (idempotent). */
     public static void ensureSeeded(TownsteadVillager.Life life, RandomSource random) {
         if (life.hasGenotype() || life.hasHeritage()) return;

@@ -225,12 +225,15 @@ public final class ProfessionScanner {
 
     private static void releaseStaleJobSites(ServerLevel level, Village village, VillagerProfession profession) {
         if (profession == null || profession == VillagerProfession.NONE) return;
+        // An unloaded resident may hold one of these tickets, and their claim cannot be read.
+        if (village.getResidentsUUIDs().anyMatch(id -> level.getEntity(id) == null)) return;
 
         PoiManager poiManager = level.getPoiManager();
         Set<BlockPos> liveClaims = new HashSet<>();
         for (var entity : level.getAllEntities()) {
             if (!(entity instanceof VillagerEntityMCA resident)) continue;
-            if (!resident.isAlive() || !village.isWithinBorder(resident)) continue;
+            // A worker standing outside the border still holds their block.
+            if (!resident.isAlive()) continue;
             if (!professionOwnsJobSite(resident.getVillagerData().getProfession(), profession)) continue;
             resident.getBrain().getMemory(MemoryModuleType.JOB_SITE)
                     .filter(globalPos -> globalPos.dimension().equals(level.dimension()))

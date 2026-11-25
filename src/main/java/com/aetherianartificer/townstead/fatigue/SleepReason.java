@@ -4,6 +4,8 @@ public enum SleepReason {
     NONE("none"),
     SCHEDULED_REST("scheduled_rest"),
     FATIGUE_REST("fatigue_rest"),
+    /** Kept to bed by {@link BedRest}, at any hour. */
+    BED_REST("bed_rest"),
     EMERGENCY_COLLAPSE("emergency_collapse");
 
     private final String id;

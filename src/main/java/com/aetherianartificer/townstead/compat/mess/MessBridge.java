@@ -17,7 +17,8 @@ import java.util.List;
 /**
  * Bit of a Mess, when it's installed. It owns everything that flies, stains and lands on a body, and Traces.
  * Without it there are none of these, and every call here does nothing. Nothing outside {@link MessLink} and
- * {@link MessClientLink} touches its classes, so Townstead runs the same without it.
+ * {@link MessClientLink} touches its classes, so Townstead runs the same without it; the client half is apart so a server
+ * never loads Bit of a Mess's client classes.
  */
 public final class MessBridge {
 
@@ -25,6 +26,11 @@ public final class MessBridge {
     /** How strong a wash is: rain, water, a bath, soap or a cure. */
     public static final int WASH_RAIN = 1, WASH_WATER = 2, WASH_BATH = 3, WASH_SOAP = 4;
     private static final boolean ACTIVE = ModList.get() != null && ModList.get().isLoaded(MOD_ID);
+
+    /** Whether Bit of a Mess is in. */
+    public static boolean isActive() {
+        return ACTIVE;
+    }
 
     private MessBridge() {}
 
@@ -35,15 +41,25 @@ public final class MessBridge {
     public static void init() {
         if (!ACTIVE) return;
         MessLink.init();
-        try {
-            MessWaterLink.init();
-            com.aetherianartificer.townstead.temperature.RoomHeat.setPools((level, pos) -> pool(level, pos).map(pool ->
-                    new com.aetherianartificer.townstead.temperature.RoomHeat.Pool(pool.anchor(), pool.celsius(), pool.volume(),
-                            pool.airWatts(), pool.vapourKgPerSecond(), pool.heaters())));
-        } catch (LinkageError older) {
-            // A Bit of a Mess from before heated water.
-        }
+        com.aetherianartificer.townstead.temperature.RoomHeat.setPools((level, pos) -> pool(level, pos).map(pool ->
+                new com.aetherianartificer.townstead.temperature.RoomHeat.Pool(pool.anchor(), pool.celsius(), pool.volume(),
+                        pool.airWatts(), pool.vapourKgPerSecond(), pool.heaters())));
         if (FMLEnvironment.dist == Dist.CLIENT) MessClientLink.init();
+    }
+
+    /** How sharp what lies on top of {@code ground} is, 0 to 1, such as broken glass. 0 without Bit of a Mess. */
+    public static float sharpAt(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos ground) {
+        return ACTIVE ? MessLink.sharpAt(level, ground) : 0f;
+    }
+
+    /** Sits a body in the washtub at {@code tub} to bathe. False when it can't. */
+    public static boolean sitInTub(LivingEntity body, net.minecraft.core.BlockPos tub) {
+        return ACTIVE && MessLink.sitInTub(body, tub);
+    }
+
+    /** A villager made {@code count} of {@code made} at {@code station}: the mess that work leaves, by Bit of a Mess's rules. */
+    public static void worked(LivingEntity worker, net.minecraft.core.BlockPos station, net.minecraft.world.item.ItemStack made, float count) {
+        if (ACTIVE && count > 0f) MessLink.worked(worker, station, made, count);
     }
 
     /** A pool of heated water: its lowest block, temperature, size, heat and water it gives the air, and its heaters. */
@@ -51,22 +67,12 @@ public final class MessBridge {
 
     /** The temperature of the water here, when it is in one of Bit of a Mess's pools. */
     public static java.util.OptionalDouble poolCelsius(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos) {
-        if (!ACTIVE) return java.util.OptionalDouble.empty();
-        try {
-            return MessWaterLink.poolCelsius(level, pos);
-        } catch (LinkageError older) {
-            return java.util.OptionalDouble.empty();
-        }
+        return ACTIVE ? MessLink.poolCelsius(level, pos) : java.util.OptionalDouble.empty();
     }
 
     /** The pool the water here is in, if any. */
     public static java.util.Optional<Pool> pool(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos) {
-        if (!ACTIVE) return java.util.Optional.empty();
-        try {
-            return MessWaterLink.pool(level, pos);
-        } catch (LinkageError older) {
-            return java.util.Optional.empty();
-        }
+        return ACTIVE ? MessLink.pool(level, pos) : java.util.Optional.empty();
     }
 
     /** The colors a villager's bathing wear is given in, before anyone changes it: muted, as old bathing wear was dyed. */
@@ -78,31 +84,22 @@ public final class MessBridge {
      */
     public static void dressForBathing(net.minecraft.world.entity.Entity entity) {
         if (!ACTIVE || !(entity instanceof net.conczin.mca.entity.VillagerEntityMCA villager)) return;
-        try {
-            if (MessWearLink.wearOf(villager).isPresent()) return;
-            // A villager just spawned has no gender yet: they're dressed once they have one, on the Wardrobe's own rounds.
-            String gender = switch (villager.getGenetics().getGender()) {
-                case FEMALE -> "feminine";
-                case MALE -> "masculine";
-                case NEUTRAL -> "neutral";
-                default -> null;
-            };
-            if (gender == null) return;
-            long seed = villager.getUUID().getLeastSignificantBits();
-            MessWearLink.pick(gender, seed).ifPresent(wear -> MessWearLink.set(villager, wear, SUIT_COLORS[(int) Math.floorMod(seed >>> 8, SUIT_COLORS.length)]));
-        } catch (LinkageError older) {
-            // A Bit of a Mess from before bathing wear.
-        }
+        if (MessLink.wearOf(villager).isPresent()) return;
+        // A villager just spawned has no gender yet: they're dressed once they have one, on the Wardrobe's own rounds.
+        String gender = switch (villager.getGenetics().getGender()) {
+            case FEMALE -> "feminine";
+            case MALE -> "masculine";
+            case NEUTRAL -> "neutral";
+            default -> null;
+        };
+        if (gender == null) return;
+        long seed = villager.getUUID().getLeastSignificantBits();
+        MessLink.pickWear(gender, seed).ifPresent(wear -> MessLink.setWear(villager, wear, SUIT_COLORS[(int) Math.floorMod(seed >>> 8, SUIT_COLORS.length)]));
     }
 
     /** Sets what a body bathes in, and its color. */
     public static void setBathingWear(LivingEntity body, String wear, int color) {
-        if (!ACTIVE) return;
-        try {
-            MessWearLink.set(body, wear, color);
-        } catch (LinkageError older) {
-            // A Bit of a Mess from before bathing wear.
-        }
+        if (ACTIVE) MessLink.setWear(body, wear, color);
     }
 
     public static void addTrace(LivingEntity body, String trace, float amount) {

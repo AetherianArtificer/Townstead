@@ -34,7 +34,7 @@ public record WardrobeAssignPayload(Op op, @Nullable UUID villager, int day, Str
 
     public static final int ALL_DAYS = -1;
 
-    public enum Op { QUERY, CELL, WORK, WEATHER, STAR, PASTE, BATHING }
+    public enum Op { QUERY, CELL, WORK, WEATHER, STAR, PASTE, BATHING, TITLE }
 
     public WardrobeAssignPayload {
         value = value == null ? "" : value;
@@ -65,6 +65,11 @@ public record WardrobeAssignPayload(Op op, @Nullable UUID villager, int day, Str
     /** What the villager bathes in, as {@code wear|color}, kept by Bit of a Mess. */
     public static WardrobeAssignPayload bathing(UUID villager, String wearAndColor) {
         return new WardrobeAssignPayload(Op.BATHING, villager, 0, wearAndColor, List.of(), List.of());
+    }
+
+    /** The title of a Skin Library outfit picked for the villager, so the Wardrobe can name it. */
+    public static WardrobeAssignPayload title(UUID villager, String skin, String title) {
+        return new WardrobeAssignPayload(Op.TITLE, villager, 0, skin, List.of(), List.of(title));
     }
 
     /** Writes the row onto every target; an empty row clears them. */

@@ -266,13 +266,25 @@
     "watered": {
       "text": "Get the village's thirst to a good level",
       "condition": {
-        "type": "pheno:value",
-        "value": {
-          "type": "pheno:village_needs",
-          "need": "thirst"
-        },
-        "comparison": ">=",
-        "compare_to": 0.5
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:need_enabled",
+              "need": "thirst"
+            }
+          },
+          {
+            "type": "pheno:value",
+            "value": {
+              "type": "pheno:village_needs",
+              "need": "thirst"
+            },
+            "comparison": ">=",
+            "compare_to": 0.5
+          }
+        ]
       }
     },
     "newcomer": {

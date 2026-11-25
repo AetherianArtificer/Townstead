@@ -280,6 +280,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload::read,
                 TownsteadNetwork::handleCareerStamp);
+        registerC2S(com.aetherianartificer.townstead.profession.career.CareerFocusC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerFocusC2SPayload::read,
+                TownsteadNetwork::handleCareerFocus);
         registerC2S(com.aetherianartificer.townstead.seal.SealC2SPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.seal.SealC2SPayload::read,
@@ -842,7 +846,7 @@ public final class TownsteadNetwork {
 
     private static void handleVillagerLifeRequest(
             com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload payload, ServerPlayer sp) {
-        VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
+        VillagerEntityMCA villager = findPerson(sp.getServer(), payload.villagerUuid());
         if (villager == null) return;
             com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
         net.minecraft.server.MinecraftServer server = sp.getServer();
@@ -1133,6 +1137,13 @@ public final class TownsteadNetwork {
         com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleStamp(
                 sp, payload.skillId(), payload.x(), payload.y(), payload.rotation(),
                 payload.textureId(), payload.sourcePack(), payload.label());
+    }
+
+    private static void handleCareerFocus(
+            com.aetherianartificer.townstead.profession.career.CareerFocusC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleFocus(
+                sp, payload.careerId());
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
@@ -1474,6 +1485,20 @@ public final class TownsteadNetwork {
         }
     }
 
+    // As findVillager, and for a zombie villager the person they still are.
+    private static VillagerEntityMCA findPerson(net.minecraft.server.MinecraftServer server, java.util.UUID uuid) {
+        if (server == null) return null;
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            Entity entity = level.getEntity(uuid);
+            if (entity instanceof VillagerEntityMCA v) return v;
+            if (entity instanceof net.minecraft.world.entity.Mob mob) {
+                VillagerEntityMCA person = com.aetherianartificer.townstead.villager.ZombifiedVillagers.person(mob);
+                if (person != null) return person;
+            }
+        }
+        return null;
+    }
+
     private static VillagerEntityMCA findVillager(net.minecraft.server.MinecraftServer server, java.util.UUID uuid) {
         if (server == null) return null;
         for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
@@ -1668,6 +1693,8 @@ public final class TownsteadNetwork {
     }
 
     private static void townstead$releaseStaleJobSites(net.minecraft.server.level.ServerLevel level, Village village, VillagerProfession profession) {
+        // An unloaded resident may hold one of these tickets, and their claim cannot be read.
+        if (village.getResidentsUUIDs().anyMatch(id -> level.getEntity(id) == null)) return;
         PoiManager poiManager = level.getPoiManager();
         Set<BlockPos> liveClaims = new HashSet<>();
         for (VillagerEntityMCA resident : village.getResidents(level)) {

@@ -356,9 +356,29 @@ public final class BlockConditions {
                 return (level, pos) -> level instanceof net.minecraft.server.level.ServerLevel server
                         && com.aetherianartificer.townstead.pheno.area.WorkAreas.covers(server, pos, area);
             }
-            default:
-                return null;
+            default: {
+                BlockCondition custom = extension(type, json);
+                return custom != null ? custom : com.aetherianartificer.townstead.compat.pheno.ForeignTypes.blockCondition(type, json);
+            }
         }
+    }
+
+    private static final java.util.Map<String, java.util.function.Function<JsonObject, BlockCondition>> EXTENSIONS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Adds a block-condition kind a host mod owns (for example a profession's work station), or
+     * replaces the vanilla reading of {@code farmland} or {@code mature}. {@code type} has no namespace.
+     */
+    public static void register(String type, java.util.function.Function<JsonObject, BlockCondition> parser) {
+        EXTENSIONS.put(type, parser);
+    }
+
+    /** This copy's own added kind, never the other copy's. The bridge asks only this, so a lookup never loops. */
+    @Nullable
+    public static BlockCondition extension(String type, JsonObject json) {
+        java.util.function.Function<JsonObject, BlockCondition> custom = EXTENSIONS.get(type);
+        return custom == null ? null : custom.apply(json);
     }
 
     @Nullable

@@ -103,7 +103,14 @@ public final class UseItemOnActionType implements ActionType {
                 Set<UUID> existing = new HashSet<>();
                 for (ItemEntity drop : level.getEntitiesOfClass(ItemEntity.class, area)) existing.add(drop.getUUID());
 
-                InteractionResult result = worker.interactOn(target, InteractionHand.MAIN_HAND);
+                // Gathering from a mob applies its user's skills, so say whose hands these are.
+                com.aetherianartificer.townstead.pheno.action.block.StandIns.begin(worker, actor);
+                InteractionResult result;
+                try {
+                    result = worker.interactOn(target, InteractionHand.MAIN_HAND);
+                } finally {
+                    com.aetherianartificer.townstead.pheno.action.block.StandIns.end(worker);
+                }
 
                 ItemStack held = worker.getMainHandItem().copy();
                 boolean changed = !ItemStack.matches(before, held);

@@ -185,6 +185,9 @@ public final class WorkActivities {
                 if (job.type().equals(com.aetherianartificer.townstead.work.job.WorkJobDef.ENTITY_INTERACTION)
                         && com.aetherianartificer.townstead.work.job.EntityInteractionWorkTask
                         .hasWork(level, villager, id)) return true;
+                if (job.type().equals(com.aetherianartificer.townstead.work.job.WorkJobDef.ROUNDS)
+                        && com.aetherianartificer.townstead.work.job.RoundsWorkTask
+                        .hasWork(level, villager, id)) return true;
             }
             return false;
         } catch (Throwable ignored) {

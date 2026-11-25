@@ -143,13 +143,15 @@ public abstract class VillagerHungerMixin extends Villager {
                         Pair.of(83, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.SHEPHERDING, new com.aetherianartificer.townstead.shepherd.ShepherdDepositTask())),
                         Pair.of(73, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.BlockInteractionWorkTask())),
                         Pair.of(84, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.producer.StationWorkTask())),
-                        Pair.of(85, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.martial.MartialWorkTask()))
+                        Pair.of(85, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.martial.MartialWorkTask())),
+                        Pair.of(86, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>work(com.aetherianartificer.townstead.switchboard.Systems.WORK, new com.aetherianartificer.townstead.work.job.RoundsWorkTask()))
                 ));
         // Non-work behaviors stay in CORE so they tick regardless of schedule activity.
         ArrayList<Pair<Integer, ? extends BehaviorControl<? super VillagerEntityMCA>>> coreBehaviors = new ArrayList<>();
         coreBehaviors.add(Pair.of(64,
                 new com.aetherianartificer.townstead.work.producer.FinishCommittedProductionTask()));
         coreBehaviors.add(Pair.of(65, new BorrowBedWhenFatiguedTask()));
+        coreBehaviors.add(Pair.of(63, new com.aetherianartificer.townstead.work.ShortWalkShortcut()));
         coreBehaviors.add(Pair.of(66, com.aetherianartificer.townstead.switchboard.GatedBehavior.<VillagerEntityMCA>of(com.aetherianartificer.townstead.switchboard.Systems.CLOTHING, new com.aetherianartificer.townstead.clothing.dress.DressTask())));
         coreBehaviors.add(Pair.of(67, new com.aetherianartificer.townstead.temperature.ThermalSupplyTask()));
         coreBehaviors.add(Pair.of(68, new com.aetherianartificer.townstead.temperature.SeekThermalReliefTask()));
@@ -158,6 +160,8 @@ public abstract class VillagerHungerMixin extends Villager {
         coreBehaviors.add(Pair.of(98, new com.aetherianartificer.townstead.compat.vampirism.VampireFeedTask()));
         coreBehaviors.add(Pair.of(99, new RefuelTask()));
         coreBehaviors.add(Pair.of(110, new CareForYoungTask()));
+        // Routines from data: what a villager does for themselves in free time.
+        coreBehaviors.add(Pair.of(115, new com.aetherianartificer.townstead.routine.RoutineTask()));
         // After MCA's own rest behaviors, so a walk to a rest spot that is not a bed is the one that stands.
         coreBehaviors.add(Pair.of(150, new com.aetherianartificer.townstead.rest.RestSpotSleepTask()));
         // The call to arms answers an attack at any hour, so it lives in CORE.

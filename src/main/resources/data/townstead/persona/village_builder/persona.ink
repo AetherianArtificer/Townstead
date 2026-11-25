@@ -57,10 +57,10 @@ VAR interrupted = false
     ~ return "Are you all right?"
 - quest_ready:
     ~ return "I did what you asked."
+- scene_ready():
+    ~ return "Anything on your mind?"
 - quest_open:
     ~ return "About what you asked me to do..."
-- not done_all() and lesson_day != today:
-    ~ return "Anything on your mind?"
 }
 {demeanor():
 - "stern":
@@ -100,36 +100,54 @@ VAR interrupted = false
 }
 -> checkin -> next
 
-// The next Act 1 step: a discovered village's push first, then the first worry from home, then
-// the other lessons in order.
 === next ===
 ~ more_tomorrow = false
-{
-- lesson_day == today:
-    ~ more_tomorrow = true
+{lesson_day == today:
+    ~ more_tomorrow = next_step() != ""
     -> idle
-- check("discovered") and not done_push:
-    -> push_offer
-- worry() == "rest" and not done_rest:
-    -> rest_offer
-- worry() == "pot" and not done_pot:
-    -> pot_offer
-- worry() == "work" and not done_work:
-    -> work_offer
-- worry() == "water" and not done_water:
-    -> water_offer
-- first_worry_done() and check("has_farm") and not wrote_farmer:
-    -> farmer_letter
-- not done_beds:
-    -> beds_offer
-- not done_pot:
-    -> pot_offer
-- not done_work:
-    -> work_offer
-- not done_water and check("thirst_on"):
-    -> water_offer
+}
+{next_step():
+- "push": -> push_offer
+- "rest": -> rest_offer
+- "pot": -> pot_offer
+- "work": -> work_offer
+- "water": -> water_offer
+- "farmer": -> farmer_letter
+- "beds": -> beds_offer
 }
 -> idle
+
+// The next Act 1 step, or "": a discovered village's push first, then the first worry from home,
+// then the other lessons in order. A quest already started is passed over, so one that waits on
+// the world (a newcomer, say) never holds the next lesson back.
+=== function next_step() ===
+{
+- check("discovered") and not push:
+    ~ return "push"
+- worry() == "rest" and not rest:
+    ~ return "rest"
+- worry() == "pot" and not pot:
+    ~ return "pot"
+- worry() == "work" and not work:
+    ~ return "work"
+- worry() == "water" and not water and check("thirst_on"):
+    ~ return "water"
+- first_worry_started() and check("has_farm") and not wrote_farmer:
+    ~ return "farmer"
+- not beds:
+    ~ return "beds"
+- not pot:
+    ~ return "pot"
+- not work:
+    ~ return "work"
+- not water and check("thirst_on"):
+    ~ return "water"
+}
+~ return ""
+
+// Asked by the game before an open quest's waiting lines: a new lesson goes ahead of them.
+=== function scene_ready() ===
+~ return met == 2 and lesson_day != today and next_step() != ""
 
 === function daily() ===
 {today != last_talk_day:
@@ -140,14 +158,14 @@ VAR interrupted = false
     }
 }
 
-=== function first_worry_done() ===
+=== function first_worry_started() ===
 {worry():
-- "rest": ~ return done_rest
-- "pot": ~ return done_pot
-- "work": ~ return done_work
-- "water": ~ return done_water
+- "rest": ~ return rest > 0
+- "pot": ~ return pot > 0
+- "work": ~ return work > 0
+- "water": ~ return water > 0 or not check("thirst_on")
 }
-~ return done_beds
+~ return beds > 0
 
 === function done_all() ===
 ~ return (done_push or not check("discovered")) and done_beds and done_pot and done_work and (done_water or not check("thirst_on"))

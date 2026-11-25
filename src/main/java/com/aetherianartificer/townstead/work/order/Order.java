@@ -202,6 +202,8 @@ public final class Order {
     public boolean matches(@Nullable ResourceLocation candidateOutput) {
         if (candidateOutput == null) return false;
         if (kind == Kind.TAG) return OrderTags.contains(output, candidateOutput);
+        // a line open on a variant of plain items (wool, any colour) takes in each of them
+        if (com.aetherianartificer.townstead.work.order.variant.ProductVariants.isPattern(product)) return com.aetherianartificer.townstead.work.order.variant.ProductVariants.matches(product, candidateOutput);
         if (exactProduct()) return false;
         return output.equals(candidateOutput);
     }
@@ -210,6 +212,7 @@ public final class Order {
     public boolean matches(@Nullable ProducerRecipe candidate) {
         if (candidate == null || candidate.output() == null) return false;
         if (kind == Kind.TAG) return OrderTags.contains(output, candidate.output());
+        if (com.aetherianartificer.townstead.work.order.variant.ProductVariants.isPattern(product)) return com.aetherianartificer.townstead.work.order.variant.ProductVariants.matches(product, OrderProducts.key(candidate));
         return output.equals(candidate.output()) && product.equals(OrderProducts.key(candidate));
     }
 

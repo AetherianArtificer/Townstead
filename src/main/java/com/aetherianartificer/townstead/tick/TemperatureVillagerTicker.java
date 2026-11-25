@@ -147,7 +147,8 @@ public final class TemperatureVillagerTicker {
         state.exertion = ThermalComfort.exertion(state.exertion,
                 com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), seconds);
         ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection())
-                .plus(com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.protection(self));
+                .plus(com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.protection(self))
+                .plus(com.aetherianartificer.townstead.compat.thirst.HomeostaticEntityCompat.protection(self));
         float ambientCelsius = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         boolean immersed = self.isInWater();
         if (immersed && !Float.isFinite(state.water)) state.water = com.aetherianartificer.townstead.temperature.ThermalAir.water(level, self.blockPosition());

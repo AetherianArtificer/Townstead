@@ -192,7 +192,7 @@ public final class VillagerLifeStamper {
         CalendarProfile profile = TownsteadCalendar.activeProfile(server);
         int dpy = profile != null && profile.daysPerYear() > 0 ? profile.daysPerYear() : 360;
 
-        boolean playerFounded = looksPlayerFounded(village);
+        boolean playerFounded = looksPlayerFounded(level, village, villager.blockPosition());
         long birthDay;
         if (playerFounded) {
             birthDay = today;
@@ -205,6 +205,8 @@ public final class VillagerLifeStamper {
         }
         data.putVillageBirth(key, new WorldCalendarSavedData.VillageBirth(birthDay, playerFounded));
         KNOWN_STAMPED_VILLAGES.add(cacheKey);
+        com.aetherianartificer.townstead.api.impl.v1.ApiEvents.villageDated(level, village, birthDay, today, playerFounded,
+                villager.blockPosition());
         // A freshly-dated village gets a fabricated past (deferred off this path).
         com.aetherianartificer.townstead.chronicle.pregen.PregenScheduler.schedule(
                 key, birthDay, playerFounded, villager.blockPosition());
@@ -227,8 +229,10 @@ public final class VillagerLifeStamper {
      * to start with the player and one or two seed villagers. We use building
      * count as the cheapest proxy available without scanning resident lists.
      */
-    private static boolean looksPlayerFounded(Village village) {
+    private static boolean looksPlayerFounded(ServerLevel level, Village village, net.minecraft.core.BlockPos at) {
         try {
+            // A village the world generated is never a player's, however few of its buildings MCA has found yet.
+            if (!com.aetherianartificer.townstead.village.GeneratedVillages.pieces(level, at).isEmpty()) return false;
             return com.aetherianartificer.townstead.compat.mca.McaBuildings.allById(village).size() <= 2;
         } catch (Throwable t) {
             return false;

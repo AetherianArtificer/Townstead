@@ -15,21 +15,6 @@ public final class BodyConditionTypes {
 
     private BodyConditionTypes() {}
 
-    /** At least {@code min} of a Trace: {@code { "type":"pheno:has_trace", "trace":"examplepack:ink", "min":0.3 }}. */
-    public static final class HasTrace implements ConditionType {
-        @Override public String key() { return "pheno:has_trace"; }
-
-        @Override
-        public Condition parse(JsonObject json) {
-            String trace = GsonHelper.getAsString(json, "trace", "");
-            float min = GsonHelper.getAsFloat(json, "min", 0.01f);
-            return ctx -> {
-                LivingEntity entity = ctx.entity();
-                return entity != null && com.aetherianartificer.townstead.compat.mess.MessBridge.traceAmount(entity, trace) >= min;
-            };
-        }
-    }
-
     /**
      * A part's stage: {@code { "type":"pheno:attachment_state", "attachment":"examplepack:wing", "state":"lost" }}.
      * {@code state} is {@code intact}, {@code wounded} or {@code lost}. Wearing nothing by that id is intact.

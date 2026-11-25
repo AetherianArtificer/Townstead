@@ -7,23 +7,10 @@ import com.aetherianartificer.townstead.compat.mess.MessBridge;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
 
-/** The actions bodies answer to: marking, washing, and mending. */
+/** The actions bodies answer to: spraying a liquid, and mending. */
 public final class TraceActionTypes {
 
     private TraceActionTypes() {}
-
-    /** Adds to a Trace: {@code { "type":"pheno:add_trace", "trace":"examplepack:ink", "amount":0.2 }}. */
-    public static final class Add implements ActionType {
-        @Override public String key() { return "pheno:add_trace"; }
-
-        @Override
-        public Action parse(JsonObject json) {
-            String trace = GsonHelper.getAsString(json, "trace", "");
-            float amount = GsonHelper.getAsFloat(json, "amount", 0.2f);
-            if (trace.isEmpty()) return null;
-            return ctx -> MessBridge.addTrace(ctx.entity(), trace, amount);
-        }
-    }
 
     /**
      * Throws a liquid from the body, the way the actor is facing, or from where something landed:
@@ -49,22 +36,6 @@ public final class TraceActionTypes {
                             ctx.entity().getLookAngle(), amount);
                 }
             };
-        }
-    }
-
-    /**
-     * Washes Traces off. {@code strength} is 1 rain, 2 water, 3 a bath, or 4 soap or a cure, and
-     * {@code trace} can narrow it to one: {@code { "type":"pheno:wash", "strength":4, "amount":1 }}.
-     */
-    public static final class Wash implements ActionType {
-        @Override public String key() { return "pheno:wash"; }
-
-        @Override
-        public Action parse(JsonObject json) {
-            int strength = GsonHelper.getAsInt(json, "strength", MessBridge.WASH_SOAP);
-            float amount = GsonHelper.getAsFloat(json, "amount", 1f);
-            String trace = GsonHelper.getAsString(json, "trace", "");
-            return ctx -> MessBridge.wash(ctx.entity(), strength, amount, trace);
         }
     }
 

@@ -293,6 +293,7 @@ public final class Rebirth {
         boolean whereYouDied = LAST_DEATH.containsKey(player.getUUID());
         DestinyShield.opened(player);
         //? if neoforge {
+        openMcaDestinySession(player);
         net.conczin.mca.network.s2c.OpenDestinyGuiRequest base = new net.conczin.mca.network.s2c.OpenDestinyGuiRequest(player);
         if (!whereYouDied) {
             net.conczin.mca.network.Network.sendToPlayer(base, player);
@@ -310,7 +311,33 @@ public final class Rebirth {
         *///?}
     }
 
-    /** Destiny's "Where you died": go there, or say why not. */
+    //? if neoforge {
+    // MCA accepts a Destiny choice only from a player it opened Destiny for, and records that in
+    // launchDestiny. Rebirth sends its own screen, so it records the session the same way. Builds
+    // without the session set accept every choice and need nothing.
+    private static void openMcaDestinySession(ServerPlayer player) {
+        try {
+            ServerInteractionManager manager = ServerInteractionManager.getInstance();
+            java.lang.reflect.Field field = ServerInteractionManager.class.getDeclaredField("activeDestinySessions");
+            field.setAccessible(true);
+            try {
+                java.lang.reflect.Method clear = ServerInteractionManager.class
+                        .getDeclaredMethod("clearDestinySession", UUID.class);
+                clear.setAccessible(true);
+                clear.invoke(manager, player.getUUID());
+            } catch (NoSuchMethodException ignored) {
+            }
+            @SuppressWarnings("unchecked")
+            java.util.Set<UUID> sessions = (java.util.Set<UUID>) field.get(manager);
+            sessions.add(player.getUUID());
+        } catch (NoSuchFieldException ignored) {
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            Townstead.LOGGER.warn("[Rebirth] Could not open an MCA Destiny session", e);
+        }
+    }
+    //?}
+
+    // Destiny's "Where you died": go there, or say why not.
     public static void chooseWhereYouDied(ServerPlayer player) {
         if (!goToLastDeath(player)) {
             player.sendSystemMessage(Component.translatable("townstead.rebirth.where_you_died.failed")
@@ -318,7 +345,7 @@ public final class Rebirth {
         }
     }
 
-    /** Takes a reborn player to the surface above where their last life ended. False when unknown. */
+    // Takes a reborn player to the surface above where their last life ended. False when unknown.
     public static boolean goToLastDeath(ServerPlayer player) {
         GlobalPos death = LAST_DEATH.remove(player.getUUID());
         // Used up, so a rejoin before finishing does not offer it again.
@@ -337,7 +364,7 @@ public final class Rebirth {
         return true;
     }
 
-    /** The old life's journal lies where it died, for whoever finds it. */
+    // The old life's journal lies where it died, for whoever finds it.
     private static void leaveJournal(ServerPlayer player, UUID memorial, String name, @Nullable GlobalPos at) {
         ItemStack journal = JournalItem.create(Townstead.JOURNAL.get(), memorial, name);
         ServerLevel level = at == null ? null : player.server.getLevel(at.dimension());
@@ -351,7 +378,7 @@ public final class Rebirth {
         level.addFreshEntity(item);
     }
 
-    /** The new person walks into the old home town rather than waking in the old bed. */
+    // The new person walks into the old home town rather than waking in the old bed.
     private static void arrive(ServerPlayer player, ServerLevel level, Village village) {
         BlockPos center = new BlockPos(village.getCenter());
         BlockPos ground = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, center);
@@ -360,10 +387,8 @@ public final class Rebirth {
                 player.getYRot(), player.getXRot());
     }
 
-    /**
-     * Called whenever a villager looks up what it remembers of a player. The first time a villager
-     * meets a reborn player, it forgets the person who came before.
-     */
+    // Called whenever a villager looks up what it remembers of a player. The first time a villager
+    // meets a reborn player, it forgets the person who came before.
     public static void onMemoriesLookup(Entity villager, Player player, Memories memories) {
         MinecraftServer server = villager.level().getServer();
         if (server == null || PlayerLives.livesOf(player.getUUID()).isEmpty()) return;

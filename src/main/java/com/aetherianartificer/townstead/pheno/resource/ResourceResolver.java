@@ -13,7 +13,9 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * A resource id that is either literal or derived from the block being acted on.
+ * A resource id that is either literal or derived from the block being acted on
+ * ({@code "from":"block"}), or from the block the action's held item places
+ * ({@code "from":"item"}; with no transform, that block itself).
  * Transforms keep optional-mod naming conventions in data without teaching Pheno
  * what a carcass, machine tier, crop variety, or any other content noun means.
  */
@@ -21,6 +23,11 @@ import java.util.regex.Pattern;
 public interface ResourceResolver {
 
     @Nullable ResourceLocation resolve(BlockActionContext context);
+
+    /** Whether the id comes from the held item, so nothing resolves until one is held. */
+    default boolean fromItem() {
+        return false;
+    }
 
     static @Nullable ResourceResolver parse(@Nullable JsonElement element) {
         if (element == null) return null;
@@ -30,8 +37,10 @@ public interface ResourceResolver {
         }
         if (!element.isJsonObject()) return null;
         JsonObject json = element.getAsJsonObject();
-        if (!json.has("from") || !json.get("from").isJsonPrimitive()
-                || !"block".equals(json.get("from").getAsString())) return null;
+        if (!json.has("from") || !json.get("from").isJsonPrimitive()) return null;
+        String from = json.get("from").getAsString();
+        if (!"block".equals(from) && !"item".equals(from)) return null;
+        boolean fromItem = "item".equals(from);
 
         Map<ResourceLocation, ResourceLocation> mappings = new LinkedHashMap<>();
         if (json.has("map")) {
@@ -59,15 +68,23 @@ public interface ResourceResolver {
         if (json.has("fallback") && !json.get("fallback").isJsonPrimitive()) return null;
         ResourceLocation fallback = json.has("fallback")
                 ? DataPackLang.parseId(json.get("fallback").getAsString()) : null;
-        if (mappings.isEmpty() && pattern == null && fallback == null) return null;
+        if (!fromItem && mappings.isEmpty() && pattern == null && fallback == null) return null;
+        boolean identity = mappings.isEmpty() && pattern == null;
 
         Map<ResourceLocation, ResourceLocation> exact = Map.copyOf(mappings);
         Pattern transform = pattern;
         String replace = replacement;
         ResourceLocation otherwise = fallback;
-        return context -> {
-            ResourceLocation source = BuiltInRegistries.BLOCK.getKey(
-                    context.level().getBlockState(context.pos()).getBlock());
+        ResourceResolver resolver = context -> {
+            ResourceLocation source;
+            if (fromItem) {
+                net.minecraft.world.item.ItemStack held = context.itemRole("item");
+                if (!(held.getItem() instanceof net.minecraft.world.item.BlockItem placing)) return otherwise;
+                source = BuiltInRegistries.BLOCK.getKey(placing.getBlock());
+                if (identity) return source;
+            } else {
+                source = BuiltInRegistries.BLOCK.getKey(context.level().getBlockState(context.pos()).getBlock());
+            }
             ResourceLocation mapped = exact.get(source);
             if (mapped != null) return mapped;
             if (transform != null) {
@@ -75,6 +92,16 @@ public interface ResourceResolver {
                 if (matcher.matches()) return DataPackLang.parseId(matcher.replaceFirst(replace));
             }
             return otherwise;
+        };
+        if (!fromItem) return resolver;
+        return new ResourceResolver() {
+            @Override public @Nullable ResourceLocation resolve(BlockActionContext context) {
+                return resolver.resolve(context);
+            }
+
+            @Override public boolean fromItem() {
+                return true;
+            }
         };
     }
 }

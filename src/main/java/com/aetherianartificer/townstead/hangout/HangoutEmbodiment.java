@@ -67,6 +67,8 @@ public final class HangoutEmbodiment {
     private static synchronized void registerBuiltIns() {
         POSTURES.putIfAbsent(VANILLA, new VanillaPostureAdapter());
         POSTURES.putIfAbsent(ReclinePostureAdapter.ID, new ReclinePostureAdapter());
+        POSTURES.putIfAbsent(com.aetherianartificer.townstead.compat.mess.MessTubAdapter.ID,
+                new com.aetherianartificer.townstead.compat.mess.MessTubAdapter());
         POSTURES.putIfAbsent(com.aetherianartificer.townstead.compat.beachparty.BeachpartyChairAdapter.ID,
                 new com.aetherianartificer.townstead.compat.beachparty.BeachpartyChairAdapter());
         bootstrapped = true;

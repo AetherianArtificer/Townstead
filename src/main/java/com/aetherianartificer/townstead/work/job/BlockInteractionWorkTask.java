@@ -367,6 +367,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                                 && !hasReadyInteraction(level, pos, target))
                                 || (requireInput && !hasAvailableInteractionInput(
                                 level, villager, pos, extent, target))) continue;
+                        if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                                .mayAccess(level, villager, pos)) continue;
                         taskCandidates.add(new Candidate(job, target, task, pos.immutable(), extent));
                     }
                 }

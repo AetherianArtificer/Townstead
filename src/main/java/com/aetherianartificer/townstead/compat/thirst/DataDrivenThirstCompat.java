@@ -69,6 +69,54 @@ public final class DataDrivenThirstCompat {
         } else if (ModCompat.isLoaded("thirst")) {
             installTwt();
         }
+        // ThirstWasTaken2 and Homeostatic read the overlay through their own lookup (mixins), so only
+        // the per-item answers they memoise need dropping.
+        if (ModCompat.isLoaded("thirstwastaken2")) clearTwt2Cache();
+        HOMEOSTATIC_DRINKS.clear();
+    }
+
+    /** ThirstWasTaken2's data-pack value for {@code item}, with Townstead's overlay on top. */
+    public static int[] twt2Value(Item item, int[] nativeValue) {
+        Consumables.ResolvedEffect entry = resolved.get(BuiltInRegistries.ITEM.getKey(item));
+        if (entry == null || !entry.projection().hydrates()) return nativeValue;
+        if (entry.fallback() && nativeValue != null) return nativeValue;
+        return new int[]{entry.projection().immediateHydration(), entry.projection().lastingHydration()};
+    }
+
+    private static void clearTwt2Cache() {
+        try {
+            Class.forName("com.thirstwastaken2.api.ThirstApi").getMethod("clearCache").invoke(null);
+        } catch (ReflectiveOperationException | LinkageError ignored) {}
+    }
+
+    private static final Map<Item, Object> HOMEOSTATIC_DRINKS = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final Object NO_DRINK = new Object();
+    private static volatile Constructor<?> homeostaticDrinkable;
+
+    /**
+     * Homeostatic's drinkable entry for {@code stack}, with Townstead's overlay on top. Its lasting
+     * reserve caps at 5 against Townstead's 20, so lasting hydration is scaled by a quarter.
+     */
+    public static Object homeostaticDrink(ItemStack stack, Object nativeValue) {
+        if (stack == null || stack.isEmpty()) return nativeValue;
+        Consumables.ResolvedEffect entry = resolved.get(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+        if (entry == null || !entry.projection().hydrates()) return nativeValue;
+        if (entry.fallback() && nativeValue != null) return nativeValue;
+        Object built = HOMEOSTATIC_DRINKS.computeIfAbsent(stack.getItem(), item -> {
+            try {
+                Constructor<?> constructor = homeostaticDrinkable;
+                if (constructor == null) {
+                    constructor = Class.forName("homeostatic.common.item.DrinkableItem").getConstructor(
+                            ResourceLocation.class, int.class, float.class, int.class, int.class, float.class);
+                    homeostaticDrinkable = constructor;
+                }
+                return constructor.newInstance(BuiltInRegistries.ITEM.getKey(item),
+                        entry.projection().immediateHydration(), entry.projection().lastingHydration() / 4f, 0, 0, 0f);
+            } catch (ReflectiveOperationException | LinkageError e) {
+                return NO_DRINK;
+            }
+        });
+        return built == NO_DRINK ? nativeValue : built;
     }
 
     @SuppressWarnings("unchecked")

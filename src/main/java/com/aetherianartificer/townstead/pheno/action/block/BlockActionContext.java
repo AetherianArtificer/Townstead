@@ -77,6 +77,8 @@ public final class BlockActionContext {
 
     public ItemStack itemRole(String role) { return itemRoles.getOrDefault(role, ItemStack.EMPTY); }
 
+    public Map<String, ItemStack> itemRoles() { return Map.copyOf(itemRoles); }
+
     public void setItemRole(String role, ItemStack stack) {
         itemRoles.put(role, stack == null ? ItemStack.EMPTY : stack);
     }

@@ -36,7 +36,7 @@ import java.util.WeakHashMap;
  * Downed instead of dead. A covered villager who would die drops to 1 health and lies down; they
  * cannot be hurt or targeted, and they get up after a while, or sooner when a player helps them
  * up. A downed villager somewhere nobody can reach (the void, lava) is carried back to their home
- * village. Personas are covered unless permadeath is on; other villagers through
+ * village. Personas and essential story visitors are covered unless permadeath is on; other villagers through
  * {@link DownedRules}. The time left is kept on the entity, so it survives a restart.
  */
 public final class DownedService {
@@ -57,6 +57,9 @@ public final class DownedService {
             var persona = com.aetherianartificer.townstead.persona.Personas.byId(instance.persona());
             return Systems.on(Systems.PERSONAS) && !Switchboard.get(TownsteadConfig.PERSONA_PERMADEATH)
                     && (persona == null || persona.downed());
+        }
+        if (com.aetherianartificer.townstead.visitor.Visitors.essential(villager)) {
+            return Systems.on(Systems.PERSONAS) && !Switchboard.get(TownsteadConfig.PERSONA_PERMADEATH);
         }
         return DownedRules.covers(entity);
     }

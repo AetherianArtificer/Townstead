@@ -302,6 +302,17 @@ public final class VillagerConsumptionManager {
         return applyConsumption(holder, recipient, stack, recipientNeeds, source, true);
     }
 
+    /**
+     * Drinks a serving a block just poured, at once: the same benefits, purity and sickness as a
+     * carried drink, with no container handed back because none was the villager's.
+     */
+    public static boolean applyServing(VillagerEntityMCA villager, ItemStack serving) {
+        TownsteadVillager.Needs needs = TownsteadVillagers.get(villager).needs();
+        boolean changed = applyConsumption(villager, villager, serving, needs, null, false);
+        if (changed) needs.setLastDrankTime(villager.level().getGameTime());
+        return changed;
+    }
+
     private static boolean applyConsumption(VillagerEntityMCA holder, VillagerEntityMCA recipient,
                                            ItemStack stack, TownsteadVillager.Needs recipientNeeds, BlockPos source,
                                            boolean returnContainer) {
@@ -455,7 +466,10 @@ public final class VillagerConsumptionManager {
         int hydration = bridge.hydration(stack);
         int quenched = bridge.quenched(stack);
         boolean isPurityWater = bridge.isPurityWaterContainer(stack);
-        ThirstCompatBridge.PurityResult purity = isPurityWater
+        // A backend with its own illness table applies it here; the generic roll below is then skipped.
+        boolean nativeSickness = isPurityWater && statuses
+                && bridge.applyWaterSickness(recipient, stack, recipient.getRandom());
+        ThirstCompatBridge.PurityResult purity = isPurityWater && !nativeSickness
                 ? bridge.evaluatePurity(bridge.purity(stack), recipient.getRandom())
                 : new ThirstCompatBridge.PurityResult(true, false, false, -1);
 

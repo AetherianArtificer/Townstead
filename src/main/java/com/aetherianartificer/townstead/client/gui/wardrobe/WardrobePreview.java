@@ -93,9 +93,16 @@ final class WardrobePreview {
         }
     }
 
-    /** A readable name for a skin id, from its file path. */
+    static final String LIBRARY_PREFIX = "immersive_library:";
+
+    /** A readable name for a skin id: a Skin Library outfit's title, else from its file path. */
     static String label(String skin) {
         if (skin == null || skin.isEmpty()) return "";
+        if (skin.startsWith(LIBRARY_PREFIX)) {
+            String title = com.aetherianartificer.townstead.clothing.wardrobe.WardrobeClientStore.title(skin);
+            return title != null ? title : net.minecraft.network.chat.Component.translatable(
+                    "townstead.wardrobe.library_outfit", skin.substring(LIBRARY_PREFIX.length())).getString();
+        }
         String path = skin.contains(":") ? skin.substring(skin.indexOf(':') + 1) : skin;
         if (path.endsWith(".png")) path = path.substring(0, path.length() - 4);
         String[] parts = path.split("/");

@@ -213,7 +213,7 @@ public final class WorkRecipeRegistry {
             // same line the work draws: below it is input, at it is output.
             com.aetherianartificer.townstead.work.order.OrderStackFilters.register(
                     purification.output(),
-                    stack -> thirstBridge.purity(stack) >= ThirstCompatBridge.PURITY_PURIFIED);
+                    stack -> thirstBridge.purity(stack) >= thirstBridge.finishedPurity());
             recipes.add(purification);
         }
 
@@ -1012,7 +1012,10 @@ public final class WorkRecipeRegistry {
             List<ResourceLocation> ids = itemIdsFromIngredient(mcIng);
             if (ids.isEmpty()) continue;
             int count = reflectIngredientCount(mcIng);
-            result.add(new RecipeIngredient(ids, count, ingredientTag(mcIng, ids)));
+            ResourceLocation exact = exactProductOf(mcIng);
+            result.add(exact != null
+                    ? new RecipeIngredient(ids, count, null, exact)
+                    : new RecipeIngredient(ids, count, ingredientTag(mcIng, ids)));
         }
         if (!result.isEmpty()) return result;
 
@@ -1032,6 +1035,29 @@ public final class WorkRecipeRegistry {
             } catch (Throwable ignored) {}
         }
         return result;
+    }
+
+    /**
+     * The one exact product an ingredient stands for, when every stack it accepts is the same
+     * component-bearing product: a water bottle rather than any potion, a dried herb rather than
+     * any prepared one. Null for ordinary item and tag ingredients, and for a mix of products,
+     * which keep matching by item id.
+     */
+    public static @Nullable ResourceLocation exactProductOf(net.minecraft.world.item.crafting.Ingredient ingredient) {
+        if (ingredient == null || ingredient.isEmpty()) return null;
+        ResourceLocation exact = null;
+        try {
+            for (ItemStack stack : ingredient.getItems()) {
+                if (stack == null || stack.isEmpty()) continue;
+                ResourceLocation product = com.aetherianartificer.townstead.work.order.OrderProducts.key(stack);
+                if (product == null || product.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return null;
+                if (exact != null && !exact.equals(product)) return null;
+                exact = product;
+            }
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+        return exact;
     }
 
     static @Nullable ResourceLocation ingredientTag(

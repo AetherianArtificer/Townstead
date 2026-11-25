@@ -18,6 +18,7 @@ public final class ThirstBridgeResolver {
      */
     public static boolean anyThirstModLoaded() {
         return ModCompat.isLoaded("thirst") || ModCompat.isLoaded("legendarysurvivaloverhaul")
+                || ModCompat.isLoaded("thirstwastaken2") || ModCompat.isLoaded("homeostatic")
                 || ModCompat.isLoaded("toughasnails");
     }
 
@@ -53,11 +54,17 @@ public final class ThirstBridgeResolver {
         ThirstCompatBridge thirst = ThirstWasReclaimedBridge.INSTANCE.isActive()
                 ? ThirstWasReclaimedBridge.INSTANCE
                 : ThirstWasTakenBridge.INSTANCE.isActive() ? ThirstWasTakenBridge.INSTANCE : null;
+        ThirstCompatBridge twt2 = ThirstWasTaken2Bridge.INSTANCE.isActive() ? ThirstWasTaken2Bridge.INSTANCE : null;
+        ThirstCompatBridge homeostatic = HomeostaticThirstBridge.INSTANCE.isActive() ? HomeostaticThirstBridge.INSTANCE : null;
         ThirstCompatBridge tan = ToughAsNailsThirstBridge.INSTANCE.isActive() ? ToughAsNailsThirstBridge.INSTANCE : null;
-        ThirstCompatBridge fallback = lso != null ? lso : thirst != null ? thirst : tan;
+        // New backends sit before TAN and after the older ones, so no existing world changes backend.
+        ThirstCompatBridge fallback = lso != null ? lso : thirst != null ? thirst : twt2 != null ? twt2
+                : homeostatic != null ? homeostatic : tan;
         ThirstCompatBridge selected = switch (preference) {
             case "tough_as_nails" -> tan != null ? tan : fallback;
             case "thirst" -> thirst != null ? thirst : fallback;
+            case "thirstwastaken2" -> twt2 != null ? twt2 : fallback;
+            case "homeostatic" -> homeostatic != null ? homeostatic : fallback;
             // "auto" prefers LSO, matching pre-config behavior
             default -> fallback;
         };

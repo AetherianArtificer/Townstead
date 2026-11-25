@@ -51,6 +51,8 @@ public final class SubjectSources {
         register("townstead:company", SubjectSources::company);
         register("townstead:infection", SubjectSources::infection);
         register("townstead:aspect_neighbor", SubjectSources::aspectNeighbor);
+        // Any mod's subject from data alone: a Pheno condition on the speaker or the listener.
+        register("townstead:condition", ConditionSubjectSource::instances);
         // Designed sources whose game data does not exist yet. Their topics stay silent until a
         // system or another mod registers a real source under the same id.
         for (String pending : List.of("townstead:quest_board", "townstead:project", "townstead:realm_rumour"))

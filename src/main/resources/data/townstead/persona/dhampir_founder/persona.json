@@ -504,6 +504,7 @@
       "type": "pheno:visitor",
       "role": "candle_bringer",
       "gender": "female",
+      "essential": true,
       "states": {
         "townstead_state:thrall": 1
       }
@@ -707,6 +708,7 @@
       "from": "near",
       "distance": 10,
       "gender": "male",
+      "essential": true,
       "states": {
         "townstead_state:vampire": 1
       },
@@ -721,6 +723,7 @@
       "type": "pheno:visitor_action",
       "role": "father",
       "radius": 48,
+      "mortal": true,
       "action": {
         "type": "pheno:damage",
         "amount": 1000,
@@ -1144,6 +1147,14 @@
           }
         }
       ]
+    },
+    "midwife_asked": {
+      "type": "pheno:other",
+      "condition": {
+        "type": "pheno:chronicle_count",
+        "key": "townstead:midwife_asked_bring",
+        "at_least": 1
+      }
     },
     "heard_birth": {
       "type": "pheno:other",

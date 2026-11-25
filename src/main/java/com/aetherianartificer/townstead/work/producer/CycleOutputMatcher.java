@@ -12,7 +12,8 @@ final class CycleOutputMatcher {
 
     static boolean matches(@Nullable DiscoveredRecipe recipe, ResourceLocation item,
                            ResourceLocation product) {
-        return recipe != null && recipe.output().equals(item)
-                && OrderProducts.key(recipe).equals(product);
+        if (recipe == null) return false;
+        if (com.aetherianartificer.townstead.work.order.variant.ProductVariants.isPattern(product)) return com.aetherianartificer.townstead.work.order.variant.ProductVariants.matches(product, OrderProducts.key(recipe));
+        return recipe.output().equals(item) && OrderProducts.key(recipe).equals(product);
     }
 }

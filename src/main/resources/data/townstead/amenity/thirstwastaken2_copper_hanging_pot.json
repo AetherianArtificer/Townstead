@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": ["thirstwastaken2"],
+  "blocks": ["thirstwastaken2:copper_hanging_pot"],
+  "requires": {
+    "type": "pheno:or",
+    "conditions": [
+      { "type": "pheno:block_state", "property": "purity", "value": "3" },
+      { "type": "pheno:block_state", "property": "purity", "value": "4" }
+    ]
+  },
+  "vessel": "minecraft:glass_bottle",
+  "behavior": { "type": "pheno:use_block", "item": "vessel" }
+}

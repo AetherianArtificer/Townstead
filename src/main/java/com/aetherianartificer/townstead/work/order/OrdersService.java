@@ -53,7 +53,57 @@ public final class OrdersService {
                 List.copyOf(options),
                 List.copyOf(stations),
                 workers,
-                drivers);
+                drivers,
+                families(options));
+    }
+
+    /**
+     * The offered things that are variants of one base, grouped: a family and base per group, with each variant
+     * offered here as a member. The screen shows the base once and its variants as choices.
+     */
+    static List<OrdersSnapshotS2CPayload.Family> families(List<Option> options) {
+        java.util.Map<String, List<Option>> groups = new java.util.LinkedHashMap<>();
+        java.util.Map<String, com.aetherianartificer.townstead.work.order.variant.VariantFamily.Described> keys = new java.util.HashMap<>();
+        for (Option option : options) {
+            if (option.activity() || option.tag()) continue;
+            var described = com.aetherianartificer.townstead.work.order.variant.ProductVariants.describe(option.product());
+            if (described == null) continue;
+            String key = described.family() + "|" + described.base();
+            groups.computeIfAbsent(key, k -> new ArrayList<>()).add(option);
+            keys.putIfAbsent(key, described);
+        }
+        List<OrdersSnapshotS2CPayload.Family> out = new ArrayList<>();
+        for (var e : groups.entrySet()) {
+            var described = keys.get(e.getKey());
+            var family = com.aetherianartificer.townstead.work.order.variant.ProductVariants.family(described.family());
+            if (family == null) continue;
+            var axes = family.axes(described.base());
+            if (axes.isEmpty()) continue;
+            List<OrdersSnapshotS2CPayload.Axis> shownAxes = new ArrayList<>();
+            for (var axis : axes) {
+                java.util.Set<String> offered = new java.util.HashSet<>();
+                for (Option option : e.getValue()) {
+                    var d = com.aetherianartificer.townstead.work.order.variant.ProductVariants.describe(option.product());
+                    if (d != null && d.values().get(axis.id()) != null) offered.add(d.values().get(axis.id()));
+                }
+                List<OrdersSnapshotS2CPayload.AxisValue> values = new ArrayList<>();
+                for (var v : axis.values()) {
+                    if (v.onlyWhenOffered() && !offered.contains(v.id())) continue;
+                    values.add(new OrdersSnapshotS2CPayload.AxisValue(v.id(), v.label(), v.icon()));
+                }
+                shownAxes.add(new OrdersSnapshotS2CPayload.Axis(axis.id(), axis.label(), axis.any(), values));
+            }
+            List<OrdersSnapshotS2CPayload.Member> members = new ArrayList<>();
+            for (Option option : e.getValue()) {
+                var d = com.aetherianartificer.townstead.work.order.variant.ProductVariants.describe(option.product());
+                List<String> values = new ArrayList<>();
+                for (var axis : axes) values.add(d.values().getOrDefault(axis.id(), ""));
+                members.add(new OrdersSnapshotS2CPayload.Member(values, option.product(), option.available()));
+            }
+            out.add(new OrdersSnapshotS2CPayload.Family(described.family(), described.base(),
+                    family.label(described.base()), family.icon(described.base()), shownAxes, members));
+        }
+        return out;
     }
 
     private static List<OrdersSnapshotS2CPayload.Worker> workerChoices(
@@ -117,7 +167,7 @@ public final class OrdersService {
             if (option == null || option.activity() || option.tag()) continue;
             boolean requested = order.isTag()
                     ? OrderTags.contains(order.output(), option.output())
-                    : order.product().equals(option.product());
+                    : com.aetherianartificer.townstead.work.order.variant.ProductVariants.matches(order.product(), option.product());
             if (!requested) continue;
             for (var task : profession.workTasks()) {
                 if (!task.allowsBlock(option.stationIcon())) continue;
@@ -402,6 +452,7 @@ public final class OrdersService {
             }
             // Handled before it reaches here — it is a lifecycle notice, not an edit.
             case CLOSED -> false;
+            case SET_PRODUCT -> setVariant(level, site, orders, edit.index(), edit.value());
             case RENAME -> {
                 String cleaned = WorksiteNames.sanitise(edit.value());
                 if (cleaned == null) yield false;
@@ -542,6 +593,16 @@ public final class OrdersService {
         }
         ResourceLocation id = tryParse(itemId);
         if (id == null) return false;
+        // A line that leaves a variant open is admitted when the catalogue offers something it takes in.
+        if (com.aetherianartificer.townstead.work.order.variant.ProductVariants.isPattern(id)) {
+            Option first = firstOffered(level, site, id);
+            if (first == null) return false;
+            Order order = new Order(first.output(), Order.Mode.KEEP_STOCKED, 10);
+            order.setProduct(id, openLabel(id));
+            order.setScope(WorksiteCatalogs.defaultScopeFor(level, site, first.output()));
+            orders.add(order);
+            return true;
+        }
         // Exact products are admitted only when the live server catalogue offers them. Their
         // synthetic id is never trusted as an item id and never needs registry registration.
         for (Option option : WorksiteCatalogs.optionsFor(level, site)) {
@@ -634,6 +695,61 @@ public final class OrdersService {
             }
         }
         return null;
+    }
+
+    /** The first thing the catalogue offers here that {@code product} takes in, or null. */
+    private static @Nullable Option firstOffered(ServerLevel level, Worksite site, ResourceLocation product) {
+        for (Option option : WorksiteCatalogs.optionsFor(level, site)) {
+            if (option.activity() || option.tag()) continue;
+            if (com.aetherianartificer.townstead.work.order.variant.ProductVariants.matches(product, option.product())) return option;
+        }
+        return null;
+    }
+
+    /** A line's name while a variant is open: its base, as the family names it. The screen names it fully. */
+    private static String openLabel(ResourceLocation pattern) {
+        var parsed = com.aetherianartificer.townstead.work.order.variant.ProductVariants.parse(pattern);
+        return parsed == null ? pattern.toString() : parsed.family().label(parsed.base());
+    }
+
+    /**
+     * The line at {@code index} becomes another variant of the same thing: the same family and base, another value
+     * on an axis or an axis left open. The line keeps its place and settings; what it has made so far stays counted.
+     */
+    private static boolean setVariant(ServerLevel level, Worksite site, OrderList orders, int index, @Nullable String value) {
+        Order source = orders.at(index);
+        ResourceLocation next = value == null ? null : tryParse(value);
+        if (source == null || next == null || source.isActivity() || source.isTag()) return false;
+        if (!sameThing(source.product(), next)) return false;
+        Option offered = firstOffered(level, site, next);
+        if (offered == null) return false;
+        Order twin = new Order(offered.output(), source.kind(), source.mode(), source.target());
+        twin.setProduct(next, com.aetherianartificer.townstead.work.order.variant.ProductVariants.isPattern(next) ? openLabel(next) : offered.label());
+        twin.setScope(source.scope());
+        twin.setProfession(source.profession());
+        twin.setMinRank(source.minRank());
+        twin.setVillager(source.villager());
+        twin.setOperation(source.operation());
+        if (source.operator() != null) twin.setOperator(source.operator());
+        twin.setPaused(source.paused());
+        twin.setProduced(source.produced());
+        orders.add(twin);
+        orders.move(orders.size() - 1, index);
+        orders.remove(source);
+        return true;
+    }
+
+    /** Whether two products are variants of one thing: the same family and base. */
+    private static boolean sameThing(ResourceLocation a, ResourceLocation b) {
+        ResourceLocation[] ka = familyAndBase(a), kb = familyAndBase(b);
+        return ka != null && kb != null && ka[0].equals(kb[0]) && ka[1].equals(kb[1]);
+    }
+
+    private static @Nullable ResourceLocation[] familyAndBase(ResourceLocation product) {
+        var parsed = com.aetherianartificer.townstead.work.order.variant.ProductVariants.parse(product);
+        if (parsed != null) return new ResourceLocation[]{parsed.family().id(), parsed.base()};
+        var described = com.aetherianartificer.townstead.work.order.variant.ProductVariants.describe(product);
+        return described == null ? null : new ResourceLocation[]{described.family(), described.base()};
     }
 
     /** A line's twin, dropped in beneath it, carrying every setting but none of its progress. */

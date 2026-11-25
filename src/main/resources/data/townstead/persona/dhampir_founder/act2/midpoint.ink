@@ -115,6 +115,8 @@ VAR done_confession_after = false
 
 === confession_after ===
 ~ done_confession_after = true
+~ seeing_midwife = false
+~ act("walk_end")
 {check("midwife_forgiven"):
     ~ toward_oath()
     I told her to come and sit by the fire. I meant it.

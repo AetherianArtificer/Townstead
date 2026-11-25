@@ -5,7 +5,11 @@ import com.aetherianartificer.townstead.pheno.value.Value;
 import com.aetherianartificer.townstead.pheno.value.ValueType;
 import com.aetherianartificer.townstead.village.ResidentRegister;
 import com.aetherianartificer.townstead.village.TownRange;
+import com.aetherianartificer.townstead.pheno.selector.SelectorContext;
 import com.google.gson.JsonObject;
+import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.server.world.data.Village;
+import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 
@@ -29,7 +33,7 @@ public final class VillageNeedsValueType implements ValueType {
         String need = json.has("need") ? json.get("need").getAsString().toLowerCase(java.util.Locale.ROOT) : null;
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return 0;
-            return TownRange.at(level, BlockPos.containing(ctx.pos())).flatMap(village -> ResidentRegister.get(level.getServer())
+            return villageFor(ctx, level).flatMap(village -> ResidentRegister.get(level.getServer())
                     .summary(level.getServer(), new VillageId(level.dimension().location(), village.getId())))
                     .map(summary -> {
                         if (need != null) {
@@ -42,6 +46,30 @@ public final class VillageNeedsValueType implements ValueType {
                         return total / summary.byNeed().size();
                     }).orElse(0.0);
         };
+    }
+
+    /**
+     * The town being read: one named on the context, else the town the focus stands in, else the
+     * home town of the villager reading it. A villager working fields past the border still
+     * answers for their own town instead of reading as nowhere.
+     */
+    private static java.util.Optional<Village> villageFor(SelectorContext ctx, ServerLevel level) {
+        VillageManager manager = VillageManager.get(level);
+        Integer named = ctx.villageId();
+        if (named != null) {
+            java.util.Optional<Village> village = manager.getOrEmpty(named);
+            if (village.isPresent()) return village;
+        }
+        java.util.Optional<Village> here = TownRange.at(level, BlockPos.containing(ctx.pos()));
+        if (here.isPresent()) return here;
+        if (ctx.self() instanceof VillagerEntityMCA villager && villager.level() == level) {
+            try {
+                return villager.getResidency().getHomeVillage();
+            } catch (RuntimeException e) {
+                return java.util.Optional.empty();
+            }
+        }
+        return java.util.Optional.empty();
     }
 
     private static double score(com.aetherianartificer.townstead.api.v1.model.NeedBand band) {

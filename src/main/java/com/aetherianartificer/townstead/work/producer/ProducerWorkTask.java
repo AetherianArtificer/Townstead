@@ -640,6 +640,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         // A dish already on the shelf fills an empty plate faster than cooking another one.
         if (tryBeginPlateRestock(level, villager, gameTime)) return;
 
+        // stepping down from a chest or mid-jump, no path can be planned to any station: wait for the ground
+        if (!com.aetherianartificer.townstead.work.WorkBuildingNav.canPlanPath(villager)) return;
         ProducerStationSelection selection = selectStation(level, villager, gameTime);
         if (selection == null) {
             onNoWork(level, villager, gameTime);
@@ -802,6 +804,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
      * <p>The intermediate is deliberately not claimed against the line: only the recipe which
      * actually yields the ordered product may reserve or credit its quantity.</p>
      */
+    /** Whether a line still wanted can be made, or begun, at another station this worker uses. None by default. */
+    protected boolean orderWaitsElsewhere(ServerLevel level, VillagerEntityMCA villager, long gameTime,
+                                          OrderList orders, OrderContext context) {
+        return false;
+    }
+
     protected @Nullable ProducerRecipe orderedIntermediate(
             ServerLevel level, VillagerEntityMCA villager, long gameTime,
             OrderList orders, OrderContext context) {
@@ -864,6 +872,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                             + intermediate.output());
                     return intermediate;
                 }
+                // A line still wanted, and workable at another of this worker's stations, comes before working on
+                // their own here: own work would spend the very things the line needs.
+                if (orderWaitsElsewhere(level, villager, gameTime, orders, context)) {
+                    debugChat(level, villager, "SELECT:an order waits at another station");
+                    return null;
+                }
             }
         }
         // Standing down is checked last and needs no context: reading the list is a question about
@@ -875,7 +889,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         Predicate<ResourceLocation> autonomousOutputAllowed = orders == null || orders.isEmpty()
                 ? output -> true
                 : output -> !orders.governs(output);
-        return pickRecipe(level, villager, gameTime, autonomousOutputAllowed);
+        ProducerRecipe picked = pickRecipe(level, villager, gameTime, autonomousOutputAllowed);
+        // An exact-product line (a potion, a taught brew) governs no item id, only its own recipe:
+        // once it is satisfied, the worker must not go on making that product on their own.
+        if (picked != null && orders != null && !orders.isEmpty() && orders.governs(picked)) return null;
+        return picked;
     }
 
     private void tickSelectRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -901,7 +919,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             }
             String missing = noRecipeMissingRequirement(level, villager, gameTime);
             debugChat(level, villager, "SELECT:no recipe, rotating"
-                    + (missing == null ? "" : " (missing " + missing + ")"));
+                    + (missing == null ? "" : " (missing " + missing + ")")
+                    + " at " + net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(
+                            level.getBlockState(stationAnchor).getBlock()));
             setBlocked(level, villager, gameTime,
                     missing == null ? ProducerBlockedReason.NO_RECIPE
                             : ProducerBlockedReason.NO_INGREDIENTS,
@@ -1077,6 +1097,14 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             transition(ProducerState.COLLECT_WAIT, gameTime);
             return;
         }
+        if (!result.collected() && activeRecipe == null && stationAnchor != null) {
+            // finished output this worker has no recipe for and cannot take: coming straight back to collect it
+            // again ran every tick, forever. Leave the station a while; its own maker, or a player, takes it.
+            debugChat(level, villager, "COLLECT:nothing to take at " + level.getBlockState(stationAnchor).getBlock()
+                    + ", leaving it a while");
+            abandonCurrentStation(level, villager, gameTime, true);
+            return;
+        }
         finishCollect(level, villager, gameTime);
     }
 
@@ -1108,6 +1136,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     // ── finishCollect ──
 
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        // Making it leaves what making it leaves, at the station, as a player's work there does.
+        if (stationAnchor != null && activeRecipe != null) {
+            com.aetherianartificer.townstead.compat.mess.MessBridge.worked(villager, stationAnchor,
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.get(activeRecipe.output()).getDefaultInstance(),
+                    Math.max(1, activeRecipe.outputCount()) * activeBatchOperations());
+        }
         storeOutputs(level, villager, gameTime);
         onSessionRelease(level, villager, stationAnchor, gameTime);
         releaseStationClaim(level, villager, stationAnchor);

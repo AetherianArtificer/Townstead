@@ -71,13 +71,17 @@ public final class ProfessionAutoAssign {
         VillagerProfession current = villager.getVillagerData().getProfession();
 
         if (current == assignable || ProfessionCarriers.carries(current, def)) {
-            // Already doing this work: keep it only while a seat is still theirs. A carrier
-            // arrived holding its own job block; hand that back so the room reads as free.
-            if (ProfessionSites.assignedSite(level, villager, def).isEmpty()) {
+            // Already doing this work: keep it while a seat is theirs, and for a short grace
+            // after it goes missing, since a building being rescanned or renovated comes back.
+            // A carrier arrived holding its own job block; hand that back on release.
+            if (ProfessionSites.assignedSite(level, villager, def).isPresent()) {
+                JobRetention.seatFound(villager);
+            } else if (JobRetention.seatMissingTooLong(villager, level.getGameTime())) {
+                JobRetention.seatFound(villager);
                 narrate(level, villager, "SEAT:released " + ProfessionSlotRules.professionKey(current)
                         + " from " + def.id() + ": no seat left");
                 releaseJobSite(villager);
-                villager.setProfession(VillagerProfession.NONE);
+                ProfessionTradeLedger.change(villager, VillagerProfession.NONE);
                 ProfessionSites.seatChanged(villager, false);
                 Townstead.townstead$broadcastProfessionTier(villager);
             }
@@ -90,8 +94,10 @@ public final class ProfessionAutoAssign {
         if (hired == null) return;
         narrate(level, villager, "SEAT:hired into "
                 + ProfessionSlotRules.professionKey(hired) + " for " + def.id());
-        villager.setProfession(hired);
+        ProfessionTradeLedger.change(villager, hired);
         ProfessionSites.seatChanged(villager, true);
+        // Puts the hire on the seat roll now, so the seat stays theirs if they unload first.
+        ProfessionSites.assignedSite(level, villager, def);
         Townstead.townstead$broadcastProfessionTier(villager);
     }
 

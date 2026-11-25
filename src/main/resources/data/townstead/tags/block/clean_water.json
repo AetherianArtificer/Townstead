@@ -1,0 +1,6 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "homeostatic:purified_water_fluid", "required": false }
+  ]
+}

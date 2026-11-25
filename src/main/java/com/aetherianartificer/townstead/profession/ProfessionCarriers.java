@@ -28,7 +28,8 @@ import java.util.function.Predicate;
 public final class ProfessionCarriers {
 
     private record Snapshot(Map<ResourceLocation, ProfessionDef> defs, boolean cookEnabled,
-                            List<VillagerProfession> carriers) {}
+                            List<VillagerProfession> carriers,
+                            java.util.Set<VillagerProfession> seatHired) {}
 
     private static volatile Snapshot snapshot;
 
@@ -74,11 +75,56 @@ public final class ProfessionCarriers {
      * path costs two comparisons and a walk over a list of one or two professions.
      */
     private static List<VillagerProfession> carriers() {
+        return snapshot().carriers();
+    }
+
+    /**
+     * Whether seats, not a job block, hire and release this profession: an enabled seated
+     * career's own profession, a carrier of it, or a proprietor one of its buildings reserves a
+     * seat for. A seat leaves no job-site memory, so nothing else may read that memory's absence
+     * as unemployment.
+     */
+    public static boolean seatHired(@Nullable VillagerProfession profession) {
+        return profession != null && snapshot().seatHired().contains(profession);
+    }
+
+    /** The profession ids {@link #seatHired} answers for under these definitions. */
+    static java.util.Set<ResourceLocation> seatHiredIds(
+            Map<ResourceLocation, ProfessionDef> defs,
+            java.util.Set<ResourceLocation> compatibilityIds,
+            java.util.function.Predicate<ProfessionDef> enabled) {
+        java.util.Set<ResourceLocation> ids = new java.util.HashSet<>();
+        for (ProfessionDef def : defs.values()) {
+            if (!ProfessionAutoAssign.managesDefinition(def) || !enabled.test(def)) continue;
+            ids.add(def.id());
+            for (com.aetherianartificer.townstead.profession.def.JobSiteProvider provider
+                    : def.jobSites()) {
+                if (provider instanceof com.aetherianartificer.townstead.profession.def
+                        .JobSiteProvider.Building building) {
+                    ids.addAll(building.proprietor().professions());
+                }
+            }
+        }
+        for (ResourceLocation id : compatibilityIds) {
+            ProfessionDef def = carriedCareer(id);
+            if (def != null && enabled.test(def)) ids.add(id);
+        }
+        return ids;
+    }
+
+    private static Snapshot snapshot() {
         Map<ResourceLocation, ProfessionDef> defs = ProfessionDefs.all();
         boolean cookEnabled = com.aetherianartificer.townstead.TownsteadConfig.isTownsteadCookEnabled();
         Snapshot current = snapshot;
         if (current != null && current.defs() == defs && current.cookEnabled() == cookEnabled) {
-            return current.carriers();
+            return current;
+        }
+        java.util.Set<VillagerProfession> seatHired = new java.util.HashSet<>();
+        for (ResourceLocation id : seatHiredIds(defs, ProfessionDefs.compatibility().keySet(),
+                ProfessionAutoAssign::enabled)) {
+            VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION
+                    .getOptional(id).orElse(null);
+            if (profession != null && profession != VillagerProfession.NONE) seatHired.add(profession);
         }
         List<VillagerProfession> carriers = new ArrayList<>();
         // A native career can itself declare grouped job blocks. Exclude its raw POI from
@@ -100,7 +146,9 @@ public final class ProfessionCarriers {
             if (profession.heldJobSite() == PoiType.NONE) continue;
             carriers.add(profession);
         }
-        snapshot = new Snapshot(defs, cookEnabled, List.copyOf(carriers));
-        return snapshot.carriers();
+        Snapshot next = new Snapshot(defs, cookEnabled, List.copyOf(carriers),
+                java.util.Set.copyOf(seatHired));
+        snapshot = next;
+        return next;
     }
 }

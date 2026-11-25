@@ -190,6 +190,7 @@ EXTERNAL contract_turn_in(pool)
 // act2/m2_midwife_side.ink
 ~ bread_known = false
 ~ told_father = false
+~ seeing_midwife = false
 
 // act2/m3_grave.ink
 ~ grave_walking = false

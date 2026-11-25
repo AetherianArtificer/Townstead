@@ -7,12 +7,40 @@ import java.util.UUID;
 
 public final class VillageResidentClientStore {
     private static volatile List<Resident> residents = List.of();
+    private static volatile long receivedAtMillis;
 
     private VillageResidentClientStore() {}
 
+    /**
+     * Whether a worker has a workplace. {@code state} is one of the {@code JobRetention}
+     * states, {@code endsInTicks} counts from when the list arrived, and {@code blockId} names
+     * the job block when the profession has exactly one.
+     */
+    public record JobStatus(int state, int endsInTicks, boolean seat, String blockId) {
+        public static final JobStatus WORKING = new JobStatus(0, -1, false, "");
+
+        public JobStatus {
+            blockId = blockId != null ? blockId : "";
+        }
+
+        /** Ticks left after {@code elapsedTicks}, or -1 when the job is not ending. */
+        public int remainingTicks(long elapsedTicks) {
+            if (endsInTicks < 0) return -1;
+            return (int) Math.max(0L, endsInTicks - Math.max(0L, elapsedTicks));
+        }
+
+        /** Minutes and seconds of real time, as {@code 14:20}. */
+        public static String clock(int ticks) {
+            int seconds = Math.max(0, ticks) / 20;
+            return (seconds / 60) + ":" + (seconds % 60 < 10 ? "0" : "") + (seconds % 60);
+        }
+    }
+
     public record Resident(UUID villagerUuid, String name, String professionId, int professionLevel, int[] shifts,
-                           String chronotype, String chronotypeLabel, int[] sleepHours, String templateId) {
+                           String chronotype, String chronotypeLabel, int[] sleepHours, String templateId,
+                           JobStatus job) {
         public Resident {
+            job = job != null ? job : JobStatus.WORKING;
             name = name != null ? name : "???";
             professionId = professionId != null ? professionId : "minecraft:none";
             professionLevel = Math.max(1, professionLevel);
@@ -25,16 +53,22 @@ public final class VillageResidentClientStore {
 
         public Resident withShifts(int[] updatedShifts) {
             return new Resident(villagerUuid, name, professionId, professionLevel, updatedShifts,
-                    chronotype, chronotypeLabel, sleepHours, templateId);
+                    chronotype, chronotypeLabel, sleepHours, templateId, job);
         }
 
         public Resident withProfession(String updatedProfessionId, int updatedLevel) {
             return new Resident(villagerUuid, name, updatedProfessionId, updatedLevel, shifts,
-                    chronotype, chronotypeLabel, sleepHours, templateId);
+                    chronotype, chronotypeLabel, sleepHours, templateId, JobStatus.WORKING);
         }
     }
 
+    /** Ticks since the list arrived, for counting down between syncs. */
+    public static long ticksSinceReceived() {
+        return Math.max(0L, (System.currentTimeMillis() - receivedAtMillis) / 50L);
+    }
+
     public static void set(List<Resident> updatedResidents) {
+        receivedAtMillis = System.currentTimeMillis();
         if (updatedResidents == null || updatedResidents.isEmpty()) {
             residents = List.of();
             return;

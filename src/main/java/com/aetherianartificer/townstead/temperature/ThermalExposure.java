@@ -31,7 +31,8 @@ public record ThermalExposure(float ambient, float wetness, boolean immersed, bo
     public static ThermalProtection protection(VillagerEntityMCA villager) {
         return Insulation.clothingProtection(villager).plus(ToughAsNailsEntityCompat.protection(villager))
                 .plus(LsoEntityCompat.effects(villager).protection())
-                .plus(ColdSweatEntityCompat.protection(villager));
+                .plus(ColdSweatEntityCompat.protection(villager))
+                .plus(com.aetherianartificer.townstead.compat.thirst.HomeostaticEntityCompat.protection(villager));
     }
 
     public static ThermalExposure at(ServerLevel level, VillagerEntityMCA villager, BlockPos pos, float activity) {

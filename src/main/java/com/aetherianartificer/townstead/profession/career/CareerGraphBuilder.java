@@ -31,9 +31,13 @@ import java.util.Map;
 public final class CareerGraphBuilder {
     private CareerGraphBuilder() {}
 
+    /**
+     * Every career's own node, plus the full tree of {@code focus} only. Sending every tree at once
+     * grew past what one packet can carry, so trees load one at a time as the picker asks for them.
+     */
     public static List<CareerGraphS2CPayload.Node> build(MinecraftServer server, LivingEntity entity,
                                                          Map<String, List<String>> momentsByCareer,
-                                                         String locale) {
+                                                         String locale, ResourceLocation focus) {
         List<CareerGraphS2CPayload.Node> nodes = new ArrayList<>();
         CareerProfile profile = CareerProfiles.of(entity);
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
@@ -41,9 +45,9 @@ public final class CareerGraphBuilder {
         // Careers are flat: every def is its own top-level section on the board.
         for (ProfessionDef def : ProfessionDefs.all().values()) {
             appendCareer(nodes, server, entity, profile, store, def, def.id(), momentsByCareer,
-                    locale);
+                    locale, def.id().equals(focus));
         }
-        appendComboSkills(nodes, entity, store, locale);
+        if (focus != null) appendComboSkills(nodes, entity, store, locale, focus);
         return nodes;
     }
 
@@ -53,12 +57,13 @@ public final class CareerGraphBuilder {
      */
     private static void appendComboSkills(List<CareerGraphS2CPayload.Node> nodes,
                                           LivingEntity entity, ProfessionXpStore store,
-                                          String locale) {
+                                          String locale, ResourceLocation focus) {
         var unlockedIds = new java.util.HashSet<ResourceLocation>();
         for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.unlockedFor(entity)) {
             unlockedIds.add(combo.id());
         }
         for (var combo : com.aetherianartificer.townstead.profession.def.ComboSkills.all().values()) {
+            if (!combo.thresholds().containsKey(focus)) continue;
             boolean unlocked = unlockedIds.contains(combo.id());
             List<CareerGraphS2CPayload.Evidence> evidence = new ArrayList<>();
             for (var threshold : combo.thresholds().entrySet()) {
@@ -74,8 +79,7 @@ public final class CareerGraphBuilder {
             // The shared plaque: one node per involved career, so the combo shows on every
             // tab it joins (the same combo id selects the same detail from any side).
             for (ResourceLocation involved : combo.thresholds().keySet()) {
-                if (nodes.size() > 512) return;
-                if (ProfessionDefs.byId(involved) == null) continue;
+                if (!involved.equals(focus) || ProfessionDefs.byId(involved) == null) continue;
                 nodes.add(new CareerGraphS2CPayload.Node(
                         combo.id().toString(), involved.toString(), involved.toString(),
                         CareerGraphS2CPayload.KIND_COMBO,
@@ -100,8 +104,7 @@ public final class CareerGraphBuilder {
                                      ProfessionXpStore store, ProfessionDef def,
                                      ResourceLocation rootId,
                                      Map<String, List<String>> momentsByCareer,
-                                     String locale) {
-        if (nodes.size() > 512) return;
+                                     String locale, boolean withTree) {
         ResourceLocation careerId = def.id();
         int xp = ProfessionProgress.getXp(store, careerId);
         int currentTier = ProfessionProgress.getTier(store, careerId);
@@ -180,6 +183,7 @@ public final class CareerGraphBuilder {
                 // are returning to from one you have never held.
                 stampOf(profile, careerId), CareerGraphS2CPayload.Ability.NONE,
                 masked ? List.of() : insight.marks(), insight.prev(), insight.next()));
+        if (!withTree) return;
 
         for (ResourceLocation choice : def.skills()) {
             SkillDef skill = SkillDefs.byId(choice);

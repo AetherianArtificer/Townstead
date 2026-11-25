@@ -191,6 +191,11 @@ public final class WorkBuildingNav {
         return chooseReachableTarget(level, villager, intermediateApproachTargets(level, villager, snapshot), closeEnough, false);
     }
 
+    /** Whether ground navigation can plan a path from where the villager is right now. */
+    public static boolean canPlanPath(VillagerEntityMCA villager) {
+        return villager.onGround() || villager.isInWater() || villager.isInLava() || villager.isPassenger();
+    }
+
     public static @Nullable BlockPos chooseReachableTarget(
             ServerLevel level,
             VillagerEntityMCA villager,
@@ -208,6 +213,9 @@ public final class WorkBuildingNav {
             boolean useReachabilityCache
     ) {
         if (level == null || villager == null || candidates == null || candidates.isEmpty()) return null;
+        // Mid-step, mid-jump or falling, navigation plans nothing at all; that says nothing about the targets, and
+        // remembering it as their failure kept every station in the room "unreachable" for the backoff.
+        if (!canPlanPath(villager)) return null;
         List<BlockPos> ordered = new ArrayList<>(candidates);
         ordered.sort(Comparator.comparingDouble(pos ->
                 villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));
@@ -253,6 +261,7 @@ public final class WorkBuildingNav {
         if (level == null || villager == null || candidates == null || candidates.isEmpty()) {
             return new ReachabilitySelection(null, List.of());
         }
+        if (!canPlanPath(villager)) return new ReachabilitySelection(null, List.of());
         List<BlockPos> ordered = new ArrayList<>(candidates);
         ordered.sort(Comparator.comparingDouble(pos ->
                 villager.distanceToSqr(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5)));

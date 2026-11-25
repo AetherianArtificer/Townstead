@@ -78,6 +78,13 @@ public abstract class ReportBuildingMessageMixin {
         ServerLevel level = player.serverLevel();
         BlockPos pos = player.blockPosition();
 
+        //? if >=1.21 {
+        // MCA's own edit actions need a blueprint in hand and Peasant rank in the village. The
+        // open-air paths below act and cancel before MCA's checks run, so they check the same.
+        if ((TOWNSTEAD$REMOVE_ACTIONS.contains(actName) || TOWNSTEAD$OPEN_AIR_SCAN_ACTIONS.contains(actName))
+                && !townstead$mayEdit(player, level, pos)) return;
+        //?}
+
         if ("FORCE_TYPE".equals(actName)) {
             String requestedType = townstead$reportData();
             if (CatalogDataLoader.isActiveSupersededBuildingType(requestedType)) {
@@ -202,4 +209,31 @@ public abstract class ReportBuildingMessageMixin {
                     McaFloorCompat.pushVillageResponse(player);
                 });
     }
+
+    //? if >=1.21 {
+    // Same rule as MCA's ReportBuildingMessage: holding a blueprint, not a spectator, and an
+    // operator or at least Peasant in the nearest village when that village has rank tasks.
+    @Unique
+    private static boolean townstead$mayEdit(ServerPlayer player, ServerLevel level, BlockPos pos) {
+        if (player.isSpectator() || !townstead$holdsBlueprint(player)) return false;
+        if (player.hasPermissions(2)) return true;
+        Village village = VillageManager.get(level).findNearestVillage(pos, Village.PLAYER_BORDER_MARGIN).orElse(null);
+        if (village == null) return true;
+        net.conczin.mca.resources.Tasks tasks = net.conczin.mca.resources.Tasks.getInstance();
+        if (tasks == null || tasks.tasks.isEmpty()) return true;
+        return net.conczin.mca.resources.Tasks.getRank(village, player)
+                .isAtLeast(net.conczin.mca.resources.Rank.PEASANT);
+    }
+
+    @Unique
+    private static boolean townstead$holdsBlueprint(ServerPlayer player) {
+        return townstead$isBlueprint(player.getMainHandItem()) || townstead$isBlueprint(player.getOffhandItem());
+    }
+
+    @Unique
+    private static boolean townstead$isBlueprint(net.minecraft.world.item.ItemStack stack) {
+        return !stack.isEmpty() && "mca:blueprint".equals(
+                net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+    }
+    //?}
 }

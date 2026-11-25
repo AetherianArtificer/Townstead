@@ -58,7 +58,7 @@ public final class BorrowBedWhenFatiguedTask extends Behavior<VillagerEntityMCA>
     @Override
     protected boolean checkExtraStartConditions(ServerLevel level, VillagerEntityMCA villager) {
         candidate = null;
-        if (!TownsteadConfig.isVillagerFatigueEnabled() || villager.isSleeping()) return false;
+        if ((!TownsteadConfig.isVillagerFatigueEnabled() && !BedRest.active(villager)) || villager.isSleeping()) return false;
         if (!REQUESTED.contains(villager)) return false;
         // A HOME, whenever one exists, belongs to MCA and always wins.
         if (villager.getBrain().getMemory(MemoryModuleType.HOME).isPresent()) return false;

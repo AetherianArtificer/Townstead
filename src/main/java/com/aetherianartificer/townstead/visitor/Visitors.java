@@ -34,12 +34,17 @@ import java.util.UUID;
 public final class Visitors {
     private static final String ROLE = "townstead:visitor";
     private static final String PARTY = "townstead:visitor_party";
+    private static final String ESSENTIAL = "townstead:visitor_essential";
 
     private Visitors() {}
 
-    /** Who to make: states to set, and optionally a gender, a profession and a thrall who comes with them. */
+    /**
+     * Who to make: states to set, and optionally a gender, a profession and a thrall who comes with
+     * them. An essential visitor is downed instead of killed while they are a visitor, as a story
+     * that waits on them needs.
+     */
     public record Spec(String role, Map<ResourceLocation, Double> states, @Nullable String gender,
-                       @Nullable ResourceLocation profession, @Nullable Spec thrall) {}
+                       @Nullable ResourceLocation profession, @Nullable Spec thrall, boolean essential) {}
 
     /** Brings a visitor (and their thrall) in from the edge of {@code village}, walking to {@code player}. */
     public static @Nullable VillagerEntityMCA arrive(ServerPlayer player, Village village, Spec spec) {
@@ -78,6 +83,7 @@ public final class Visitors {
         /*villager.finalizeSpawn(level, level.getCurrentDifficultyAt(at), MobSpawnType.EVENT, null, null);
         *///?}
         villager.getPersistentData().putString(ROLE, spec.role());
+        if (spec.essential()) villager.getPersistentData().putBoolean(ESSENTIAL, true);
         if (!level.addFreshEntity(villager)) return null;
         EntityStates.set(villager, NonResidents.VISITOR, 1, 0, null);
         for (Map.Entry<ResourceLocation, Double> state : spec.states().entrySet()) {
@@ -103,11 +109,22 @@ public final class Visitors {
         return best;
     }
 
+    /** Whether {@code entity} is a visitor who is downed instead of killed. */
+    public static boolean essential(Entity entity) {
+        return role(entity) != null && entity.getPersistentData().getBoolean(ESSENTIAL);
+    }
+
+    /** The visitor can be killed again, as when the story kills them on purpose. */
+    public static void mortal(Entity visitor) {
+        visitor.getPersistentData().remove(ESSENTIAL);
+    }
+
     /** The visitor stays: they stop being a visitor and look for a home here, with their party. */
     public static void settle(VillagerEntityMCA visitor) {
         for (VillagerEntityMCA member : party(visitor)) {
             member.getPersistentData().remove(ROLE);
             member.getPersistentData().remove(PARTY);
+            member.getPersistentData().remove(ESSENTIAL);
             EntityStates.clear(member, NonResidents.VISITOR, null);
             McaResidency.joinVillage(member);
         }
@@ -117,6 +134,7 @@ public final class Visitors {
     public static void dismiss(VillagerEntityMCA visitor) {
         for (VillagerEntityMCA member : party(visitor)) {
             member.getPersistentData().remove(ROLE);
+            member.getPersistentData().remove(ESSENTIAL);
             Journeys.leave(member);
         }
     }

@@ -1,0 +1,60 @@
+{
+  "schema": "townstead:variants/v1",
+  "axes": [
+    {
+      "id": "townstead:potion_form",
+      "label": "townstead.variant.potion_form",
+      "any": true,
+      "values": [
+        {
+          "id": "potion",
+          "label": "townstead.variant.potion_form.potion",
+          "icon": "minecraft:potion"
+        },
+        {
+          "id": "splash_potion",
+          "label": "townstead.variant.potion_form.splash_potion",
+          "icon": "minecraft:splash_potion"
+        },
+        {
+          "id": "lingering_potion",
+          "label": "townstead.variant.potion_form.lingering_potion",
+          "icon": "minecraft:lingering_potion"
+        }
+      ]
+    },
+    {
+      "id": "townstead:potion_strength",
+      "label": "townstead.variant.potion_strength",
+      "any": true,
+      "values": [
+        {
+          "id": "plain",
+          "label": "townstead.variant.potion_strength.plain",
+          "spelled": ""
+        },
+        {
+          "id": "long",
+          "label": "townstead.variant.potion_strength.long",
+          "spelled": "long_"
+        },
+        {
+          "id": "strong",
+          "label": "townstead.variant.potion_strength.strong",
+          "spelled": "strong_"
+        }
+      ]
+    }
+  ],
+  "families": [
+    {
+      "id": "townstead:potions",
+      "axes": [
+        "townstead:potion_form",
+        "townstead:potion_strength"
+      ],
+      "products": "townstead_product:potion/minecraft/{townstead:potion_form}/{base.namespace}/{townstead:potion_strength}{base.path}",
+      "label": "item.minecraft.potion.effect.{base.path}"
+    }
+  ]
+}

@@ -140,7 +140,9 @@ public final class ThirstVillagerTicker {
             needs.addThirstExhaustion(ThirstData.EXHAUSTION_AWAKE_BASELINE * biomeModifier * elapsedTicks);
         }
 
-        needs.addThirstExhaustion((bridge.thermalExhaustionPerTick(state.thermal) + ToughAsNailsEntityCompat.thirstExhaustion(self)) * thirstRate * elapsedTicks);
+        needs.addThirstExhaustion((bridge.thermalExhaustionPerTick(state.thermal) + ToughAsNailsEntityCompat.thirstExhaustion(self)
+                + com.aetherianartificer.townstead.compat.thirst.ThirstWasTaken2EntityCompat.thirstExhaustion(self)
+                + com.aetherianartificer.townstead.compat.thirst.HomeostaticEntityCompat.thirstExhaustion(self)) * thirstRate * elapsedTicks);
         thirstChanged |= needs.processThirstExhaustion();
         if (state.lastPassiveDrainGameTime < 0) state.lastPassiveDrainGameTime = elapsedTime;
         Activity currentActivity = currentScheduleActivity(self);

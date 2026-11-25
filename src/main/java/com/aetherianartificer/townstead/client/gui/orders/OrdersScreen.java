@@ -7,6 +7,7 @@ import com.aetherianartificer.townstead.client.gui.common.Palette;
 import com.aetherianartificer.townstead.client.gui.common.PaletteList;
 import com.aetherianartificer.townstead.work.order.Order;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload;
+import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Family;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Option;
 import com.aetherianartificer.townstead.work.order.net.OrdersSnapshotS2CPayload.Row;
 import com.aetherianartificer.townstead.work.order.net.OrderEditC2SPayload;
@@ -136,14 +137,17 @@ public class OrdersScreen extends Screen {
     private boolean dragOrderScroll;
 
     private static final class Draft {
-        final ResourceLocation output;
-        final ResourceLocation product;
+        ResourceLocation output;
+        ResourceLocation product;
         /** A job has no item, so it carries its own name and icon rather than resolving one. */
         final boolean activity;
         /** A category names a tag, so it commits with a marker and borrows a member's sprite. */
         final boolean tag;
         final String label;
-        final ResourceLocation icon;
+        ResourceLocation icon;
+        /** A thing that comes several ways: the family, and the way chosen on each axis. */
+        @Nullable Family family;
+        String[] values = new String[0];
         Order.Mode mode = Order.Mode.KEEP_STOCKED;
         int target = 10;
         Order.CountScope scope = Order.CountScope.HERE;
@@ -160,14 +164,22 @@ public class OrdersScreen extends Screen {
             if (this.activity) this.mode = Order.Mode.STANDING;
         }
 
+        Draft(Option member, Family family, String[] values) {
+            this(member);
+            this.family = family;
+            this.values = values;
+        }
+
         String name() {
-            return (activity || tag) && !label.isEmpty() ? label : itemName(output);
+            if (family != null) return VariantChoices.name(family, values);
+            return (activity || tag) && !label.isEmpty() ? label : itemName(product);
         }
     }
 
     public OrdersScreen(OrdersSnapshotS2CPayload data) {
         super(Component.translatable("townstead.orders.title"));
         this.data = data;
+        VariantChoices.memberNames = OrdersScreen::itemName;
     }
 
     /** Opens the screen, or refreshes it in place when the server sends a new snapshot. */
@@ -291,12 +303,18 @@ public class OrdersScreen extends Screen {
         if (catalogue == null) return;
         String query = search == null ? "" : search.getValue().toLowerCase(Locale.ROOT).trim();
         Map<String, List<Option>> byMod = new LinkedHashMap<>();
+        // A thing that comes several ways is one row, standing for all of them.
+        java.util.Set<Family> shownFamilies = new java.util.HashSet<>();
         for (Option option : data.options()) {
             // The tab is the first cut: jobs on one shelf, everything makeable on the other.
             if (option.activity() != jobsTab) continue;
             if (makeableOnly && !option.available()) continue;
+            Family family = familyOf(option);
+            if (family != null && !shownFamilies.add(family)) continue;
+            String searched = family != null ? VariantChoices.baseName(family) : nameOf(option);
             if (!query.isEmpty()
-                    && !nameOf(option).toLowerCase(Locale.ROOT).contains(query)) {
+                    && !searched.toLowerCase(Locale.ROOT).contains(query)) {
+                if (family != null) shownFamilies.remove(family);
                 continue;
             }
             String group = option.activity() ? tr("townstead.orders.group.jobs")
@@ -320,6 +338,11 @@ public class OrdersScreen extends Screen {
                 if (catalogue.isCategoryCollapsed(group.getKey())) continue;
             }
             for (Option option : group.getValue()) {
+                Family family = familyOf(option);
+                if (family != null) {
+                    entries.add(familyEntry(family, group.getKey()));
+                    continue;
+                }
                 String shown = nameOf(option);
                 // A thing is shown as itself; a job has no item, so it borrows an icon; a category
                 // borrows one member's. Using the station icon for all of them is what stopped
@@ -340,9 +363,66 @@ public class OrdersScreen extends Screen {
         catalogue.replaceEntries(entries);
     }
 
+    private static final String FAMILY_ROW = "family|";
+
+    /** The family an option is one way of, if this place offers it in more than one way. */
+    private @Nullable Family familyOf(Option option) {
+        if (option.activity() || option.tag()) return null;
+        for (Family family : data.families()) {
+            for (var member : family.members()) {
+                if (member.product().equals(option.product())) return family;
+            }
+        }
+        return null;
+    }
+
+    private static String familyRowId(Family family) {
+        return FAMILY_ROW + family.family() + "|" + family.base();
+    }
+
+    /** A family's row: the base's name and icon, and beneath it a mark for each way it comes. */
+    private PaletteList.ToolEntry familyEntry(Family family, String group) {
+        String shown = VariantChoices.baseName(family);
+        ResourceLocation icon = family.icon() != null ? family.icon() : family.members().get(0).product();
+        PaletteList.ToolEntry row = new PaletteList.ToolEntry(familyRowId(family), shown, displayStack(icon), group);
+        boolean any = false;
+        for (var member : family.members()) any |= member.available();
+        row.dim = !any;
+        var axis = family.axes().get(0);
+        List<ItemStack> marks = new ArrayList<>();
+        List<Boolean> dim = new ArrayList<>();
+        for (var value : axis.values()) {
+            if (value.icon() == null) continue;
+            boolean offered = false;
+            for (var member : family.members()) {
+                if (member.available() && value.id().equals(member.values().get(0))) offered = true;
+            }
+            marks.add(displayStack(value.icon()));
+            dim.add(!offered);
+        }
+        row.marks = marks;
+        row.marksDim = new boolean[dim.size()];
+        for (int i = 0; i < dim.size(); i++) row.marksDim[i] = dim.get(i);
+        List<String> ways = new ArrayList<>();
+        for (var value : axis.values()) ways.add(VariantChoices.text(value.label()).toLowerCase(Locale.ROOT));
+        row.tooltip = shown + " · " + String.join(", ", ways);
+        return row;
+    }
+
     /** Clicking a palette row drafts it. The villagers hear nothing until Add to list. */
     private void pickFromCatalogue(@Nullable PaletteList.ToolEntry entry) {
         if (entry == null || entry.isHeader) return;
+        if (entry.toolId.startsWith(FAMILY_ROW)) {
+            for (Family family : data.families()) {
+                if (!familyRowId(family).equals(entry.toolId)) continue;
+                String[] values = VariantChoices.defaults(family);
+                ResourceLocation product = VariantChoices.product(family, values);
+                Option member = product == null ? null : optionFor(product);
+                if (member != null) draft = new Draft(member, family, values);
+                return;
+            }
+            return;
+        }
         ResourceLocation id = tryParse(entry.toolId);
         if (id == null) return;
         Option option = optionFor(id);
@@ -918,6 +998,17 @@ public class OrdersScreen extends Screen {
         g.drawString(this.font, trim(draftTitle, w - INSET * 2 - 32),
                 x + INSET + 26, y + 9, Palette.BAR_FILL, false);
 
+        if (d.family != null) {
+            for (int axis = 0; axis < d.family.axes().size(); axis++) {
+                Rect[] chips = composerAxis(axis);
+                g.drawString(this.font, trim(VariantChoices.text(d.family.axes().get(axis).label()), composerAxisLabelW() - 4),
+                        x + INSET + 3, chips[0].y() + 3, Palette.LABEL_DIM, false);
+                Controls.drawSegments(g, this.font, chips, VariantChoices.labels(d.family, axis),
+                        VariantChoices.selected(d.family, d.values, axis), Controls.segmentAt(chips, mouseX, mouseY),
+                        VariantChoices.enabled(d.family, d.values, axis));
+            }
+        }
+
         if (d.activity) {
             // A job has no number and no scope. Saying so is more use than four dead buttons.
             g.drawString(this.font, Component.translatable("townstead.orders.job.list_order"),
@@ -968,8 +1059,40 @@ public class OrdersScreen extends Screen {
     // Three rows, because the mode picker alone is about two hundred pixels and everything used to
     // be laid on one line from both ends until it collided in the middle. The title row gets the
     // slot's full 18 before the mode row starts, which is what stops them shingling.
-    private int composerModeY() { return composerTop() + 26; }
-    private int composerActionY() { return composerTop() + 44 + (composerModesWrapped() ? 16 : 0); }
+    private int composerModeY() { return composerTop() + 26 + composerVariantsH(); }
+    private int composerActionY() { return composerTop() + 44 + composerVariantsH() + (composerModesWrapped() ? 16 : 0); }
+
+    /** How much room the draft's ways take: a row of choices per axis, wrapping when they run long. */
+    private int composerVariantsH() {
+        Draft d = draft;
+        if (d == null || d.family == null) return 0;
+        int h = 0;
+        for (int axis = 0; axis < d.family.axes().size(); axis++) h += VariantChoices.height(composerAxis(axis, 0)) + 2;
+        return h;
+    }
+
+    private int composerAxisLabelW() {
+        Draft d = draft;
+        int w = 0;
+        if (d != null && d.family != null) {
+            for (var axis : d.family.axes()) w = Math.max(w, this.font.width(VariantChoices.text(axis.label())));
+        }
+        return Math.min(w + 8, 80);
+    }
+
+    private Rect[] composerAxis(int axis) {
+        Draft d = draft;
+        int y = composerTop() + 26;
+        for (int i = 0; i < axis; i++) y += VariantChoices.height(composerAxis(i, 0)) + 2;
+        return composerAxis(axis, y);
+    }
+
+    private Rect[] composerAxis(int axis, int y) {
+        Draft d = draft;
+        int x = ordersLeft() + INSET + 3 + composerAxisLabelW();
+        int maxW = ordersWidth() - (INSET + 3) * 2 - composerAxisLabelW();
+        return VariantChoices.layout(this.font, x, y, maxW, VariantChoices.labels(d.family, axis));
+    }
 
     /** Two rows of modes when four fully labelled segments do not fit the order pane. */
     private boolean composerModesWrapped() {
@@ -997,7 +1120,7 @@ public class OrdersScreen extends Screen {
 
     /** A cramped composer grows a fourth row and the buttons take it, instead of colliding. */
     private int composerHeight() {
-        return COMPOSER_H + (composerModesWrapped() ? 16 : 0) + (composerCramped() ? 18 : 0);
+        return COMPOSER_H + composerVariantsH() + (composerModesWrapped() ? 16 : 0) + (composerCramped() ? 18 : 0);
     }
 
     /** Where Discard and Add to list sit: the action row, or their own row beneath it. */
@@ -1086,6 +1209,11 @@ public class OrdersScreen extends Screen {
         g.fill(win.x() + INSET, win.y() + DETAIL_STRIP_H - 1, win.right() - INSET,
                 win.y() + DETAIL_STRIP_H, FrameRenderer.FRAME_HIGHLIGHT);
 
+        if (win.h() > detailsRoom()) {
+            // a window taller than the screen says so, and how far down it is
+            Controls.drawScrollbar(g, win.right() + 3, SPACING + FRAME, detailsRoom(),
+                    detailsPage, detailsRoom(), win.h());
+        }
         if (workPicker) {
             drawWorkPicker(g, row, mouseX, mouseY);
             return;
@@ -1336,6 +1464,68 @@ public class OrdersScreen extends Screen {
                 hasTarget ? row.scope().ordinal() : -1,
                 hasTarget ? Controls.segmentAt(scope, mouseX, mouseY) : -1);
 
+        var way = detailsWay();
+        if (way != null) {
+            Rect made = new Rect(x, top + 96, w, detailsVariantsH() - 8);
+            Controls.drawBox(g, this.font, made, tr("townstead.orders.settings.made"));
+            for (int axis = 0; axis < way.family().axes().size(); axis++) {
+                Rect[] chips = detailsAxis(axis);
+                g.drawString(this.font, trim(VariantChoices.text(way.family().axes().get(axis).label()), detailsAxisLabelW() - 4),
+                        x + 6, chips[0].y() + 3, Palette.LABEL_DIM, false);
+                Controls.drawSegments(g, this.font, chips, VariantChoices.labels(way.family(), axis),
+                        VariantChoices.selected(way.family(), way.values(), axis), Controls.segmentAt(chips, mouseX, mouseY),
+                        VariantChoices.enabled(way.family(), way.values(), axis));
+            }
+        }
+    }
+
+    /** The open line's family and ways, when it is a thing that comes several ways here. */
+    private @Nullable VariantChoices.Choice detailsWay() {
+        Row row = detailsRow();
+        if (row == null || row.activity() || row.tag()) return null;
+        return VariantChoices.of(data.families(), row.product());
+    }
+
+    /** The "Made" box's room beneath the settings, gap included; nothing when the line has one way. */
+    private int detailsVariantsH() {
+        var way = detailsWay();
+        if (way == null) return 0;
+        int h = 8 + 12;
+        for (int axis = 0; axis < way.family().axes().size(); axis++) h += VariantChoices.height(detailsAxis(axis, 0, 0)) + 2;
+        return h + 4;
+    }
+
+    private int detailsAxisLabelW() {
+        var way = detailsWay();
+        int w = 0;
+        if (way != null) for (var axis : way.family().axes()) w = Math.max(w, this.font.width(VariantChoices.text(axis.label())));
+        return Math.min(w + 8, 80);
+    }
+
+    private Rect[] detailsAxis(int axis) {
+        int y = detailsSettingsTop() + 96 + 12;
+        for (int i = 0; i < axis; i++) y += VariantChoices.height(detailsAxis(i, 0, 0)) + 2;
+        return detailsAxis(axis, settingsLeft() + 6 + detailsAxisLabelW(), y);
+    }
+
+    /** Measured from the window's width alone, so the window's height can be worked out from it. */
+    private Rect[] detailsAxis(int axis, int x, int y) {
+        var way = detailsWay();
+        int column = detailsWindowWidth() - DETAIL_PAD * 2 - (detailsStacked() ? 0 : FACTS_W + DETAIL_PAD);
+        int maxW = column - 12 - detailsAxisLabelW();
+        return VariantChoices.layout(this.font, x, y, maxW, VariantChoices.labels(way.family(), axis));
+    }
+
+    /** The details window's width for a thing's line, the same sum {@link #detailsWindow()} makes. */
+    private int detailsWindowWidth() {
+        if (detailsStacked()) return Math.min(this.width - SPACING * 2 - FRAME * 2, 360);
+        Rect[] modes = Controls.segmentLayout(this.font, 0, 0, modeLabels());
+        Rect[] scopes = Controls.segmentLayout(this.font, 0, 0, scopeLabels());
+        int settings = Math.max(modes[modes.length - 1].right() + 12,
+                this.font.width(tr("townstead.orders.settings.counted_across"))
+                        + 8 + scopes[scopes.length - 1].right() + 12);
+        return Math.min(this.width - SPACING * 2 - FRAME * 2,
+                DETAIL_PAD + FACTS_W + DETAIL_PAD + settings + DETAIL_PAD);
     }
 
     private String assignmentSummary(Row row) {
@@ -1474,6 +1664,13 @@ public class OrdersScreen extends Screen {
             Option member = shownMember(row.output());
             return member == null ? tagIcon(row.output()) : member.product();
         }
+        if (com.aetherianartificer.townstead.work.order.variant.ProductVariants.isPattern(row.product())) {
+            var way = VariantChoices.of(data.families(), row.product());
+            if (way != null) {
+                return way.family().icon() != null ? way.family().icon() : way.family().members().get(0).product();
+            }
+            return row.output();
+        }
         if (!row.activity()) return row.product();
         Option option = optionFor(row.product());
         return option == null ? row.output() : option.stationIcon();
@@ -1557,18 +1754,37 @@ public class OrdersScreen extends Screen {
                         + 8 + scopes[scopes.length - 1].right() + 12);
         if (detailsStacked()) {
             int w = Math.min(this.width - SPACING * 2 - FRAME * 2, 360);
-            int desiredH = DETAIL_STRIP_H + DETAIL_PAD + 4 + 88 + DETAIL_PAD + 88 + DETAIL_PAD;
-            int h = Math.min(this.height - SPACING * 2 - FRAME * 2, desiredH);
-            return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
+            int h = DETAIL_STRIP_H + DETAIL_PAD + 4 + 88 + DETAIL_PAD + 88 + detailsVariantsH() + DETAIL_PAD;
+            return detailsPlaced(w, h);
         }
         int w = Math.min(this.width - SPACING * 2 - FRAME * 2,
                 DETAIL_PAD + FACTS_W + DETAIL_PAD + settings + DETAIL_PAD);
         // Both columns end together: the left list scrolls for the rest, so a taller window
         // would only buy dead panel under the settings, which is what stood where the removed
         // "who may work it" box used to.
-        int content = 88;
+        int content = 88 + detailsVariantsH();
         int h = DETAIL_STRIP_H + DETAIL_PAD + 4 + content + DETAIL_PAD;
-        return new Rect((this.width - w) / 2, (this.height - h) / 2, w, h);
+        return detailsPlaced(w, h);
+    }
+
+    /** How far a details window taller than the screen has been wheeled up. */
+    private int detailsPage;
+
+    /** The screen's room for a details window. */
+    private int detailsRoom() { return this.height - SPACING * 2 - FRAME * 2; }
+
+    /**
+     * Centred when it fits; otherwise it keeps its full height and the wheel moves it, so nothing in it is cut off
+     * or squeezed out of reach.
+     */
+    private Rect detailsPlaced(int w, int h) {
+        int x = (this.width - w) / 2;
+        if (h <= detailsRoom()) {
+            detailsPage = 0;
+            return new Rect(x, (this.height - h) / 2, w, h);
+        }
+        detailsPage = Math.max(0, Math.min(detailsPage, h - detailsRoom()));
+        return new Rect(x, SPACING + FRAME - detailsPage, w, h);
     }
 
     private Rect detailsBack() {
@@ -1586,7 +1802,7 @@ public class OrdersScreen extends Screen {
     private int detailsFactsBottom() {
         Rect win = detailsWindow();
         if (!detailsStacked()) return win.bottom() - DETAIL_PAD;
-        int reservedSettings = 88;
+        int reservedSettings = 88 + detailsVariantsH();
         return Math.max(detailsFieldsTop() + 54,
                 win.bottom() - DETAIL_PAD - reservedSettings - DETAIL_PAD);
     }
@@ -1739,6 +1955,7 @@ public class OrdersScreen extends Screen {
                 detailsFor = i;
                 workPicker = false;
                 setScroll = 0;
+                detailsPage = 0;
                 return true;
             }
             if (!row.activity() && !modifyingCommission(row) && modeButton(c, body, row).contains(mx, my)) {
@@ -1762,6 +1979,17 @@ public class OrdersScreen extends Screen {
     private boolean clickComposer(double mx, double my, long site) {
         Draft d = draft;
         if (d == null) return false;
+        if (d.family != null) {
+            for (int axis = 0; axis < d.family.axes().size(); axis++) {
+                int hit = Controls.segmentAt(composerAxis(axis), mx, my);
+                if (hit < 0) continue;
+                if (VariantChoices.enabled(d.family, d.values, axis)[hit]) {
+                    d.values[axis] = VariantChoices.choices(d.family, axis).get(hit);
+                    takeWay(d);
+                }
+                return true;
+            }
+        }
         int mode = d.activity || draftCommission() ? -1 : Controls.segmentAt(composerModes(), mx, my);
         if (mode >= 0) {
             d.mode = Order.Mode.values()[mode];
@@ -1788,6 +2016,21 @@ public class OrdersScreen extends Screen {
             return true;
         }
         return false;
+    }
+
+    /** Points the draft at the variant its choices now name, or the pattern they leave open. */
+    private void takeWay(Draft d) {
+        ResourceLocation product = VariantChoices.product(d.family, d.values);
+        if (product == null) return;
+        d.product = product;
+        d.output = product;
+        Option member = optionFor(product);
+        if (member != null) {
+            d.output = member.output();
+            d.icon = member.product();
+        } else if (d.family.icon() != null) {
+            d.icon = d.family.icon();
+        }
     }
 
     /**
@@ -1856,6 +2099,23 @@ public class OrdersScreen extends Screen {
             if (picked >= 0) {
                 setScroll = picked;
                 dragDetailScroll = true;
+                return true;
+            }
+        }
+        var way = detailsWay();
+        if (way != null) {
+            for (int axis = 0; axis < way.family().axes().size(); axis++) {
+                int hit = Controls.segmentAt(detailsAxis(axis), mx, my);
+                if (hit < 0) continue;
+                if (VariantChoices.enabled(way.family(), way.values(), axis)[hit]) {
+                    String[] values = way.values().clone();
+                    values[axis] = VariantChoices.choices(way.family(), axis).get(hit);
+                    ResourceLocation product = VariantChoices.product(way.family(), values);
+                    if (product != null && !product.equals(row.product())) {
+                        send(OrderEditC2SPayload.of(site, OrderEditC2SPayload.Action.SET_PRODUCT, detailsFor,
+                                product.toString()));
+                    }
+                }
                 return true;
             }
         }
@@ -1978,6 +2238,11 @@ public class OrdersScreen extends Screen {
             if (row != null && workPicker) {
                 int max = Math.max(0, assignmentChoiceCount(row) - assignmentVisibleRows());
                 setScroll = Math.max(0, Math.min(max, setScroll + (dy > 0 ? -1 : 1)));
+            } else if (row != null && detailStacks(row) != null && detailListArea(row).contains(mouseX, mouseY)) {
+                setScroll = Math.max(0, setScroll + (dy > 0 ? -1 : 1));
+            } else if (detailsWindow().h() > detailsRoom()) {
+                detailsPage += dy > 0 ? -16 : 16;
+                detailsWindow();
             } else if (row != null && detailStacks(row) != null) {
                 setScroll = Math.max(0, setScroll + (dy > 0 ? -1 : 1));
             }
@@ -2046,7 +2311,9 @@ public class OrdersScreen extends Screen {
     }
 
     /** A line's name in this client's locale; a commissioned piece names itself from its parts. */
-    private static String nameOf(Row row) {
+    private String nameOf(Row row) {
+        var way = VariantChoices.of(data.families(), row.product());
+        if (way != null) return VariantChoices.name(way.family(), way.values());
         var parts = com.aetherianartificer.townstead.work.order.ModifiedProducts.decode(row.product());
         if (parts != null && !parts.item().equals(parts.modifier())) {
             return Component.translatable("townstead.orders.product.with",

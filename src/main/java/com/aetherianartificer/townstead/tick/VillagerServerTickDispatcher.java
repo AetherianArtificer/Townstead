@@ -78,7 +78,9 @@ public final class VillagerServerTickDispatcher {
             resident("villager.conversation", null, (v, t) ->
                     com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.consider(v)),
             resident("villager.profession_auto_assign", Systems.WORK, (v, t) -> ProfessionAutoAssignTicker.tick(v)),
-            resident("villager.profession_trade_backfill", Systems.CAREERS, (v, t) -> ProfessionTradeBackfillTicker.tick(v)),
+            new Step("villager.job_retention", null, (v, t) ->
+                    com.aetherianartificer.townstead.profession.JobRetention.tick(v)),
+            resident("villager.profession_trade_backfill",Systems.CAREERS, (v, t) -> ProfessionTradeBackfillTicker.tick(v)),
             new Step("villager.hunger", null, (v, t) -> HungerVillagerTicker.tick(v)),
             resident("villager.thirst", null, (v, t) -> {
                 if (ThirstBridgeResolver.isActive()) ThirstVillagerTicker.tick(v);
@@ -157,7 +159,9 @@ public final class VillagerServerTickDispatcher {
             resident("villager.chronicle_gossip", Systems.CHRONICLES, (v, t) ->
                     com.aetherianartificer.townstead.chronicle.knowledge.GossipTicker.tick(v, t)),
             resident("villager.chronicle_mood", Systems.CHRONICLES, (v, t) ->
-                    com.aetherianartificer.townstead.chronicle.consumer.ChronicleMoodTicker.tick(v, t))
+                    com.aetherianartificer.townstead.chronicle.consumer.ChronicleMoodTicker.tick(v, t)),
+            resident("villager.keyed_mood", null, (v, t) ->
+                    com.aetherianartificer.townstead.social.KeyedSocialLedger.tick(v, t))
     );
 
     private static void runSteps(VillagerEntityMCA villager, long gameTime, boolean profiled) {

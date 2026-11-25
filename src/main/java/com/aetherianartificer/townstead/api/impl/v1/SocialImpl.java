@@ -154,6 +154,61 @@ final class SocialImpl implements SocialApi {
     }
 
     @Override
+    public boolean adjustMood(LivingEntity villager, ResourceLocation key, int amount, long durationTicks) {
+        try {
+            return key != null && amount >= -15 && amount <= 15 && durationTicks >= 0
+                    && com.aetherianartificer.townstead.social.KeyedSocialLedger.adjustMood(villager, key.toString(), amount, durationTicks);
+        } catch (Throwable t) {
+            ApiSupport.swallow("social.adjustMood", t);
+            return false;
+        }
+    }
+
+    @Override
+    public boolean clearMood(LivingEntity villager, ResourceLocation key) {
+        try {
+            return key != null && com.aetherianartificer.townstead.social.KeyedSocialLedger.clearMood(villager, key.toString());
+        } catch (Throwable t) {
+            ApiSupport.swallow("social.clearMood", t);
+            return false;
+        }
+    }
+
+    @Override
+    public int adjustHearts(LivingEntity villager, LivingEntity player, ResourceLocation key, int amount, int dailyCap) {
+        try {
+            return key == null || dailyCap < 0 ? 0
+                    : com.aetherianartificer.townstead.social.KeyedSocialLedger.adjustHearts(villager, player, key.toString(), amount, dailyCap);
+        } catch (Throwable t) {
+            ApiSupport.swallow("social.adjustHearts", t);
+            return 0;
+        }
+    }
+
+    @Override
+    public int returnHearts(LivingEntity villager, LivingEntity player, ResourceLocation key) {
+        try {
+            return key == null ? 0 : com.aetherianartificer.townstead.social.KeyedSocialLedger.returnHearts(villager, player, key.toString());
+        } catch (Throwable t) {
+            ApiSupport.swallow("social.returnHearts", t);
+            return 0;
+        }
+    }
+
+    @Override
+    public boolean say(LivingEntity villager, net.minecraft.network.chat.Component line, ServerPlayer player) {
+        try {
+            if (!(villager instanceof net.conczin.mca.entity.VillagerEntityMCA mca) || line == null || player == null) return false;
+            if (com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.active(mca.getUUID())) return false;
+            mca.sendChatMessage(line.copy(), player);
+            return true;
+        } catch (Throwable t) {
+            ApiSupport.swallow("social.say", t);
+            return false;
+        }
+    }
+
+    @Override
     public void dialogueOpened(LivingEntity villager, ServerPlayer player) {
         try {
             if (villager != null && player != null) DialogueStateTracker.onOpen(villager, player, ApiSupport.gameTime(villager));

@@ -14,9 +14,10 @@ public final class WaterPurificationItems {
     public static int impurityScore(ItemStack stack, ThirstCompatBridge bridge) {
         if (stack.isEmpty() || !bridge.itemRestoresThirst(stack) || !bridge.isDrink(stack)
                 || !bridge.isPurityWaterContainer(stack) || !bridge.canBoil(stack)) return 0;
-        int purity = Math.max(0, Math.min(ThirstCompatBridge.PURITY_PURIFIED, bridge.purity(stack)));
-        if (purity >= ThirstCompatBridge.PURITY_PURIFIED) return 0;
-        return ((ThirstCompatBridge.PURITY_PURIFIED - purity) * 100)
+        int finished = bridge.finishedPurity();
+        int purity = Math.max(0, Math.min(finished, bridge.purity(stack)));
+        if (purity >= finished) return 0;
+        return ((finished - purity) * 100)
                 + Math.max(0, bridge.hydration(stack));
     }
 

@@ -1,6 +1,8 @@
 {
   "replace": false,
   "values": [
+    { "id": "minecraft:campfire", "required": false },
+    { "id": "minecraft:soul_campfire", "required": false },
     { "id": "farmersdelight:stove", "required": false }
   ]
 }

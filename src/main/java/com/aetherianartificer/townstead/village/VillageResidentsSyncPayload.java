@@ -26,50 +26,12 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
             new StreamCodec<>() {
                 @Override
                 public VillageResidentsSyncPayload decode(FriendlyByteBuf buf) {
-                    int size = buf.readVarInt();
-                    List<VillageResidentClientStore.Resident> residents = new ArrayList<>(size);
-                    for (int i = 0; i < size; i++) {
-                        UUID villagerUuid = new UUID(buf.readLong(), buf.readLong());
-                        String name = buf.readUtf();
-                        String professionId = buf.readUtf();
-                        int professionLevel = buf.readVarInt();
-                        int shiftLength = buf.readVarInt();
-                        int[] shifts = new int[shiftLength];
-                        for (int shiftIndex = 0; shiftIndex < shiftLength; shiftIndex++) {
-                            shifts[shiftIndex] = buf.readVarInt();
-                        }
-                        String chronotype = buf.readUtf();
-                        String chronotypeLabel = buf.readUtf();
-                        int sleepLength = buf.readVarInt();
-                        int[] sleepHours = new int[sleepLength];
-                        for (int s = 0; s < sleepLength; s++) sleepHours[s] = buf.readVarInt();
-                        String templateId = buf.readUtf();
-                        residents.add(new VillageResidentClientStore.Resident(
-                                villagerUuid, name, professionId, professionLevel, shifts,
-                                chronotype, chronotypeLabel, sleepHours, templateId));
-                    }
-                    return new VillageResidentsSyncPayload(residents);
+                    return new VillageResidentsSyncPayload(readResidents(buf));
                 }
 
                 @Override
                 public void encode(FriendlyByteBuf buf, VillageResidentsSyncPayload payload) {
-                    buf.writeVarInt(payload.residents().size());
-                    for (VillageResidentClientStore.Resident resident : payload.residents()) {
-                        buf.writeLong(resident.villagerUuid().getMostSignificantBits());
-                        buf.writeLong(resident.villagerUuid().getLeastSignificantBits());
-                        buf.writeUtf(resident.name());
-                        buf.writeUtf(resident.professionId());
-                        buf.writeVarInt(resident.professionLevel());
-                        buf.writeVarInt(resident.shifts().length);
-                        for (int shift : resident.shifts()) {
-                            buf.writeVarInt(shift);
-                        }
-                        buf.writeUtf(resident.chronotype());
-                        buf.writeUtf(resident.chronotypeLabel());
-                        buf.writeVarInt(resident.sleepHours().length);
-                        for (int s : resident.sleepHours()) buf.writeVarInt(s);
-                        buf.writeUtf(resident.templateId());
-                    }
+                    writeResidents(buf, payload.residents());
                 }
             };
 
@@ -87,6 +49,16 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
 
     //? if forge {
     /*public void write(FriendlyByteBuf buf) {
+        writeResidents(buf, residents);
+    }
+
+    public static VillageResidentsSyncPayload read(FriendlyByteBuf buf) {
+        return new VillageResidentsSyncPayload(readResidents(buf));
+    }
+    *///?}
+
+    /** The wire form, shared by both loaders. */
+    public static void writeResidents(FriendlyByteBuf buf, List<VillageResidentClientStore.Resident> residents) {
         buf.writeVarInt(residents.size());
         for (VillageResidentClientStore.Resident resident : residents) {
             buf.writeLong(resident.villagerUuid().getMostSignificantBits());
@@ -103,10 +75,15 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
             buf.writeVarInt(resident.sleepHours().length);
             for (int s : resident.sleepHours()) buf.writeVarInt(s);
             buf.writeUtf(resident.templateId());
+            buf.writeVarInt(resident.job().state());
+            // -1 means the job is not ending; shifted so the varint stays one byte.
+            buf.writeVarInt(resident.job().endsInTicks() + 1);
+            buf.writeBoolean(resident.job().seat());
+            buf.writeUtf(resident.job().blockId());
         }
     }
 
-    public static VillageResidentsSyncPayload read(FriendlyByteBuf buf) {
+    public static List<VillageResidentClientStore.Resident> readResidents(FriendlyByteBuf buf) {
         int size = buf.readVarInt();
         List<VillageResidentClientStore.Resident> residents = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
@@ -125,11 +102,12 @@ public record VillageResidentsSyncPayload(List<VillageResidentClientStore.Reside
             int[] sleepHours = new int[sleepLength];
             for (int s = 0; s < sleepLength; s++) sleepHours[s] = buf.readVarInt();
             String templateId = buf.readUtf();
+            VillageResidentClientStore.JobStatus job = new VillageResidentClientStore.JobStatus(
+                    buf.readVarInt(), buf.readVarInt() - 1, buf.readBoolean(), buf.readUtf());
             residents.add(new VillageResidentClientStore.Resident(
                     villagerUuid, name, professionId, professionLevel, shifts,
-                    chronotype, chronotypeLabel, sleepHours, templateId));
+                    chronotype, chronotypeLabel, sleepHours, templateId, job));
         }
-        return new VillageResidentsSyncPayload(residents);
+        return residents;
     }
-    *///?}
 }

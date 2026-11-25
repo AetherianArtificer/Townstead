@@ -8,8 +8,6 @@ import net.conczin.mca.resources.BuildingTypes;
 import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.server.world.data.Building;
 //? if >=1.21 {
-import net.conczin.mca.server.world.data.BuildingScanResult;
-import net.conczin.mca.server.world.data.RegisteredRoomUpdate;
 //?}
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -120,20 +118,20 @@ public final class McaBuildingDiscovery {
         Building room = village == null ? null : McaBuildingCompat.functionalRoomAt(level, village, source);
         Building.validationResult result;
         if (room != null) {
-            RegisteredRoomUpdate update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(level, village, room.getId(), source);
+            McaRoomWorkflow.Scan update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(level, village, room.getId(), source);
             if (update.result() != Building.validationResult.SUCCESS || update.isAmbiguous()) {
                 diagnostic("update", source, update.result(), update.matchingTypes());
                 return;
             }
-            result = manager.commitRegisteredRoomUpdate(update, null);
+            result = McaRoomWorkflow.commitRegisteredRoomUpdate(manager, update);
         } else if (village != null) {
-            BuildingScanResult addition = McaRoomWorkflow.analyzeRoom(level, source);
+            McaRoomWorkflow.Scan addition = McaRoomWorkflow.analyzeRoom(level, source);
             if (addition.result() == Building.validationResult.SUCCESS) {
                 if (addition.isAmbiguous()) {
                     diagnostic("add-room", source, addition.result(), addition.matchingTypes());
                     return;
                 }
-                result = manager.commitRoomAddition(addition, null);
+                result = McaRoomWorkflow.commitRoomAddition(manager, addition);
             } else if (addition.result() == Building.validationResult.NOT_IN_BUILDING) {
                 result = manager.processBuilding(source);
             } else {

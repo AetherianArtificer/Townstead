@@ -29,13 +29,19 @@ public final class SocialOutcomeActionType implements ActionType {
     @Override
     public Action parse(JsonObject json) {
         only(json, "type", "source", "actor_relationship", "other_relationship",
-                "actor_memory", "other_memory");
+                "actor_memory", "other_memory", "key", "daily_limit");
         ResourceLocation source = ResourceLocation.tryParse(GsonHelper.getAsString(json, "source", ""));
         if (source == null) throw bad("source", "expected resource id");
         List<Change> actorChanges = changes(json, "actor_relationship");
         List<Change> otherChanges = changes(json, "other_relationship");
         String actorMemory = memory(json, "actor_memory");
         String otherMemory = memory(json, "other_memory");
+        // With a key, at most daily_limit times a day for the same pair, so daily credit doesn't stack.
+        String limitKey = json.has("key") ? GsonHelper.getAsString(json, "key", "").trim() : "";
+        if (json.has("key") && (limitKey.isEmpty() || ResourceLocation.tryParse(limitKey) == null)) throw bad("key", "expected resource id");
+        int dailyLimit = GsonHelper.getAsInt(json, "daily_limit", 0);
+        if (dailyLimit < 0) throw bad("daily_limit", "must be >= 0");
+        if (dailyLimit > 0 && limitKey.isEmpty()) throw bad("daily_limit", "needs a key");
         if (actorChanges.isEmpty() && otherChanges.isEmpty()
                 && actorMemory.isBlank() && otherMemory.isBlank()) {
             throw bad("social_outcome", "must write at least one relationship quality or memory");
@@ -48,6 +54,11 @@ public final class SocialOutcomeActionType implements ActionType {
             }
             var actor = context.entity();
             var other = context.other();
+            if (dailyLimit > 0 && !com.aetherianartificer.townstead.social.KeyedSocialLedger.allowToday(
+                    level.getServer(), actor.getUUID(), other.getUUID(), limitKey, dailyLimit)) {
+                context.fail();
+                return;
+            }
             long day = TownsteadCalendar.worldDay(level.getServer());
             String operation = "social_outcome:" + source + ":" + level.getGameTime() + ":"
                     + actor.getUUID() + ":" + other.getUUID();

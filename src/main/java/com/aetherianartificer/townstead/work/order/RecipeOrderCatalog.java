@@ -69,6 +69,7 @@ public final class RecipeOrderCatalog implements WorksiteCatalogs.Catalog {
         for (StationType type : present) {
             for (DiscoveredRecipe recipe : recipesFor(level, type)) {
                 if (!BuildingRecipeScopes.allows(buildingType, recipe.id())) continue;
+                if (!WorksiteRecipeGates.allows(level, site, recipe.id())) continue;
                 List<WorkstationDef> stations = RecipeOrderCatalogGate.matchingStations(
                         type, recipe, WorkRecipeRegistry.defsFor(recipe), presentDefs);
                 WorkstationDef station = stations.stream()

@@ -44,8 +44,14 @@ public final class JobSiteProviders {
                     : null;
             int sitesPerWorker = Math.max(1,
                     GsonHelper.getAsInt(json, "sites_per_worker", 1));
+            com.aetherianartificer.townstead.pheno.condition.block.BlockCondition requires = null;
+            if (json.has("requires")) {
+                requires = com.aetherianartificer.townstead.pheno.condition.block.BlockConditions.parse(json.get("requires"));
+                // a broken condition must not read as no condition
+                if (requires == null) return null;
+            }
             return blocks.isEmpty() ? null
-                    : new JobSiteProvider.JobBlock(blocks, via, sitesPerWorker);
+                    : new JobSiteProvider.JobBlock(blocks, via, sitesPerWorker, requires);
         });
         register(JobSiteProvider.Building.KEY, json -> {
             List<String> prefixes = new ArrayList<>();

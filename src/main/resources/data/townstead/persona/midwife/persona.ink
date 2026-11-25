@@ -68,6 +68,10 @@ VAR forgiven = false
 {check("after_midpoint") and told_night and not asked_bring:
     -> ask_bring
 }
+{asked_bring and not confessed:
+    {~Have you asked them yet? I keep looking up the lane.|Not yet? That's all right. I've waited this long.}
+    -> talk.topics
+}
 -> talk
 
 === meeting ===
@@ -183,6 +187,7 @@ It was hers. Her rules, every one, in her own hand. Take it to them.
 // Visit 3, after the midpoint: she asks the player to bring the hunter to her.
 === ask_bring ===
 ~ asked_bring = true
+~ act("asked_bring")
 I have to tell them something. Not you. Them.
 Will you bring them here? I can't walk up to that lodge. I've started up there twice and turned round both times.
 * [I'll bring them.]
@@ -223,7 +228,7 @@ That's all I've done my whole life. I just called it something better. # who: dh
 ...Come up to the lodge. There's a fire. Sit by it, some nights. # who: dhampir_founder
 Oh. # emote:ponder
 Oh, I'd like that. I'd like that very much.
--> DONE
+-> send_home
 
 = cast_out
 ~ act("cast_out")
@@ -231,4 +236,10 @@ You heard her and you left her there. # who: dhampir_founder
 Go home. Two valleys, wasn't it. Go home, and don't come up to the lodge. # who: dhampir_founder
 ...Yes. That's fair. That's more than fair.
 I'll go when the roads are good. I'm sorry. I've been sorry every day.
+-> send_home
+
+// The founder stops following the player and walks back to the lodge. If they are not found,
+// their "About her..." scene ends the trip.
+= send_home
+~ act_on("founder_home", who("founder"))
 -> DONE

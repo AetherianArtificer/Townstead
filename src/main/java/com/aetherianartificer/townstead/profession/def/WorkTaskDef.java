@@ -45,10 +45,30 @@ public record WorkTaskDef(
         Scope scope,
         Condition requirements,
         @Nullable OrderOption order,
-        @Nullable String requiredPath) {
+        @Nullable String requiredPath,
+        OwnWork ownWork) {
 
     /** Presentation for a task that players may place on a worksite order sheet. */
     public record OrderOption(String name, ResourceLocation icon) {}
+
+    /**
+     * What a worker makes when the Order Sheet lets it work on its own ({@code "on_their_own"}): the first recipe it
+     * can make, as always, or one at random among them ({@code "pick": "random"}); and, with {@code "keep"}, nothing
+     * the worksite's stores already hold that many of. An apothecary that dries, chars and grinds a little of
+     * everything, rather than turning every herb into the first thing on its list.
+     */
+    public record OwnWork(boolean random, int keep) {
+        public static final OwnWork FIRST = new OwnWork(false, 0);
+    }
+
+    /** The declaration without an {@code on_their_own}: the first recipe it can make, as before. */
+    public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
+                       TargetSet recipes, TargetSet recipesDenied, TargetSet recipeInputs,
+                       TargetSet recipeInputsDenied, int weight, Scope scope,
+                       Condition requirements, @Nullable OrderOption order, @Nullable String requiredPath) {
+        this(type, workstations, entities, recipes, recipesDenied, recipeInputs,
+                recipeInputsDenied, weight, scope, requirements, order, requiredPath, OwnWork.FIRST);
+    }
 
     public WorkTaskDef(ResourceLocation type, TargetSet workstations, TargetSet entities,
                        TargetSet recipes, TargetSet recipesDenied, int weight, Scope scope,
@@ -358,9 +378,19 @@ public record WorkTaskDef(
                 return null;
             }
         }
+        OwnWork ownWork = OwnWork.FIRST;
+        if (obj.has("on_their_own")) {
+            if (!obj.get("on_their_own").isJsonObject()) return null;
+            JsonObject own = obj.getAsJsonObject("on_their_own");
+            String pick = GsonHelper.getAsString(own, "pick", "first");
+            if (!pick.equals("first") && !pick.equals("random")) return null;
+            int keep = GsonHelper.getAsInt(own, "keep", 0);
+            if (keep < 0) return null;
+            ownWork = new OwnWork(pick.equals("random"), keep);
+        }
         return new WorkTaskDef(type, workstations, entities, recipes, denied,
                 recipeInputs, deniedInputs,
-                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, order, requiredPath);
+                GsonHelper.getAsInt(obj, "weight", 1), scope, requirements, order, requiredPath, ownWork);
     }
 
     private static @Nullable OrderOption parseOrder(JsonElement element) {

@@ -305,7 +305,7 @@ public record WorkstationV2Def(
             if (shiftEnd == null) return null;
         }
 
-        return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
+        return new WorkstationV2Def(id, java.util.Collections.unmodifiableSet(new java.util.LinkedHashSet<>(blocks)), List.copyOf(containers),
                 List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
                 List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
                 List.copyOf(corrections), List.copyOf(supplies), recipeContainer, recipeContainerCount, List.copyOf(outputContainers), fluidSource, List.copyOf(stands),
@@ -604,7 +604,7 @@ public record WorkstationV2Def(
                 // already the author's statement that the block performs the recipe; requiring a
                 // second, manually maintained output-item tag would make the order catalogue a
                 // different (and inevitably stale) source of truth from the work engine.
-                WorkstationDef.Orderable.ALL, false, Set.of(), List.of(), shiftEnd);
+                WorkstationDef.Orderable.ALL, false, Set.of(), List.of(), shiftEnd, false);
     }
 
     public boolean behaviorUses(String role) {

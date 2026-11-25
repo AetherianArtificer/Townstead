@@ -13,6 +13,7 @@ import com.aetherianartificer.townstead.api.v1.model.NeedsSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.RootSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.ScheduleSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.VillagerSnapshot;
+import com.aetherianartificer.townstead.api.v1.model.WorldPos;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
@@ -23,6 +24,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /** Conversions from the pre-v1 facade's records and live state into v1 snapshots. */
 final class ApiSnapshots {
@@ -74,7 +76,14 @@ final class ApiSnapshots {
                 schedule(legacy.schedule()),
                 legacy.carriedVariants(),
                 legacy.expressedAlleles(),
-                legacy.heritage());
+                legacy.heritage(),
+                villager == null ? Optional.empty() : villager.getResidency().getHome().map(ApiSnapshots::worldPos),
+                villager == null ? Optional.empty()
+                        : villager.getBrain().getMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.JOB_SITE).map(ApiSnapshots::worldPos));
+    }
+
+    private static WorldPos worldPos(net.minecraft.core.GlobalPos at) {
+        return new WorldPos(at.dimension().location(), at.pos());
     }
 
     static NeedsSnapshot needs(TownsteadVillager.Needs needs) {

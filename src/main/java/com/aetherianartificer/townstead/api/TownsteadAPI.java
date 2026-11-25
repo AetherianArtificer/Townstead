@@ -77,7 +77,10 @@ public final class TownsteadAPI {
                 life.immortal(),
                 life.ageless(),
                 life.isSenior(),
-                life.personalityId(),
+                // The Root's personality when it sets one, else MCA's own, which is the one in effect.
+                life.personalityId().isEmpty()
+                        ? com.aetherianartificer.townstead.compat.mca.McaPersonalityCompat.id(villager.getVillagerBrain().getPersonality())
+                        : life.personalityId(),
                 professionId,
                 professionPath == null ? "" : professionPath.id(),
                 xp.tier(),

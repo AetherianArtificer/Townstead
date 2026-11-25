@@ -23,6 +23,11 @@ public abstract class McaWalkNodeHazardMixin {
     @Inject(method = "getPathType(Lnet/minecraft/world/entity/Mob;Lnet/minecraft/core/BlockPos;)Lnet/minecraft/world/level/pathfinder/PathType;",
             at = @At("RETURN"), cancellable = true, remap = false, require = 0)
     private void townstead$hazardCost(Mob mob, BlockPos pos, CallbackInfoReturnable<PathType> cir) {
+        if (cir.getReturnValue() != PathType.BLOCKED
+                && com.aetherianartificer.townstead.storage.PrivatePaths.closed(mob, pos.getX(), pos.getY(), pos.getZ())) {
+            cir.setReturnValue(PathType.BLOCKED);
+            return;
+        }
         if (cir.getReturnValue() == PathType.WALKABLE
                 && HazardPaths.dangerous(mob, pos.getX(), pos.getY(), pos.getZ())) {
             cir.setReturnValue(PathType.DANGER_OTHER);

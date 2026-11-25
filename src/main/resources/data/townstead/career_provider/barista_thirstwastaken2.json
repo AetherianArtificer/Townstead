@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "barista",
+  "mods": "thirstwastaken2",
+  "priority": 35,
+  "contributes": {
+    "path": {
+      "worksites": [
+        "farmersdelight:skillet",
+        "thirstwastaken2:copper_hanging_pot",
+        "thirstwastaken2:iron_hanging_pot",
+        "thirstwastaken2:copper_distiller"
+      ]
+    },
+    "profession": {
+      "tasks": [
+        {
+          "type": "townstead_work:brew",
+          "workstations": [
+            "farmersdelight:skillet",
+            "farmersdelight:stove",
+            "#minecraft:campfires"
+          ],
+          "recipes": [
+            "townstead:purification"
+          ],
+          "weight": 10
+        },
+        {
+          "type": "townstead_work:maintain_water",
+          "workstations": [
+            "thirstwastaken2:copper_hanging_pot",
+            "thirstwastaken2:iron_hanging_pot",
+            "thirstwastaken2:copper_distiller"
+          ],
+          "scope": "village",
+          "weight": 10,
+          "order": {
+            "name": "Keep water boiling",
+            "icon": "thirstwastaken2:copper_hanging_pot"
+          }
+        }
+      ]
+    }
+  }
+}

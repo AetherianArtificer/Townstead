@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.politics.order;
 
+import com.aetherianartificer.townstead.profession.ProfessionTradeLedger;
 import com.aetherianartificer.townstead.culture.FactionNaming;
 import com.aetherianartificer.townstead.politics.definition.FactionKind;
 import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
@@ -151,10 +152,10 @@ public final class Orders {
             if (sworn.profession().equals(current)) return;
             VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.getOptional(sworn.profession()).orElse(null);
             if (profession == null) return;
-            villager.setProfession(profession);
+            ProfessionTradeLedger.change(villager, profession);
             if (sworn.shift() != null) takeShift(level, villager, sworn.shift());
         } else if (memberProfessions().contains(current)) {
-            villager.setProfession(VillagerProfession.NONE);
+            ProfessionTradeLedger.change(villager, VillagerProfession.NONE);
             leaveShift(villager);
         }
     }
@@ -197,7 +198,7 @@ public final class Orders {
         if (members.profession() == null) return;
         VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.getOptional(members.profession()).orElse(null);
         if (profession == null) return;
-        if (villager.getProfession() != profession) villager.setProfession(profession);
+        ProfessionTradeLedger.change(villager, profession);
         if (members.shift() != null) takeShift(level, villager, members.shift());
     }
 

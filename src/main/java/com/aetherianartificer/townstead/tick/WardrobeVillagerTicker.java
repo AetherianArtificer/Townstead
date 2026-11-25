@@ -79,6 +79,7 @@ public final class WardrobeVillagerTicker {
         state.nextTick = gameTime + INTERVAL_TICKS;
 
         MinecraftServer server = level.getServer();
+        if (server != null) WardrobeServer.releaseWardrobeLock(server, self);
         long day = server == null ? level.getDayTime() / 24000L : TownsteadCalendar.worldDay(server);
         WardrobeResolver.Plan plan = WardrobeResolver.resolve(self);
         state.plan = plan;

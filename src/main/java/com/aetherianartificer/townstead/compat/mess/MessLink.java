@@ -1,5 +1,11 @@
 package com.aetherianartificer.townstead.compat.mess;
 
+import com.aetherianartificer.bitofamess.api.v1.ActionResult;
+import com.aetherianartificer.bitofamess.api.v1.BodiesApi;
+import com.aetherianartificer.bitofamess.api.v1.MessApiV1;
+import com.aetherianartificer.bitofamess.api.v1.PlacesApi;
+import com.aetherianartificer.bitofamess.api.v1.WaterApi;
+import com.aetherianartificer.bitofamess.api.v1.WaterSurroundings;
 import com.aetherianartificer.bitofamess.material.MessMaterial;
 import com.aetherianartificer.bitofamess.material.MessMaterials;
 import com.aetherianartificer.bitofamess.trace.BodyMarks;
@@ -42,6 +48,15 @@ final class MessLink {
     }
 
     static void init() {
+        // Townstead's season clock answers Bit of a Mess's season, so both agree on it.
+        places().setSeasons("townstead", level -> com.aetherianartificer.townstead.calendar.SeasonClock.current(level)
+                .map(com.aetherianartificer.townstead.calendar.SeasonClock.State::season)
+                .map(season -> season.name().toLowerCase(java.util.Locale.ROOT)));
+        // Townstead gives heated water its climate and its heaters' watts, so a bath and a room agree.
+        WaterApi water = MessApiV1.get().water();
+        water.setClimate("townstead", (level, surface) -> com.aetherianartificer.townstead.temperature.PoolClimate.at(level, surface)
+                .map(air -> new WaterSurroundings(air.water(), air.air(), air.humidity(), air.wind())));
+        water.setHeaterPower("townstead", com.aetherianartificer.townstead.temperature.PoolClimate::watts);
         TraceHooks.setPeople(entity -> entity instanceof VillagerEntityMCA);
         TraceHooks.setConditions(MessLink::condition);
         TraceHooks.setBloodOf(MessLink::bloodOf);
@@ -129,7 +144,8 @@ final class MessLink {
     }
 
     static void wash(LivingEntity body, int strength, float amount, String trace) {
-        Traces.wash(body, strength, amount, trace);
+        // No trace named means everything the wash reaches, which Bit of a Mess says with an empty name.
+        Traces.wash(body, strength, amount, trace == null ? "" : trace);
     }
 
     static void event(LivingEntity body, String event) {
@@ -166,5 +182,48 @@ final class MessLink {
 
     static boolean hasMaterial(String id) {
         return MessMaterials.get(id) != null;
+    }
+
+    // ---- Through Bit of a Mess's API: places, heated water and bathing.
+
+    private static PlacesApi places() {
+        return MessApiV1.get().places();
+    }
+
+    private static BodiesApi bodies() {
+        return MessApiV1.get().bodies();
+    }
+
+    static float sharpAt(ServerLevel level, net.minecraft.core.BlockPos ground) {
+        return places().sharpAt(level, ground);
+    }
+
+    static void worked(LivingEntity worker, net.minecraft.core.BlockPos station, net.minecraft.world.item.ItemStack made, float count) {
+        places().worked(worker, "townstead", station, made, Math.min(PlacesApi.MAX_WORK, count));
+    }
+
+    static java.util.OptionalDouble poolCelsius(ServerLevel level, net.minecraft.core.BlockPos pos) {
+        return MessApiV1.get().water().poolCelsius(level, pos);
+    }
+
+    static java.util.Optional<MessBridge.Pool> pool(ServerLevel level, net.minecraft.core.BlockPos pos) {
+        return MessApiV1.get().water().pool(level, pos).map(pool -> new MessBridge.Pool(pool.anchor().asLong(), pool.celsius(), pool.volume(),
+                pool.airWatts(), pool.vapourKgPerSecond(), pool.heaters().stream().mapToLong(net.minecraft.core.BlockPos::asLong).toArray()));
+    }
+
+    static boolean sitInTub(LivingEntity body, net.minecraft.core.BlockPos tub) {
+        return bodies().sitInTub(body, "townstead", tub).status() == ActionResult.Status.OK;
+    }
+
+    static java.util.Optional<String> wearOf(LivingEntity body) {
+        return bodies().bathingWearOf(body);
+    }
+
+    static java.util.Optional<String> pickWear(String gender, long seed) {
+        return bodies().pickBathingWear(gender, seed);
+    }
+
+    static void setWear(LivingEntity body, String wear, int color) {
+        bodies().setBathingWear(body, "townstead", wear, color, false);
     }
 }

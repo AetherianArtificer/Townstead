@@ -53,6 +53,29 @@ class ProfessionSitesTest {
     }
 
     @Test
+    void aPrivateSeatGoesToTheWorkerItListsEvenWhenSomeoneMoreSeniorAsks() {
+        List<JobSiteProvider> providers = List.of(KITCHENS);
+        List<ProfessionSites.Site> sites = List.of(
+                new ProfessionSites.Site(null, null, 0),
+                new ProfessionSites.Site(null, null, 0));
+        List<String> workers = Arrays.asList(null, null);
+        List<ResourceLocation> professions = Arrays.asList(null, null);
+        // Seat 0 is private to worker 1; seat 1 is open to anyone.
+        java.util.function.BiPredicate<Integer, Integer> eligible = (worker, site) -> site != 0 || worker == 1;
+
+        assertEquals(1, ProfessionSites.assignedSiteIndex(workers, professions, sites, providers, 0, eligible));
+        assertEquals(0, ProfessionSites.assignedSiteIndex(workers, professions, sites, providers, 1, eligible));
+    }
+
+    @Test
+    void aWorkerNoSeatListsGoesWithoutRatherThanIntoAPrivateRoom() {
+        List<ProfessionSites.Site> sites = List.of(new ProfessionSites.Site(null, null, 0));
+        assertEquals(-1, ProfessionSites.assignedSiteIndex(
+                Arrays.asList((String) null), Arrays.asList((ResourceLocation) null),
+                sites, List.of(KITCHENS), 0, (worker, site) -> false));
+    }
+
+    @Test
     void pathAffinityIsAPreferenceRatherThanAWorksiteGate() {
         JobSiteProvider.Building pizzerias = new JobSiteProvider.Building(
                 List.of("compat/pizzadelight/pizzeria_l"), List.of(1, 2, 3),

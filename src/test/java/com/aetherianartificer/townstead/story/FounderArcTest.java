@@ -76,6 +76,21 @@ class FounderArcTest {
         assertTrue(world.visited("epilogue"), () -> "no epilogue\n" + world.log());
     }
 
+    /**
+     * A story visitor struck down before their scene (in a raid, or by the player) must not hold the
+     * arc. The bringer and the father are essential visitors: downed, then up again the next day.
+     */
+    @Test
+    void aVisitorKilledBeforeTheirSceneDoesNotHoldTheArc() throws Exception {
+        List<String> problems = new ArrayList<>();
+        for (String opt : List.of("bringer_dies", "father_dies")) {
+            World world = new World(compile(), false, true, opt);
+            world.play();
+            if (!world.visited("epilogue")) problems.add(opt + ": no epilogue\n" + world.log());
+        }
+        assertTrue(problems.isEmpty(), () -> String.join("\n\n", problems));
+    }
+
     @Test
     void aTownWhereNobodyCanTurnStillReachesTheName() throws Exception {
         World world = new World(compile(), false, false);
@@ -104,6 +119,8 @@ class FounderArcTest {
 
         /** Side branches this run takes. */
         final Set<String> opts;
+        /** Story visitors who are down and cannot join their scene. */
+        final Set<String> dead = new HashSet<>();
         boolean turnedBack;
 
         World(String json, boolean fall, boolean turnable, String... opts) throws Exception {
@@ -159,6 +176,12 @@ class FounderArcTest {
                     + "\nfirst visits: " + String.join(" | ", firsts) + "\nlast:\n" + String.join("\n", trail.subList(from, trail.size()));
         }
 
+        /** An essential visitor struck down: away from the scene until they get up the next day. */
+        private void downed(String role) {
+            dead.add(role);
+            at(1, () -> dead.remove(role));
+        }
+
         private void at(int inDays, Runnable reaction) {
             later.computeIfAbsent(day + inDays, k -> new ArrayList<>()).add(reaction);
         }
@@ -169,7 +192,7 @@ class FounderArcTest {
                 case "check" -> checks.contains(a);
                 case "count" -> counts.getOrDefault(a, 0);
                 case "who" -> who.getOrDefault(a, "");
-                case "here" -> true;
+                case "here" -> !dead.contains(a);
                 case "is" -> {
                     String what = args.length > 1 && args[1] != null ? String.valueOf(args[1]) : "";
                     yield what.isEmpty() ? (who.containsValue(a) || is.contains(a + "|")) : is.contains(a + "|" + what);
@@ -203,7 +226,17 @@ class FounderArcTest {
                     who.put("sworn_hunter", "Hale");
                 });
                 case "swear_player" -> checks.add("player_sworn");
-                case "walk_with" -> at(0, () -> counts.merge("founder_kills", 1, Integer::sum));
+                case "walk_with" -> {
+                    // Walked to the midwife: her confession plays a day on, and the answer is the player's.
+                    if (Boolean.TRUE.equals(var("seeing_midwife"))) {
+                        at(1, () -> {
+                            checks.remove("midwife_asked");
+                            checks.add(opts.contains("castout") ? "midwife_cast_out" : "midwife_forgiven");
+                        });
+                    } else {
+                        at(0, () -> counts.merge("founder_kills", 1, Integer::sum));
+                    }
+                }
                 case "first_watch" -> {
                     checks.add("raid_near");
                     at(1, () -> checks.remove("raid_near"));
@@ -249,8 +282,8 @@ class FounderArcTest {
                     if (opts.contains("cure")) at(2, () -> is.add("Fen|cured_villager"));
                 }
                 case "mark_midpoint" -> {
-                    if (opts.contains("forgive")) at(1, () -> checks.add("midwife_forgiven"));
-                    if (opts.contains("castout")) at(1, () -> checks.add("midwife_cast_out"));
+                    // The midwife asks the player to bring them to her.
+                    if (opts.contains("forgive") || opts.contains("castout")) at(1, () -> checks.add("midwife_asked"));
                 }
                 case "mark_wounded_seen" -> at(1, () -> checks.add("carries_book"));
                 case "take_book" -> checks.remove("carries_book");
@@ -263,6 +296,12 @@ class FounderArcTest {
                 case "fledgling_arrives" -> who.put("visitor:fledgling", "Fen");
                 case "fledgling_leave" -> who.remove("visitor:fledgling");
                 case "drop_signet" -> checks.add("carries_signet");
+                case "bringer_arrives" -> {
+                    if (opts.contains("bringer_dies")) downed("visitor:candle_bringer");
+                }
+                case "court_hosts" -> {
+                    if (opts.contains("father_dies")) downed("visitor:father");
+                }
                 case "take_signet" -> checks.remove("carries_signet");
                 default -> { }
             }
@@ -385,7 +424,8 @@ class FounderArcTest {
                     "Where do you want it?", "Does garlic work?", "There's more, at the back.", "Let's go home.",
                     "Stay here. You'd be safe here.", "You could.", "There might be a way back.",
                     "Someone who's sat with a lot of sick people might know.", "It's their choice. Leave it.",
-                    "Say it. They're not dangerous.", "Let's call it.", "Keep going.", "What will you do?");
+                    "Say it. They're not dangerous.", "Let's call it.", "Keep going.", "What will you do?",
+                    "She wants to see you.", "I'll take you.", "She's just over here.");
             List<String> branch = new ArrayList<>();
             if (opts.contains("romance")) branch.addAll(List.of("I like your company.", "What would you say tonight?", "I'll stay."));
             if (opts.contains("turnback") && !turnedBack && Boolean.TRUE.equals(var("grave_walking"))) {
@@ -408,7 +448,7 @@ class FounderArcTest {
                 for (int i = 0; i < choices.size(); i++) if (choices.get(i).getText().equals(want)) return i;
             }
             List<String> delay = List.of("Not now", "Not yet", "Another", "I'll let you", "Let's turn back", "I'll think",
-                    "I should go", "Nothing for now", "Never mind", "Let me think");
+                    "I should go", "Nothing for now", "Never mind", "Let me think", "Let's go back");
             for (int i = 0; i < choices.size(); i++) {
                 String t = choices.get(i).getText();
                 if (delay.stream().noneMatch(t::startsWith)) return i;

@@ -43,6 +43,7 @@ public class WardrobeAssignments extends SavedData {
     private static final String KEY_PICKS = "picks";
     private static final String KEY_SKIN = "skin";
     private static final String KEY_COUNT = "count";
+    private static final String KEY_TITLES = "titles";
 
     /** Override states for a villager's weather layers. */
     public static final byte INHERIT = 0;
@@ -96,6 +97,8 @@ public class WardrobeAssignments extends SavedData {
     private boolean villageWarm = true;
     private boolean villageLight = true;
     private final Map<UUID, Entry> villagers = new LinkedHashMap<>();
+    /** Skin Library outfit titles by skin id; the server has no other record of them. */
+    private final Map<String, String> titles = new LinkedHashMap<>();
 
     public WardrobeAssignments() {}
 
@@ -148,6 +151,8 @@ public class WardrobeAssignments extends SavedData {
             }
             if (!entry.isEmpty()) data.villagers.put(saved.getUUID(KEY_UUID), entry);
         }
+        CompoundTag titles = tag.getCompound(KEY_TITLES);
+        for (String skin : titles.getAllKeys()) data.titles.put(skin, titles.getString(skin));
         return data;
     }
 
@@ -196,7 +201,20 @@ public class WardrobeAssignments extends SavedData {
             list.add(saved);
         }
         tag.put(KEY_VILLAGERS, list);
+        CompoundTag saved = new CompoundTag();
+        for (Map.Entry<String, String> t : titles.entrySet()) saved.putString(t.getKey(), t.getValue());
+        tag.put(KEY_TITLES, saved);
         return tag;
+    }
+
+    public Map<String, String> titles() {
+        return titles;
+    }
+
+    public void setTitle(String skin, String title) {
+        if (title.equals(titles.get(skin))) return;
+        titles.put(skin, title);
+        setDirty();
     }
 
     public boolean villageWarm() {

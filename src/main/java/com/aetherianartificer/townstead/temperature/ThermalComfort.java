@@ -10,7 +10,7 @@ public final class ThermalComfort {
     private ThermalComfort() {}
 
     /** Water a body neither gains nor loses heat in, and how much harder each degree away from it counts. */
-    static final float NEUTRAL_WATER = 33f, WATER_FACTOR = 1.5f;
+    public static final float NEUTRAL_WATER = 33f, WATER_FACTOR = 1.5f;
     /** Wet-bulb temperature where sweat stops cooling a body. */
     static final float WET_BULB_LIMIT = 31f;
     /** Most a wet body chills by evaporation, as in hot desert air. */

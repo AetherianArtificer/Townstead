@@ -1,0 +1,23 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "butchery:cow_carcass", "required": false },
+    { "id": "butchery:drained_cow_carcass", "required": false },
+    { "id": "butchery:pig_carcass", "required": false },
+    { "id": "butchery:drained_pig_carcass", "required": false },
+    { "id": "butchery:sheep_carcass", "required": false },
+    { "id": "butchery:drained_sheep_carcass", "required": false },
+    { "id": "butchery:chicken_carcass", "required": false },
+    { "id": "butchery:drained_chicken_carcass", "required": false },
+    { "id": "butchery:rabbit_carcass", "required": false },
+    { "id": "butchery:drained_rabbit_carcass", "required": false },
+    { "id": "butchery:goat_carcass", "required": false },
+    { "id": "butchery:drained_goat_carcass", "required": false },
+    { "id": "butchery:red_mooshroom_carcass", "required": false },
+    { "id": "butchery:drained_red_mooshroom_carcass", "required": false },
+    { "id": "butchery:brown_mooshroom_carcass", "required": false },
+    { "id": "butchery:drained_brown_mooshroom_carcass", "required": false },
+    { "id": "butchery:hoglin_carcass", "required": false },
+    { "id": "butchery:drained_hoglin_carcass", "required": false }
+  ]
+}

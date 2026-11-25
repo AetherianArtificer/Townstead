@@ -67,6 +67,8 @@ VAR more_tomorrow = false
     ~ return "Got a minute now?"
 - quest_ready:
     ~ return "I think it's ready."
+- scene_ready():
+    ~ return "Planted anything new?"
 - quest_open:
     ~ return "How's it growing?"
 - not done_year and quest_day != today:
@@ -119,35 +121,56 @@ VAR more_tomorrow = false
 // the fall and the long year. One new thing a day.
 === next ===
 ~ more_tomorrow = false
-{
-- quest_day == today and not done_year:
-    ~ more_tomorrow = true
+{quest_day == today and not done_year:
+    ~ more_tomorrow = next_step() != ""
     -> talk
-- not done_plan:
-    -> plan_offer
-- not done_water:
-    -> water_offer
-- not done_harvest:
-    -> harvest_offer
-- not done_store:
-    -> store_offer
-- not done_path and career_path() != "":
-    -> path_scene
-- not done_kinds:
-    -> kinds_offer
-- not done_ground:
-    -> ground_offer
-- not done_rice and check("paddy_rice"):
-    -> rice_offer
-- not done_trader and check("trader_near"):
-    -> trader_scene
-- not done_home and check("hungry"):
-    -> home_offer
-- not done_letter and done_home and rel("trust") >= 30:
-    -> letter_scene
-- not done_frost and check("autumn") and done_kinds:
-    -> frost_offer
-- not done_year and done_kinds and (done_home or rel("trust") >= 30):
-    -> year_offer
+}
+{next_step():
+- "plan": -> plan_offer
+- "water": -> water_offer
+- "harvest": -> harvest_offer
+- "store": -> store_offer
+- "path": -> path_scene
+- "kinds": -> kinds_offer
+- "ground": -> ground_offer
+- "rice": -> rice_offer
+- "trader": -> trader_scene
+- "home": -> home_offer
+- "letter": -> letter_scene
+- "frost": -> frost_offer
+- "year": -> year_offer
 }
 -> talk
+
+// The next step, or "". The lessons go in order, each after the last is done. After them, the
+// rest can start while another quest is open, so a trader passing or a hungry day is not missed.
+=== function next_step() ===
+{
+- not done_plan: ~ return untried("plan", plan)
+- not done_water: ~ return untried("water", water)
+- not done_harvest: ~ return untried("harvest", harvest)
+- not done_store: ~ return untried("store", store)
+- not done_path and career_path() != "": ~ return "path"
+- not done_kinds: ~ return untried("kinds", kinds)
+- not done_ground: ~ return untried("ground", ground_soil + ground_big + ground_rich + ground_giant)
+}
+{
+- not done_rice and check("paddy_rice") and not rice: ~ return "rice"
+- not done_trader and check("trader_near"): ~ return "trader"
+- not done_home and check("hungry") and not home: ~ return "home"
+- not done_letter and done_home and rel("trust") >= 30: ~ return "letter"
+- not done_frost and check("autumn") and done_kinds and not frost: ~ return "frost"
+- not done_year and done_kinds and (done_home or rel("trust") >= 30) and not year: ~ return "year"
+}
+~ return ""
+
+// A lesson not yet started, or "" while it is open.
+=== function untried(name, visits) ===
+{visits > 0:
+    ~ return ""
+}
+~ return name
+
+// Asked by the game before an open quest's waiting lines: a new step goes ahead of them.
+=== function scene_ready() ===
+~ return met == 2 and quest_day != today and next_step() != ""

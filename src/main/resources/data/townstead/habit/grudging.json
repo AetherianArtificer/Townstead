@@ -1,0 +1,13 @@
+{
+  "schema": "townstead:habit/v1",
+  "personalities": [
+    "mca:crabby",
+    "mca:gloomy"
+  ],
+  "hours": {
+    "cleaning": 12,
+    "washing": 24,
+    "laundry": 48,
+    "tidying_home": 16
+  }
+}

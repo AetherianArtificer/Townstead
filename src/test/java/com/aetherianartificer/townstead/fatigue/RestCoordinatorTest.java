@@ -22,8 +22,8 @@ class RestCoordinatorTest {
                 true,
                 true,
                 false,
-                false
-        ));
+                false,
+                false));
 
         assertEquals(SleepReason.SCHEDULED_REST, decision.reason());
         assertEquals(SleepBlockReason.NONE, decision.blockReason());
@@ -44,8 +44,8 @@ class RestCoordinatorTest {
                 true,
                 true,
                 false,
-                false
-        ));
+                false,
+                false));
 
         assertEquals(SleepReason.NONE, decision.reason());
         assertFalse(decision.shouldSeekBed());
@@ -65,8 +65,8 @@ class RestCoordinatorTest {
                 true,
                 true,
                 false,
-                false
-        ));
+                false,
+                false));
 
         assertEquals(SleepReason.FATIGUE_REST, decision.reason());
         assertTrue(decision.shouldSeekBed());
@@ -86,8 +86,8 @@ class RestCoordinatorTest {
                 true,
                 false,
                 false,
-                true
-        ));
+                true,
+                false));
 
         assertEquals(SleepReason.FATIGUE_REST, decision.reason());
         assertTrue(decision.shouldSeekBed());
@@ -98,14 +98,16 @@ class RestCoordinatorTest {
     void activeOverrideSeeksBedUnderItsOwnAllRestSchedule() {
         RestDecision withOverride = RestCoordinator.decide(new RestContext(
                 true, Activity.REST, FatigueData.EXHAUSTED_THRESHOLD,
-                false, false, false, false, false, true, false, true));
+                false, false, false, false, false, true, false, true,
+                false));
         assertEquals(SleepReason.FATIGUE_REST, withOverride.reason());
         assertTrue(withOverride.shouldSeekBed());
 
         // The same schedule without the flag is ordinary rest: this is why callers must pass it.
         RestDecision withoutOverride = RestCoordinator.decide(new RestContext(
                 true, Activity.REST, FatigueData.EXHAUSTED_THRESHOLD,
-                false, false, false, false, false, true, false, false));
+                false, false, false, false, false, true, false, false,
+                false));
         assertEquals(SleepReason.SCHEDULED_REST, withoutOverride.reason());
         assertFalse(withoutOverride.shouldSeekBed());
     }
@@ -123,8 +125,8 @@ class RestCoordinatorTest {
                 true,
                 true,
                 false,
-                false
-        ));
+                false,
+                false));
 
         assertEquals(SleepBlockReason.COMBAT_THREAT, decision.blockReason());
         assertFalse(decision.shouldSeekBed());
@@ -144,8 +146,8 @@ class RestCoordinatorTest {
                 true,
                 false,
                 false,
-                false
-        ));
+                false,
+                false));
 
         assertEquals(SleepBlockReason.INVALID_SLEEPING_BED, decision.blockReason());
         assertTrue(decision.shouldWake());
@@ -164,8 +166,8 @@ class RestCoordinatorTest {
                 true,
                 false,
                 false,
-                false
-        ));
+                false,
+                false));
 
         assertEquals(SleepReason.SCHEDULED_REST, decision.reason());
         assertFalse(decision.shouldSeekBed());
@@ -184,8 +186,8 @@ class RestCoordinatorTest {
                 false,
                 false,
                 true,
-                false
-        ));
+                false,
+                false));
 
         assertEquals(SleepReason.SCHEDULED_REST, decision.reason());
         assertTrue(decision.shouldHoldGuardAtRest());
@@ -205,8 +207,8 @@ class RestCoordinatorTest {
                 true,
                 true,
                 false,
-                true  // restOverrideActive
-        ));
+                true, // restOverrideActive
+                false));
         assertFalse(stillFatigued.shouldWake(), "should stay in bed until fully recovered during fatigue override");
 
         // Fatigue at 0 — should wake during override
@@ -221,8 +223,8 @@ class RestCoordinatorTest {
                 true,
                 true,
                 false,
-                true  // restOverrideActive
-        ));
+                true, // restOverrideActive
+                false));
         assertTrue(rested.shouldWake(), "should wake once fully recovered during fatigue override");
     }
 
@@ -240,8 +242,8 @@ class RestCoordinatorTest {
                 true,
                 true,
                 false,
-                false  // NOT override
-        ));
+                false, // NOT override
+                false));
         assertTrue(decision.shouldWake(), "should wake once below drowsy during normal sleep");
     }
 }

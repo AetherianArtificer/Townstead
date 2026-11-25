@@ -46,8 +46,62 @@ public class WardrobeClothingScreen extends VillagerEditorScreen {
         return false;
     }
 
+    /** Clothes when the Skin Library opened over this screen, to tell a clothing pick from a hair one. */
+    private String clothesBeforeLibrary;
+
+    @Override
+    public void removed() {
+        super.removed();
+        clothesBeforeLibrary = villager == null ? null : villager.getClothes();
+    }
+
+    /** MCA's Skin Library ends a pick here; it goes to the Wardrobe instead of the editor. */
     @Override
     public void syncVillagerData() {
+        if (minecraft == null || !(minecraft.screen instanceof net.conczin.mca.client.gui.SkinLibraryScreen)) return;
+        String clothes = villager == null ? null : villager.getClothes();
+        if (clothes == null || clothes.isEmpty() || clothes.equals(clothesBeforeLibrary)) return;
+        String title = libraryTitle(minecraft.screen, clothes);
+        if (title != null) WardrobeScreen.send(WardrobeAssignPayload.title(target, clothes, title));
+        send(clothes);
+        leaving = true;
+    }
+
+    /**
+     * The picked outfit's title, found among the Skin Library screen's loaded entries. Read by
+     * reflection because the entry type and its id accessor differ between MCA builds.
+     */
+    private static String libraryTitle(Screen library, String skin) {
+        if (!skin.startsWith(WardrobePreview.LIBRARY_PREFIX)) return null;
+        String id = skin.substring(WardrobePreview.LIBRARY_PREFIX.length());
+        try {
+            for (java.lang.reflect.Field field : library.getClass().getDeclaredFields()) {
+                if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+                field.setAccessible(true);
+                Object value = field.get(library);
+                Iterable<?> entries = value instanceof Iterable<?> list ? list : java.util.Collections.singletonList(value);
+                for (Object entry : entries) {
+                    String title = titleIfId(entry, id);
+                    if (title != null) return title;
+                }
+            }
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+        return null;
+    }
+
+    private static String titleIfId(Object entry, String id) throws ReflectiveOperationException {
+        if (entry == null || !entry.getClass().isRecord()) return null;
+        Object contentId = null;
+        Object title = null;
+        for (java.lang.reflect.RecordComponent component : entry.getClass().getRecordComponents()) {
+            String name = component.getName();
+            if (name.equals("contentid") || name.equals("content_id")) contentId = component.getAccessor().invoke(entry);
+            else if (name.equals("title")) title = component.getAccessor().invoke(entry);
+        }
+        if (contentId == null || !id.equals(String.valueOf(contentId))) return null;
+        // MCA fills "unknown" for server entries it could not look up.
+        return title instanceof String text && !text.isBlank() && !text.equals("unknown") ? text : null;
     }
 
     @Override
@@ -126,14 +180,16 @@ public class WardrobeClothingScreen extends VillagerEditorScreen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        String skin = hovered();
+        if (skin == null) return super.mouseClicked(mouseX, mouseY, button);
+        // MCA's own tile click, with any button, writes the outfit and ClothingLocked onto the villager.
         if (button == 1) {
-            String skin = hovered();
-            if (skin != null) {
-                WardrobeScreen.send(WardrobeAssignPayload.star(target, skin, !starred(skin)));
-                return true;
-            }
+            WardrobeScreen.send(WardrobeAssignPayload.star(target, skin, !starred(skin)));
+        } else {
+            send(skin);
+            leaving = true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return true;
     }
 
     @Override

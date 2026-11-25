@@ -62,7 +62,12 @@ public record OrderEditC2SPayload(long worksiteId, Action action, int index, int
          * <p>Rides this payload rather than getting its own because every edit already carries the
          * worksite id, which is the only thing the server needs to forget a watcher.</p>
          */
-        CLOSED
+        CLOSED,
+        /**
+         * The line at {@code index} becomes another variant of the same thing: {@code value} is the product, or a
+         * pattern that leaves a variant open. Admitted only if the catalogue offers it here.
+         */
+        SET_PRODUCT
     }
 
     public void write(FriendlyByteBuf buf) {

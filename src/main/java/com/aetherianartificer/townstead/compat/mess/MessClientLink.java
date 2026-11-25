@@ -28,12 +28,8 @@ public final class MessClientLink {
      * {@code wear|color}. Says whether it could.
      */
     public static boolean pickBathingWear(LivingEntity villager, String gender, java.util.function.Consumer<String> picked, net.minecraft.client.gui.screens.Screen back) {
-        try {
-            com.aetherianartificer.bitofamess.client.ChangingPicker.openFor(villager, gender, choice -> picked.accept(choice.wear() + "|" + choice.color()), back);
-            return true;
-        } catch (LinkageError older) {
-            return false;
-        }
+        com.aetherianartificer.bitofamess.client.ChangingPicker.openFor(villager, gender, choice -> picked.accept(choice.wear() + "|" + choice.color()), back);
+        return true;
     }
 
     static void init() {

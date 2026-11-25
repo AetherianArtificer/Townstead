@@ -50,6 +50,8 @@
     -> talk
 * {check("carries_book") and not done_book} [I have something of your mother's.]
     -> the_book
++ {midwife_waiting()} [She wants to see you.]
+    -> see_midwife
 * {check("heard_birth") and not told_father} [She says your father was at your birth.]
     -> father_at_birth
 * {named and done_counting and not done_count_talk} [What were you reciting, that night?]

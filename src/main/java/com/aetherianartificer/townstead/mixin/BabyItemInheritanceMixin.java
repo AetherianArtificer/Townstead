@@ -21,8 +21,8 @@ import java.util.List;
  *
  * <p>This runs after MCA serialized/restored the dummy child, so working with the
  * live spawned entity avoids the baby-item NBT round-trip (which drops our
- * attachment-stored state). If a parent is unloaded it's simply skipped; with one
- * resolvable parent the child copies it, with none the founder seeding stands.</p>
+ * attachment-stored state). An unloaded parent is read from the snapshot taken when MCA made
+ * the item; with one resolvable parent the child copies it, with none the founder seeding stands.</p>
  *
  * <p>{@code remap=false}: the target lives in MCA (stable names both branches).</p>
  */
@@ -39,6 +39,16 @@ public abstract class BabyItemInheritanceMixin {
         com.aetherianartificer.townstead.naming.SpawnNaming.beginBirth();
     }
 
+    /** Saves both parents' heredity while they are loaded, for a birth that may come far away. */
+    @Inject(method = "createItem", at = @At("RETURN"))
+    private static void townstead$rememberParents(Entity mother, Entity father, long seed,
+                                                  CallbackInfoReturnable<net.minecraft.world.item.ItemStack> cir) {
+        if (mother == null || mother.level().isClientSide || mother.level().getServer() == null) return;
+        var snapshots = com.aetherianartificer.townstead.root.ParentSnapshots.get(mother.level().getServer());
+        snapshots.remember(mother, mother.level().getRandom());
+        if (father != null) snapshots.remember(father, mother.level().getRandom());
+    }
+
     // Newer MCA returns Optional<VillagerEntityMCA> (empty when there is no room to place the baby).
     //? if neoforge {
     @Inject(method = {"birthChild(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/core/BlockPos;)Ljava/util/Optional;", "birthChild(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/server/level/ServerPlayer;)Lnet/conczin/mca/entity/VillagerEntityMCA;"}, at = @At("RETURN"))
@@ -51,10 +61,14 @@ public abstract class BabyItemInheritanceMixin {
         if (result instanceof java.util.Optional<?> optional) result = optional.orElse(null);
         if (!(result instanceof VillagerEntityMCA child) || child.level().isClientSide) return;
         List<Entity> parents = child.getRelationships().getParents().toList();
-        Heredity.inheritFromEntities(TownsteadVillagers.get(child).life(), parents, child.getRandom());
-        com.aetherianartificer.townstead.root.appearance.IrisColors.seed(child);
         // MCA hands the parents over unordered; its family tree knows which one is the mother.
         var family = child.getRelationships().getFamilyEntry();
+        if (child.level().getServer() != null) {
+            Heredity.inheritFromFamily(TownsteadVillagers.get(child).life(), parents,
+                    java.util.Arrays.asList(family.mother(), family.father()),
+                    child.level().getServer(), child.getRandom());
+        }
+        com.aetherianartificer.townstead.root.appearance.IrisColors.seed(child);
         net.minecraft.world.entity.LivingEntity mother = null, father = null;
         for (Entity parent : parents) {
             if (!(parent instanceof net.minecraft.world.entity.LivingEntity living)) continue;

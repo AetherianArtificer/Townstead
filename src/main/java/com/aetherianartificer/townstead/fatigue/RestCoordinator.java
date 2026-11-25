@@ -23,7 +23,8 @@ public final class RestCoordinator {
                 villager.getBrain().getMemory(MemoryModuleType.HOME).isPresent(),
                 hasValidSleepingBed,
                 guardRole,
-                restOverrideActive
+                restOverrideActive,
+                BedRest.active(villager)
         );
     }
 
@@ -36,10 +37,10 @@ public final class RestCoordinator {
                 || blockReason == SleepBlockReason.INVALID_SLEEPING_BED
                 || (!context.isScheduledRest() && !context.needsMoreRest()));
         boolean shouldSeekBed = !context.sleeping()
-                && reason == SleepReason.FATIGUE_REST
+                && (reason == SleepReason.FATIGUE_REST || reason == SleepReason.BED_REST)
                 && blockReason == SleepBlockReason.NONE;
         boolean shouldOverride = !context.sleeping()
-                && reason == SleepReason.FATIGUE_REST
+                && (reason == SleepReason.FATIGUE_REST || reason == SleepReason.BED_REST)
                 && !context.restOverrideActive()
                 && context.scheduleActivity() != Activity.REST
                 && blockReason == SleepBlockReason.NONE;
@@ -85,6 +86,7 @@ public final class RestCoordinator {
 
     static SleepReason determineReason(RestContext context) {
         if (context.collapsed()) return SleepReason.EMERGENCY_COLLAPSE;
+        if (context.bedRest()) return SleepReason.BED_REST;
         // While the override lasts it keeps asking for a bed. The fatigue ticker
         // owns ending it: being hurt or collapsing releases an awake villager.
         // Merely being drowsy does not supersede a WORK shift.

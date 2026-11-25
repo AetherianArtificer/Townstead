@@ -46,7 +46,8 @@ public final class VillageSpiritQueryScheduler {
         String key = keyOf(level, village.getId(), player.getUUID());
         if (!PENDING_KEYS.add(key)) return;
         QUEUE.add(new Job(key, level, village.getId(), player.getUUID(),
-                new ArrayList<>(com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village))));
+                new ArrayList<>(com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)),
+                com.aetherianartificer.townstead.compat.mca.McaBuildingCompat.effectiveTypes(village)));
     }
 
     public static void tick(MinecraftServer server) {
@@ -104,6 +105,7 @@ public final class VillageSpiritQueryScheduler {
         final int villageId;
         final UUID playerUuid;
         final List<Building> buildings;
+        final Map<Integer, String> effectiveTypes;
         final Map<String, Integer> perSpirit = new HashMap<>();
         // spirit id -> (buildingType -> [count, totalPoints]). Aggregated as
         // we walk the building list so the Spirit page's contributor view can
@@ -113,12 +115,14 @@ public final class VillageSpiritQueryScheduler {
         int total = 0;
         int contributingBuildings = 0;
 
-        Job(String key, ServerLevel level, int villageId, UUID playerUuid, List<Building> buildings) {
+        Job(String key, ServerLevel level, int villageId, UUID playerUuid, List<Building> buildings,
+            Map<Integer, String> effectiveTypes) {
             this.key = key;
             this.level = level;
             this.villageId = villageId;
             this.playerUuid = playerUuid;
             this.buildings = buildings;
+            this.effectiveTypes = effectiveTypes;
         }
 
         int process(int limit) {
@@ -136,7 +140,7 @@ public final class VillageSpiritQueryScheduler {
 
         private void process(Building building) {
             if (building == null || !building.isComplete()) return;
-            String type = building.getType();
+            String type = effectiveTypes.getOrDefault(building.getId(), building.getType());
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
             if (contributions.isEmpty()) return;
             boolean anyAdded = false;

@@ -1,0 +1,62 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "thirstwastaken2"
+  ],
+  "task": "townstead_work:maintain_water",
+  "type": "townstead:block_interaction",
+  "target": {
+    "buildings": [
+      "*"
+    ],
+    "blocks": [
+      "thirstwastaken2:copper_hanging_pot",
+      "thirstwastaken2:iron_hanging_pot"
+    ],
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:block_state",
+          "property": "level",
+          "value": "0"
+        },
+        {
+          "type": "pheno:block_state",
+          "property": "level",
+          "value": "1"
+        },
+        {
+          "type": "pheno:block_state",
+          "property": "level",
+          "value": "2"
+        }
+      ]
+    },
+    "interactions": [
+      {
+        "item": "minecraft:water_bucket",
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "activity": "townstead:barista_water",
+        "xp": 1,
+        "condition": {
+          "type": "pheno:block_entity",
+          "property": "servings",
+          "value": 0
+        }
+      },
+      {
+        "item": "minecraft:potion",
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "activity": "townstead:barista_water",
+        "xp": 1
+      }
+    ]
+  }
+}

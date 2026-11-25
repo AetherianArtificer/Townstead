@@ -56,6 +56,10 @@ public final class CareerScreen extends Screen {
     private final Map<String, List<CareerGraphS2CPayload.Node>> byRoot = new LinkedHashMap<>();
     private final Map<String, CareerGraphS2CPayload.Node> byId = new LinkedHashMap<>();
     private String activeRoot = "";
+    /** The one career whose full tree the last record carried; the rest arrive as their own node. */
+    private String focus = "";
+    /** The career asked for and not yet answered, so a pick is requested once, not every frame. */
+    private String requestedFocus = "";
     private String selectedId = "";
     private String hoveredId = "";
     private String notice = "";
@@ -113,6 +117,7 @@ public final class CareerScreen extends Screen {
         this.notice = payload.notice();
         this.payloadAuthority = payload.authority();
         this.payloadDate = payload.dateLine();
+        this.focus = payload.focus();
         this.inspect = payload.inspect();
         byId.clear();
         // Careers are ordered by their DISPLAYED name, not by whatever order the server happened to
@@ -130,6 +135,17 @@ public final class CareerScreen extends Screen {
         byRoot.clear();
         for (String rootId : order) byRoot.put(rootId, grouped.get(rootId));
         if (!byRoot.containsKey(activeRoot)) activeRoot = openingRoot(order);
+        requestTreeIfMissing();
+    }
+
+    private void requestTreeIfMissing() {
+        if (activeRoot.equals(focus)) {
+            requestedFocus = "";
+        } else if (!activeRoot.isEmpty() && !activeRoot.equals(requestedFocus)) {
+            requestedFocus = activeRoot;
+            sendFocus(new com.aetherianartificer.townstead.profession.career
+                    .CareerFocusC2SPayload(activeRoot));
+        }
     }
 
     /**
@@ -666,6 +682,7 @@ public final class CareerScreen extends Screen {
             pickerOpen = false;
             if (picked != null && !picked.equals(activeRoot)) {
                 activeRoot = picked;
+                requestTreeIfMissing();
                 selectedId = "";
                 stamp.closeCase();
                 stamp.reset();
@@ -841,6 +858,15 @@ public final class CareerScreen extends Screen {
 
     private static void sendStamp(
             com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload payload) {
+        //? if neoforge {
+        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
+        //?} else {
+        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
+        *///?}
+    }
+
+    private static void sendFocus(
+            com.aetherianartificer.townstead.profession.career.CareerFocusC2SPayload payload) {
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
         //?} else {

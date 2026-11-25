@@ -115,10 +115,13 @@ public final class SpiritReconciler {
         if (village == null) return 0L;
         long count = 0;
         long types = 0;
+        java.util.Map<Integer, String> effective =
+                com.aetherianartificer.townstead.compat.mca.McaBuildingCompat.effectiveTypes(village);
         for (var b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
-            if (!b.isComplete() || BuildingSpiritIndex.contributionsFor(b.getType()).isEmpty()) continue;
+            String type = effective.getOrDefault(b.getId(), b.getType());
+            if (!b.isComplete() || type == null || BuildingSpiritIndex.contributionsFor(type).isEmpty()) continue;
             count++;
-            types += b.getType().hashCode();
+            types += type.hashCode();
         }
         return count * 1_000_003L + types;
     }

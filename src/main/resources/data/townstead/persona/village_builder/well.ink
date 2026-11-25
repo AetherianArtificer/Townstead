@@ -55,7 +55,7 @@ How far is water from your nearest door? In steps. Guess.
 + [I've never counted.]
     Never counted. Mm.
     We measured water in cups, back home. Then in spoonfuls. Then we stopped measuring.
-    Well! Water's the easy part, if you plan for it. Put it where people live.
+    Well! Water's the easy part, if you plan for it. A bottle of clean water in every house.
 + [Are you going to count?]
     ~ teased_first = true
     Maybe. I'll tell you if it gets better.

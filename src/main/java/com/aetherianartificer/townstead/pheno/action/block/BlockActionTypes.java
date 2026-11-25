@@ -28,7 +28,14 @@ public final class BlockActionTypes {
         }
     }
 
+    /** The type for a key: this copy's own, else the other copy of Pheno's, when that is installed. */
     public static Optional<BlockActionType> get(String key) {
+        Optional<BlockActionType> own = own(key);
+        return own.isPresent() ? own : com.aetherianartificer.townstead.compat.pheno.ForeignTypes.blockAction(key);
+    }
+
+    /** This copy's own type for a key, never the other copy's. The bridge asks only this, so a lookup never loops. */
+    public static Optional<BlockActionType> own(String key) {
         if (key == null) return Optional.empty();
         return Optional.ofNullable(TYPES.get(key.toLowerCase(Locale.ROOT)));
     }

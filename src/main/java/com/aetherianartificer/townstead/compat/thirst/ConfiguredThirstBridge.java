@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.needs.NeedEffectProjection;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -49,6 +50,14 @@ final class ConfiguredThirstBridge implements ThirstCompatBridge {
     @Override public float exhaustionBiomeModifier(Level level, BlockPos pos) { return delegate.exhaustionBiomeModifier(level, pos); }
     @Override public boolean extraHydrationToQuenched() { return delegate.extraHydrationToQuenched(); }
     @Override public PurityResult evaluatePurity(int purity, RandomSource random) { return delegate.evaluatePurity(purity, random); }
+    @Override public int finishedPurity() { return delegate.finishedPurity(); }
+    @Override public Object sampleBlockWater(net.minecraft.server.level.ServerLevel level, BlockPos pos) {
+        return delegate.sampleBlockWater(level, pos);
+    }
+    @Override public ItemStack gradeServing(ItemStack serving, Object sample) { return delegate.gradeServing(serving, sample); }
+    @Override public boolean applyWaterSickness(LivingEntity drinker, ItemStack stack, RandomSource random) {
+        return delegate.applyWaterSickness(drinker, stack, random);
+    }
     @Override public ResourceLocation iconTexture() { return delegate.iconTexture(); }
     @Override public boolean supportsPurification() { return delegate.supportsPurification(); }
     @Override public boolean canBoil(ItemStack stack) { return delegate.canBoil(stack); }

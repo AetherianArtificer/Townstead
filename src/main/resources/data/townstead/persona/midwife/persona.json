@@ -87,6 +87,14 @@
    "type": "pheno:give_story_item",
    "item": "townstead:book_of_oaths"
   },
+  "asked_bring": {
+   "type": "pheno:add_count",
+   "key": "townstead:midwife_asked_bring",
+   "on": "other"
+  },
+  "founder_home": {
+   "type": "pheno:travel_end"
+  },
   "forgiven": {
    "type": "pheno:add_count",
    "key": "townstead:midwife_forgiven",
@@ -99,6 +107,10 @@
   }
  },
  "conditions": {
+  "founder": {
+   "type": "pheno:persona",
+   "persona": "townstead:dhampir_founder"
+  },
   "bread_delivered": {
    "type": "pheno:other",
    "condition": {

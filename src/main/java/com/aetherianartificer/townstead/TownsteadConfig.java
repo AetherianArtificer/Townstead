@@ -410,10 +410,10 @@ public final class TownsteadConfig {
             PREFERRED_THIRST_BACKEND = b
                     .translation("townstead.configuration.needs.thirst.preferredBackend")
                     .comment("Which thirst mod drives villager thirst when more than one is installed.",
-                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken, then Tough As Nails.",
-                             "\"legendary_survival_overhaul\", \"thirst\" or \"tough_as_nails\" pins that backend, falling back to an installed backend.")
+                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken, then ThirstWasTaken2, then Homeostatic, then Tough As Nails.",
+                             "\"legendary_survival_overhaul\", \"thirst\", \"thirstwastaken2\", \"homeostatic\" or \"tough_as_nails\" pins that backend, falling back to an installed backend.")
                     // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
-                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst", "tough_as_nails"));
+                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst", "thirstwastaken2", "homeostatic", "tough_as_nails"));
             b.pop();
         } else {
             ENABLE_SELF_INVENTORY_DRINKING = null;
@@ -435,10 +435,10 @@ public final class TownsteadConfig {
         PREFERRED_TEMPERATURE_BACKEND = b
                 .translation("townstead.configuration.needs.temperature.preferredBackend")
                 .comment("Which mod reports the ambient temperature at a villager position.",
-                         "\"auto\" prefers Legendary Survival Overhaul, then Cold Sweat, then Tough As Nails, then the built-in climate model.",
+                         "\"auto\" prefers Legendary Survival Overhaul, then Cold Sweat, then Tough As Nails, then Homeostatic, then the built-in climate model.",
                          "Naming a mod pins it when installed; \"builtin\" ignores temperature mods entirely.")
                 // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
-                .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "builtin"));
+                .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "homeostatic", "builtin"));
         CLIMATE_AUTHORITY = b
                 .translation("townstead.configuration.needs.temperature.climateAuthority")
                 .comment("Who decides the climate (seasons, biomes, day and night, weather, dimensions) when a temperature mod is installed.",

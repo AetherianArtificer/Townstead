@@ -137,6 +137,7 @@ public final class StorageRoles {
             int rank = switch (role) {
                 case INPUTS -> use == StorageUse.INGREDIENT ? 0 : Integer.MAX_VALUE;
                 case OUTPUTS -> use == StorageUse.OUTPUT ? 0 : Integer.MAX_VALUE;
+                case DISPLAY -> use == StorageUse.OUTPUT ? 1 : Integer.MAX_VALUE;
                 case TOOLS -> (use == StorageUse.TOOL || use == StorageUse.TOOL_RETURN)
                         ? 0 : Integer.MAX_VALUE;
                 case RESERVES -> (use == StorageUse.INGREDIENT || use == StorageUse.TOOL)

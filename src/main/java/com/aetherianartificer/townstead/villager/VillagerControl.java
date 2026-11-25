@@ -57,7 +57,8 @@ public final class VillagerControl {
             case REACTION -> com.aetherianartificer.townstead.reaction.ReactionLockTracker.isLocked(villager, villager.level().getGameTime());
             case RITUAL -> com.aetherianartificer.townstead.ritual.RitualService.busy(villager);
             case STORY -> com.aetherianartificer.townstead.story.StoryService.inScene(villager);
-            case REST -> TownsteadConfig.isVillagerFatigueEnabled() && TownsteadVillagers.get(villager).needs().restOverrideActive();
+            case REST -> (TownsteadConfig.isVillagerFatigueEnabled() && TownsteadVillagers.get(villager).needs().restOverrideActive())
+                    || com.aetherianartificer.townstead.fatigue.BedRest.active(villager);
             case LEAVING -> com.aetherianartificer.townstead.journey.Journeys.isLeaving(villager.getUUID());
             case COMPANION -> com.aetherianartificer.townstead.journey.Companions.leader(villager) != null;
             case PERSONA_WALK -> com.aetherianartificer.townstead.persona.PersonaService.isWalking(villager.getUUID());
