@@ -76,6 +76,8 @@ public final class RootAssignment {
         }
 
         syncPlayer(player, id);
+        // A new root brings new abilities: their keys and wheel shouldn't wait for the wheel to be opened.
+        com.aetherianartificer.townstead.root.ability.ActiveAbilities.syncView(player);
     }
 
     /**

@@ -96,11 +96,16 @@ public final class ActiveAbilities {
      * its own let a player bind a key to something that could never run from that key.</p>
      */
     public static List<Slotted> arrangeable(LivingEntity entity) {
+        List<Slotted> all = slottables(entity);
+        java.util.Set<ResourceLocation> owned = new java.util.HashSet<>();
+        for (Slotted slotted : all) owned.add(slotted.geneId());
         List<Slotted> out = new ArrayList<>();
-        for (Slotted slotted : slottables(entity)) {
-            if (com.aetherianartificer.townstead.root.gene.GeneRegistry.isCompanion(slotted.geneId())) {
-                continue;
-            }
+        for (Slotted slotted : all) {
+            // A counter-cast is a companion declared inside an ability: its parent's press fires it. One
+            // declared inside something that isn't an ability (a pack's abilities written inside a resource
+            // gene) is a real ability of its own.
+            ResourceLocation parent = com.aetherianartificer.townstead.root.gene.GeneRegistry.parentOf(slotted.geneId());
+            if (parent != null && owned.contains(parent)) continue;
             out.add(slotted);
         }
         return out;

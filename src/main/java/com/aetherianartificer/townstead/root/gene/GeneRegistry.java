@@ -100,6 +100,17 @@ public final class GeneRegistry {
      * authored without a name or icon of its own, so anything offering the player a list of genes
      * has to be able to leave them out.</p>
      */
+    /** The gene a companion is declared inside, or null when this gene isn't a companion. */
+    @Nullable
+    public static ResourceLocation parentOf(ResourceLocation id) {
+        if (id == null) return null;
+        ResourceLocation legacy = com.aetherianartificer.townstead.root.LegacyNamespace.remap(id);
+        for (Map.Entry<ResourceLocation, List<ResourceLocation>> entry : COMPANIONS.entrySet()) {
+            if (entry.getValue().contains(id) || (legacy != null && entry.getValue().contains(legacy))) return entry.getKey();
+        }
+        return null;
+    }
+
     public static boolean isCompanion(ResourceLocation id) {
         if (id == null) return false;
         if (COMPANION_IDS.contains(id)) return true;
