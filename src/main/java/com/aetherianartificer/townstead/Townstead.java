@@ -1064,6 +1064,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(sp);
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
                 com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables.watch(sp);
+                com.aetherianartificer.townstead.root.ability.ActiveAbilities.watchModes(sp);
                 com.aetherianartificer.townstead.compat.vampirism.VampirismTasks.watch(sp);
                 com.aetherianartificer.townstead.temperature.ClimateImmunity.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);
@@ -1844,6 +1845,7 @@ public class Townstead {
                 com.aetherianartificer.townstead.root.collection.CollectionValues.tick(sp);
                 com.aetherianartificer.townstead.pheno.state.EntityStates.tick(sp);
                 com.aetherianartificer.townstead.compat.vampirism.VampirismActionAssignables.watch(sp);
+                com.aetherianartificer.townstead.root.ability.ActiveAbilities.watchModes(sp);
                 com.aetherianartificer.townstead.compat.vampirism.VampirismTasks.watch(sp);
                 com.aetherianartificer.townstead.temperature.ClimateImmunity.tick(sp);
                 com.aetherianartificer.townstead.root.ability.ResourceValues.syncTo(sp);

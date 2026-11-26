@@ -411,6 +411,7 @@ public final class ActiveAbilities {
 
     public static void clear(UUID uuid) {
         com.aetherianartificer.townstead.assign.AssignCooldowns.clear(uuid);
+        MODES.remove(uuid);
     }
 
     // ── The wheel's view ───────────────────────────────────────────────────
@@ -545,6 +546,33 @@ public final class ActiveAbilities {
             if (slotted.geneId().equals(id)) return slotted.kind() == GeneInstanceKind.TOGGLE;
         }
         return false;
+    }
+
+    // Which mode each of a player's abilities showed last, by player.
+    private static final Map<java.util.UUID, Map<ResourceLocation, Integer>> MODES = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Twice a second: when one of a player's abilities changes mode (a meter crosses a line), the wheel is sent
+     * again and the new mode's cue plays. The first look after joining only remembers.
+     */
+    public static void watchModes(ServerPlayer player) {
+        if (player.tickCount % 10 != 0) return;
+        Map<ResourceLocation, Integer> before = MODES.get(player.getUUID());
+        Map<ResourceLocation, Integer> now = new java.util.HashMap<>();
+        List<ActiveAbilityGeneType.Mode> entered = new ArrayList<>();
+        for (Slotted slotted : slottables(player)) {
+            if (!(slotted.instance() instanceof ActiveAbilityGeneType.Instance active) || active.modes().isEmpty()) continue;
+            int mode = active.modeOf(player);
+            now.put(slotted.geneId(), mode);
+            Integer was = before == null ? null : before.get(slotted.geneId());
+            if (before != null && (was == null || was != mode) && mode >= 0) entered.add(active.modes().get(mode));
+        }
+        MODES.put(player.getUUID(), now);
+        if (before == null || before.equals(now)) return;
+        syncView(player);
+        for (ActiveAbilityGeneType.Mode mode : entered) {
+            if (mode.onEnter() != null) mode.onEnter().run(new com.aetherianartificer.townstead.pheno.action.ActionContext(player));
+        }
     }
 
     /** Pushes the wheel's view after anything that could change it. */

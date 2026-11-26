@@ -33,7 +33,14 @@ import java.util.Locale;
  * wind-up gives it back and charges nothing.</p>
  *
  * <p>{@code hold} makes it fire again and again while its key is held, as often as its cooldown allows and paying
- * its cost each time: a hose, a stream, a beam you sweep. Fired from the wheel it goes off once.</p>
+ * its cost each time: a hose, a stream, a beam you sweep. Fired from the wheel it streams for a moment.</p>
+ *
+ * <p>{@code modes} are other faces of the same ability: each has a {@code when} condition and its own
+ * {@code display_name}, {@code description} and {@code icon}, and the wheel shows the first one that holds (or the
+ * ability's own look when none does). {@code on_enter} runs on the bearer the moment one starts to hold, as a cue:
+ * {@code "modes":[{ "when":{ "type":"pheno:resource", "resource":"examplepack:mana", "min":70 },
+ * "display_name":"Firestorm", "icon":"minecraft:fire_charge", "on_enter":{ "type":"pheno:play_sound", ... } }]}.
+ * What the ability does in each is up to its action, usually an {@code if_else} on the same condition.</p>
  */
 public final class ActiveAbilityGeneType implements GeneType {
 
@@ -59,15 +66,55 @@ public final class ActiveAbilityGeneType implements GeneType {
                            int slot, AiTrigger aiTrigger,
                            @Nullable ResourceLocation costResource, int costAmount,
                            com.aetherianartificer.townstead.pheno.combat.Casts.@Nullable Windup windup,
-                           boolean hold)
+                           boolean hold, java.util.List<Mode> modes)
             implements GeneInstance, com.aetherianartificer.townstead.root.ability.ResourceConsumer {
         public Instance(Action action, int cooldownTicks, @Nullable Condition condition, int slot,
                         AiTrigger aiTrigger, @Nullable ResourceLocation costResource, int costAmount) {
-            this(action, cooldownTicks, condition, slot, aiTrigger, costResource, costAmount, null, false);
+            this(action, cooldownTicks, condition, slot, aiTrigger, costResource, costAmount, null, false,
+                    java.util.List.of());
+        }
+
+        /** Which mode holds for this bearer now, or -1 for the ability's own look. */
+        public int modeOf(net.minecraft.world.entity.LivingEntity bearer) {
+            if (modes.isEmpty()) return -1;
+            var ctx = new com.aetherianartificer.townstead.pheno.condition.ConditionContext(bearer);
+            for (int i = 0; i < modes.size(); i++) {
+                if (modes.get(i).when().test(ctx)) return i;
+            }
+            return -1;
         }
 
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
+    }
+
+    /** One face of an ability: when it holds, what the wheel calls and draws it, and what plays as it starts. */
+    public record Mode(Condition when, @Nullable com.google.gson.JsonElement name,
+                       @Nullable com.google.gson.JsonElement description, @Nullable ResourceLocation icon,
+                       @Nullable Action onEnter) {
+
+        /** The authored name, or null to keep the ability's own. Read when asked, once the pack's text has loaded. */
+        public net.minecraft.network.chat.@Nullable Component displayName() {
+            return text(name);
+        }
+
+        public net.minecraft.network.chat.@Nullable Component displayDescription() {
+            return text(description);
+        }
+
+        private static net.minecraft.network.chat.@Nullable Component text(@Nullable com.google.gson.JsonElement el) {
+            if (el == null || el.isJsonNull()) return null;
+            if (el.isJsonPrimitive()) return net.minecraft.network.chat.Component.literal(el.getAsString());
+            if (el.isJsonObject() && el.getAsJsonObject().has("translate")) {
+                String key = el.getAsJsonObject().get("translate").getAsString();
+                return net.minecraft.network.chat.Component.translatableWithFallback(key,
+                        DataPackLang.resolveFallback(key, "en_us", key));
+            }
+            if (el.isJsonObject() && el.getAsJsonObject().has("text")) {
+                return net.minecraft.network.chat.Component.literal(el.getAsJsonObject().get("text").getAsString());
+            }
+            return null;
+        }
     }
 
     @Override
@@ -96,7 +143,20 @@ public final class ActiveAbilityGeneType implements GeneType {
             if (windup == null) return null;
         }
         boolean hold = GsonHelper.getAsBoolean(json, "hold", false);
-        return new Instance(action, cooldown, condition, slot, aiTrigger, costResource, costAmount, windup, hold);
+        java.util.List<Mode> modes = new java.util.ArrayList<>();
+        if (json.has("modes") && json.get("modes").isJsonArray()) {
+            for (com.google.gson.JsonElement raw : json.getAsJsonArray("modes")) {
+                if (!raw.isJsonObject()) continue;
+                JsonObject mode = raw.getAsJsonObject();
+                Condition when = mode.has("when") ? Conditions.parse(mode.get("when")) : null;
+                if (when == null) continue;
+                ResourceLocation icon = mode.has("icon") ? DataPackLang.parseId(GsonHelper.getAsString(mode, "icon", "")) : null;
+                Action onEnter = mode.has("on_enter") ? Actions.parse(mode.get("on_enter")) : null;
+                modes.add(new Mode(when, mode.get("display_name"), mode.get("description"), icon, onEnter));
+            }
+        }
+        return new Instance(action, cooldown, condition, slot, aiTrigger, costResource, costAmount, windup, hold,
+                java.util.List.copyOf(modes));
     }
 
     private static com.aetherianartificer.townstead.pheno.combat.Casts.@Nullable Windup parseWindup(

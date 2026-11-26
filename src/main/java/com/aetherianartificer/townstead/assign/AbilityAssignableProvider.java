@@ -42,10 +42,22 @@ public final class AbilityAssignableProvider implements AssignableProvider {
                     costColor = ResourceValues.colorOf(player, active.costResource());
                 }
             }
-            out.add(new Assignable(id, Component.literal(AbilityNames.display(id)),
-                    AbilityNames.icon(id), Component.literal(AbilityNames.source(id)),
-                    Assignable.Kind.ABILITY, cooldown, costAmount, costLabel, costColor, "",
-                    AbilityNames.description(id)));
+            Component name = Component.literal(AbilityNames.display(id));
+            String icon = AbilityNames.icon(id);
+            Component description = AbilityNames.description(id);
+            // An ability with modes shows the face that holds right now.
+            if (slotted.instance() instanceof com.aetherianartificer.townstead.root.gene.types
+                    .ActiveAbilityGeneType.Instance active) {
+                int mode = active.modeOf(player);
+                if (mode >= 0) {
+                    var face = active.modes().get(mode);
+                    if (face.displayName() != null) name = Component.literal(face.displayName().getString());
+                    if (face.icon() != null) icon = face.icon().toString();
+                    if (face.displayDescription() != null) description = face.displayDescription();
+                }
+            }
+            out.add(new Assignable(id, name, icon, Component.literal(AbilityNames.source(id)),
+                    Assignable.Kind.ABILITY, cooldown, costAmount, costLabel, costColor, "", description));
         }
     }
 
