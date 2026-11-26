@@ -197,6 +197,18 @@ public final class HitShapes {
 
     /** What someone aiming from {@code start} to {@code end} has in their sights, as far as {@code reachSqr}. */
     @Nullable
+    /**
+     * The same filter, minus the attachment parts of whoever is looking or shooting (and, for a shot, of whoever
+     * fired it). Nobody's ray stops on their own body.
+     */
+    public static java.util.function.Predicate<Entity> notOwnParts(@Nullable Entity mover,
+                                                                     java.util.function.Predicate<Entity> filter) {
+        if (mover == null) return filter;
+        Entity owner = mover instanceof net.minecraft.world.entity.projectile.Projectile shot ? shot.getOwner() : null;
+        return e -> !(e instanceof AttachmentPart part && (part.getParent() == mover || (owner != null && part.getParent() == owner)))
+                && filter.test(e);
+    }
+
     public static EntityHitResult aim(Entity aiming, Vec3 start, Vec3 end, java.util.function.Predicate<Entity> filter,
                                       double reachSqr, @Nullable EntityHitResult found) {
         return nearest(aiming.level(), aiming, null, start, end, filter, 0f, reachSqr, found);

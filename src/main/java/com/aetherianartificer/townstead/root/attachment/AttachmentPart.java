@@ -36,6 +36,12 @@ public final class AttachmentPart extends PartEntity<LivingEntity> {
         this.noPhysics = true;
     }
 
+    // Its own type, not its bearer's: asked for players (or villagers), the world must never hand back a part.
+    @Override
+    public net.minecraft.world.entity.EntityType<?> getType() {
+        return com.aetherianartificer.townstead.Townstead.ATTACHMENT_PART.get();
+    }
+
     void place(AABB world) {
         showing = true;
         setPos((world.minX + world.maxX) / 2.0, world.minY, (world.minZ + world.maxZ) / 2.0);

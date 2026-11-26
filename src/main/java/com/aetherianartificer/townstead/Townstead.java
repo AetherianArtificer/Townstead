@@ -161,6 +161,8 @@ public class Townstead {
             DeferredRegister.create(net.minecraft.core.registries.Registries.ITEM, MOD_ID);
     private static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
             DeferredRegister.create(net.minecraft.core.registries.Registries.BLOCK_ENTITY_TYPE, MOD_ID);
+    private static final DeferredRegister<net.minecraft.world.entity.EntityType<?>> ENTITY_TYPES =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.ENTITY_TYPE, MOD_ID);
     private static final DeferredRegister<MenuType<?>> MENU_TYPES =
             DeferredRegister.create(net.minecraft.core.registries.Registries.MENU, MOD_ID);
     private static final DeferredRegister<net.minecraft.world.item.CreativeModeTab> CREATIVE_MODE_TABS =
@@ -427,6 +429,19 @@ public class Townstead {
                         return BlockEntityType.Builder.of(FieldPostBlockEntity::new, blocks).build(null);
                     });
 
+    /**
+     * The hittable box of a worn attachment. A part entity takes its bearer's type unless told otherwise, so a mod
+     * asking the world for every player would be handed a part and cast it to Player. This type is never spawned
+     * or saved; it only names parts as what they are.
+     */
+    public static final Supplier<net.minecraft.world.entity.EntityType<com.aetherianartificer.townstead.root.attachment.AttachmentPart>> ATTACHMENT_PART =
+            ENTITY_TYPES.register("attachment_part",
+                    () -> net.minecraft.world.entity.EntityType.Builder
+                            .<com.aetherianartificer.townstead.root.attachment.AttachmentPart>of((type, level) -> null,
+                                    net.minecraft.world.entity.MobCategory.MISC)
+                            .sized(0.1f, 0.1f).noSave().noSummon().clientTrackingRange(0)
+                            .build("attachment_part"));
+
     public static final Supplier<BlockEntityType<com.aetherianartificer.townstead.block.CalendarBlockEntity>> CALENDAR_BE =
             BLOCK_ENTITY_TYPES.register("calendar",
                     () -> BlockEntityType.Builder.of(
@@ -541,6 +556,7 @@ public class Townstead {
         MOB_EFFECTS.register(modBus);
         POTIONS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
+        ENTITY_TYPES.register(modBus);
         MENU_TYPES.register(modBus);
         CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
@@ -1307,6 +1323,7 @@ public class Townstead {
         MOB_EFFECTS.register(modBus);
         POTIONS.register(modBus);
         BLOCK_ENTITY_TYPES.register(modBus);
+        ENTITY_TYPES.register(modBus);
         MENU_TYPES.register(modBus);
         CREATIVE_MODE_TABS.register(modBus);
         if (ModCompat.isLoaded("legendarysurvivaloverhaul")) {
@@ -3816,6 +3833,8 @@ public class Townstead {
             townstead$requireClient();
             modBus.addListener(
                     (net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers event) -> {
+                            event.registerEntityRenderer(ATTACHMENT_PART.get(),
+                                    net.minecraft.client.renderer.entity.NoopRenderer::new);
                             event.registerBlockEntityRenderer(
                                     CALENDAR_BE.get(),
                                     com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new);
@@ -3834,6 +3853,8 @@ public class Townstead {
             townstead$requireClient();
             modBus.addListener(
                     (net.minecraftforge.client.event.EntityRenderersEvent.RegisterRenderers event) -> {
+                            event.registerEntityRenderer(ATTACHMENT_PART.get(),
+                                    net.minecraft.client.renderer.entity.NoopRenderer::new);
                             event.registerBlockEntityRenderer(
                                     CALENDAR_BE.get(),
                                     com.aetherianartificer.townstead.client.render.block.CalendarBlockEntityRenderer::new);
