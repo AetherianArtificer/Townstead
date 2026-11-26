@@ -54,8 +54,7 @@ import java.util.Map;
  * <p>The finished parts then join the frame. With Fabulous graphics they go in as one more of the see-through
  * layers vanilla sorts per pixel at the end of the frame (the one dropped items use), so water, glass, particles,
  * weather and clouds fall in front of or behind them as they are. Otherwise they are laid over the frame once the
- * weather is down. With a shader pack on, the pack orders see-through things itself, and the faces go straight
- * to it.</p>
+ * weather is down. With a shader pack on, the two walls are drawn through the pack, after its water.</p>
  *
  * <p>Draws in a menu (an inventory preview) also go straight out: there's no world pass to wait for there.</p>
  */
@@ -115,7 +114,7 @@ public final class SeeThroughPass {
     /** Where a see-through attachment's faces go: kept for the pass in the world, straight out otherwise. */
     public static VertexConsumer consumer(RenderType type, ResourceLocation texture,
                                           MultiBufferSource buffers, boolean inWorld) {
-        if (!inWorld || composite == null || ShaderPacks.inUse()) return buffers.getBuffer(type);
+        if (!inWorld || (composite == null && !ShaderPacks.inUse())) return buffers.getBuffer(type);
         long now = Util.getMillis();
         if (!QUADS.isEmpty() && now - keptAt > STALE_MS) QUADS.clear();
         keptAt = now;
@@ -123,8 +122,46 @@ public final class SeeThroughPass {
     }
 
     public static void render(RenderLevelStageEvent event) {
-        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) compose(event);
-        else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) join();
+        if (ShaderPacks.inUse()) {
+            if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) shade(event);
+        } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_BLOCK_ENTITIES) {
+            compose(event);
+        } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_WEATHER) {
+            join();
+        }
+    }
+
+    /**
+     * With a shader pack: every kept part as its two walls, furthest part first, drawn through the pack once it has
+     * drawn water. The pack tints what's behind once per see-through face it's given, so the walls go down as on the
+     * parts' own screen, depth first and colour only on each wall's nearest face. Their depth stays in the frame:
+     * without it the pack takes the part for open sky and paints sky over it.
+     */
+    private static void shade(RenderLevelStageEvent event) {
+        groups = 0;
+        if (QUADS.isEmpty()) return;
+        Map<Integer, List<Quad>> byGroup = new HashMap<>();
+        Map<Integer, Float> nearest = new HashMap<>();
+        for (Quad quad : QUADS) {
+            byGroup.computeIfAbsent(quad.group(), g -> new ArrayList<>()).add(quad);
+            nearest.merge(quad.group(), quad.depth(), Math::min);
+        }
+        QUADS.clear();
+        List<Integer> order = new ArrayList<>(byGroup.keySet());
+        order.sort((a, b) -> Float.compare(nearest.get(b), nearest.get(a)));
+        //? if neoforge {
+        PoseStack.Pose pose = event.getPoseStack().last();
+        //?} else {
+        /*PoseStack.Pose pose = new PoseStack().last();
+        *///?}
+        for (int group : order) {
+            List<Quad> far = new ArrayList<>(), near = new ArrayList<>();
+            for (Quad quad : byGroup.get(group)) (facesCamera(quad) ? near : far).add(quad);
+            draw(pose, far, true);
+            draw(pose, far, false);
+            draw(pose, near, true);
+            draw(pose, near, false);
+        }
     }
 
     /**
