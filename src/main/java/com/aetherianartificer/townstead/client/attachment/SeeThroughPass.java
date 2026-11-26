@@ -36,6 +36,8 @@ public final class SeeThroughPass {
     private static final long STALE_MS = 500L;
 
     private static final List<Quad> QUADS = new ArrayList<>();
+    // Each part's near wall, furthest part first, waiting for the see-through blocks.
+    private static final List<List<Quad>> NEAR = new ArrayList<>();
     private static long keptAt;
     private static int groups;
 
@@ -62,12 +64,28 @@ public final class SeeThroughPass {
      * first and colour only where it is that wall's nearest surface. So whatever sits behind it is seen through
      * exactly two layers, however many faces the author stacked inside (plates, segments, inner walls), and its
      * {@code opacity} means the same for every part. Drawing every face blended instead multiplies the tint once
-     * per layer and buries what's behind. The depth stays, so what's drawn later
-     * in the frame and sits behind the part (water, glass, particles) stays behind it.</p>
+     * per layer and buries what's behind.</p>
+     *
+     * <p>The far walls go down here, after the entities; the near walls wait for water and other see-through
+     * blocks to be drawn first. A part sitting in water then has the water between its walls, where it is: drawn
+     * before the water, a near wall's depth would keep the water behind it from being drawn at all.</p>
      */
     public static void render(RenderLevelStageEvent event) {
         //? if neoforge {
+        if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS) {
+            if (NEAR.isEmpty()) return;
+            List<List<Quad>> walls = new ArrayList<>(NEAR);
+            NEAR.clear();
+            MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+            PoseStack.Pose pose = event.getPoseStack().last();
+            for (List<Quad> near : walls) {
+                draw(buffers, pose, near, true);
+                draw(buffers, pose, near, false);
+            }
+            return;
+        }
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_ENTITIES) return;
+        NEAR.clear();
         groups = 0;
         if (QUADS.isEmpty()) return;
         java.util.Map<Integer, List<Quad>> byGroup = new java.util.HashMap<>();
@@ -87,11 +105,10 @@ public final class SeeThroughPass {
         for (int group : order) {
             List<Quad> far = new ArrayList<>(), near = new ArrayList<>();
             for (Quad quad : byGroup.get(group)) (facesCamera(quad) ? near : far).add(quad);
-            // The far wall first, then the near one: two layers, as through a real hollow thing.
+            // The far wall now; the near one after water, furthest part first as here.
             draw(buffers, pose, far, true);
             draw(buffers, pose, far, false);
-            draw(buffers, pose, near, true);
-            draw(buffers, pose, near, false);
+            if (!near.isEmpty()) NEAR.add(near);
         }
         //?}
     }
