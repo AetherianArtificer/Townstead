@@ -130,6 +130,11 @@ public final class MessBridge {
         if (ACTIVE) MessLink.spray(body, material, at, way, force);
     }
 
+    /** As above, thrown in a named pattern ({@code bitofamess:high_pressure}, {@code bitofamess:arc}...). */
+    public static void spray(LivingEntity body, String material, Vec3 at, Vec3 way, float force, String pattern) {
+        if (ACTIVE) MessLink.spray(body, material, at, way, force, pattern);
+    }
+
     /** A blow that a part took for itself, which the body behind it never felt. */
     public static void partHit(LivingEntity body, Vec3 at, Vec3 way, float amount) {
         if (ACTIVE) MessLink.partHit(body, at, way, amount);

@@ -153,8 +153,18 @@ final class MessLink {
     }
 
     static void spray(LivingEntity body, String material, Vec3 at, Vec3 way, float force) {
+        spray(body, material, at, way, force, "");
+    }
+
+    /** With a named spray pattern (a jet, a fan), or the material's own pick when it's empty. */
+    static void spray(LivingEntity body, String material, Vec3 at, Vec3 way, float force, String pattern) {
         if (!(body.level() instanceof ServerLevel level)) return;
-        MessWorld.of(level).splash(variant(body, material), at, way, force, false, body);
+        if (pattern.isEmpty()) {
+            MessWorld.of(level).splash(variant(body, material), at, way, force, false, body);
+        } else {
+            MessWorld.of(level).spray(variant(body, material), at, way, force,
+                    com.aetherianartificer.bitofamess.material.MessSpray.get(pattern), body);
+        }
     }
 
     static void partLost(LivingEntity body, String trace, Vec3 at) {
