@@ -137,7 +137,7 @@ public final class TownsteadLiteralTts {
 
         CompletableFuture.runAsync(() -> {
             String cacheKey = language + "-" + voice + "/" + AudioCache.getHash(phrase) + ".ogg";
-            if (AudioCache.cachedRetrieve(cacheKey, output -> ONLINE.downloadAudio(output, language, voice, phrase))) {
+            if (com.aetherianartificer.townstead.client.tts.McaAudio.cachedRetrieve(cacheKey, output -> ONLINE.downloadAudio(output, language, voice, phrase))) {
                 playCached(cacheKey, pitch, villager, request);
             }
         });
@@ -155,7 +155,7 @@ public final class TownsteadLiteralTts {
             int tone = Math.min(voices.size() - 1, (int) Math.floor(gene * voices.size()));
             String voice = voices.get(tone);
             String cacheKey = cacheKey("realtime", voice, text);
-            if (AudioCache.get(cacheKey, output -> REALTIME.downloadAudio(output, voice, text), true)) {
+            if (com.aetherianartificer.townstead.client.tts.McaAudio.get(cacheKey, output -> REALTIME.downloadAudio(output, voice, text), true)) {
                 playCached(cacheKey, pitch, villager, request);
             }
         });
@@ -193,7 +193,7 @@ public final class TownsteadLiteralTts {
             int tone = Math.min(voices.size() - 1, (int) Math.floor(gene * voices.size()));
             String voice = voices.get(tone);
             String cacheKey = cacheKey("elevenlabs", voice, text);
-            if (AudioCache.get(cacheKey, output -> ELEVENLABS.downloadAudio(output, voice, text), true)) {
+            if (com.aetherianartificer.townstead.client.tts.McaAudio.get(cacheKey, output -> ELEVENLABS.downloadAudio(output, voice, text), true)) {
                 playCached(cacheKey, pitch, villager, request);
             }
         });
