@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "weather_eye"
+    "drenched"
   ],
   "power": {
     "type": "pheno:ability",
@@ -20,7 +20,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:tide",
-          "min": 75
+          "min": 50
         },
         {
           "type": "pheno:not",

@@ -25,14 +25,14 @@
           "type": "pheno:equipped_item",
           "slot": "chest",
           "item_condition": {
-            "type": "ingredient",
+            "type": "pheno:ingredient",
             "item": "minecraft:leather_chestplate"
           }
         },
         {
           "type": "pheno:resource",
           "resource": "townstead:hide",
-          "min": 75
+          "min": 50
         }
       ]
     },

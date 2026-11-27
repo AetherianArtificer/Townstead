@@ -36,10 +36,10 @@
     },
     { "type": "townstead_work:cure", "weight": 6 },
     {
-      "type": "townstead_work:clean",
+      "type": "townstead_work:tidy",
       "weight": 5,
       "order": {
-        "name": "Clean blood",
+        "name": "Keep tidy",
         "icon": "minecraft:sponge"
       }
     },

@@ -1,0 +1,163 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tinker.spring_pad"
+  },
+  "icon": "minecraft:slime_block",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tinker.spring_pad.description"
+  },
+  "cost": 2,
+  "requires": [
+    "haul"
+  ],
+  "skill_group": "townstead:tinker_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:knack",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/tinker/master_tinker"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:knack",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:knack",
+                "amount": -10
+              },
+              {
+                "type": "pheno:cloud",
+                "radius": 1.0,
+                "duration": 1200,
+                "wait_time": 10,
+                "reapply_delay": 15,
+                "particle": "minecraft:crit",
+                "do": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:add_velocity",
+                      "y": 1.5
+                    },
+                    {
+                      "type": "pheno:add_velocity",
+                      "relative": true,
+                      "z": 0.6
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:toolsmith/tinker/conveyor"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slow_falling",
+                        "duration": 80,
+                        "amplifier": 0
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:block.piston.extend",
+                      "volume": 1.0,
+                      "pitch": 1.4
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:cloud",
+            "radius": 1.0,
+            "duration": 600,
+            "wait_time": 10,
+            "reapply_delay": 15,
+            "particle": "minecraft:crit",
+            "do": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "y": 1.0
+                },
+                {
+                  "type": "pheno:add_velocity",
+                  "relative": true,
+                  "z": 0.6
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:toolsmith/tinker/conveyor"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:slow_falling",
+                    "duration": 80,
+                    "amplifier": 0
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                },
+                {
+                  "type": "pheno:play_sound",
+                  "sound": "minecraft:block.piston.extend",
+                  "volume": 1.0,
+                  "pitch": 1.4
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.piston.extend",
+          "volume": 1.0,
+          "pitch": 1.4
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:crit",
+          "count": 10,
+          "spread": 0.5
+        }
+      ]
+    }
+  }
+}

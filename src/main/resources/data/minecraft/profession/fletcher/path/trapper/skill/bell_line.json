@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.bell_line"
+  },
+  "icon": "minecraft:bell",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.bell_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tripwire"
+  ]
+}

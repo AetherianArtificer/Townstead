@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "mended_nets"
+    "full_net"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:tide",
-      "min": 75
+      "min": 50
     },
     "action": {
       "type": "pheno:area_of_effect",

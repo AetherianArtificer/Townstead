@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "blood_scent"
+    "stake_ready"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:vigil",
-      "min": 50
+      "min": 25
     },
     "action": {
       "type": "pheno:apply_effect",

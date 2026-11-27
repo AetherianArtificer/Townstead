@@ -7,15 +7,15 @@
   "description": {
     "translate": "skill.townstead.beverage_artisan.barista.decaf.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "jitters"
+    "double_shot"
   ],
-  "skill_group": "townstead:barista_grind",
+  "skill_group": "townstead:barista_utility",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 600,
-    "slot": 2,
+    "slot": 1,
     "ai_trigger": "never",
     "resource_cost": {
       "resource": "townstead:buzz",
@@ -25,16 +25,45 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:change_resource",
-          "resource": "townstead:buzz",
-          "operation": "set",
-          "amount": 0
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:beverage_artisan/barista/slow_sip"
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:buzz",
+            "operation": "set",
+            "amount": 34
+          },
+          "else_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:buzz",
+            "operation": "set",
+            "amount": 0
+          }
         },
         {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 200,
-          "amplifier": 0
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:beverage_artisan/barista/rocket_fuel"
+          },
+          "if_action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:haste",
+            "duration": 200,
+            "amplifier": 1
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.generic.drink",
+          "volume": 0.8,
+          "pitch": 0.9
         }
       ]
     }

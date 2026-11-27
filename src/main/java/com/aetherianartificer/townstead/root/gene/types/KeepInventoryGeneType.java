@@ -9,7 +9,8 @@ import com.google.gson.JsonObject;
  * A race whose players keep their inventory and XP on death. Enforced by canceling
  * the inventory drop and copying it onto the respawned player.
  *
- * <p>JSON: {@code { "type":"pheno:keep_inventory" }}</p>
+ * <p>JSON: {@code { "type":"pheno:keep_inventory" }}. An optional {@code condition} is read at the
+ * moment of death.</p>
  */
 public final class KeepInventoryGeneType implements GeneType {
 
@@ -20,7 +21,9 @@ public final class KeepInventoryGeneType implements GeneType {
 
     public static final String KEY = "pheno:keep_inventory";
 
-    public record Instance() implements GeneInstance {
+    /** {@code condition} is read when the bearer dies; null keeps the inventory always. */
+    public record Instance(@org.jetbrains.annotations.Nullable com.aetherianartificer.townstead.pheno.condition.Condition condition)
+            implements GeneInstance {
         @Override public String typeKey() { return KEY; }
         @Override public GeneDisplay display() { return GeneDisplay.PRESENCE; }
     }
@@ -32,6 +35,9 @@ public final class KeepInventoryGeneType implements GeneType {
 
     @Override
     public GeneInstance parse(JsonObject json) {
-        return new Instance();
+        com.aetherianartificer.townstead.pheno.condition.Condition condition = json.has("condition")
+                ? com.aetherianartificer.townstead.pheno.condition.Conditions.parse(json.get("condition")) : null;
+        if (json.has("condition") && condition == null) return null;
+        return new Instance(condition);
     }
 }

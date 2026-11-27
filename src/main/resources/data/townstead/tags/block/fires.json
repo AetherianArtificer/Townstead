@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:fire",
+    {
+      "id": "#burnt:on_fire",
+      "required": false
+    },
+    {
+      "id": "#burnt:active_fire",
+      "required": false
+    }
+  ]
+}

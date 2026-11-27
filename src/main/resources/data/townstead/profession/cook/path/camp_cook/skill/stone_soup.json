@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.stone_soup"
+  },
+  "icon": "minecraft:cauldron",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.stone_soup.description"
+  },
+  "cost": 1,
+  "requires": [
+    "seasoned"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 60,
+    "resource_cost": {
+      "resource": "townstead:simmer",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:simmer",
+          "min": 50
+        },
+        {
+          "type": "pheno:block_in_radius",
+          "radius": 4,
+          "block_condition": {
+            "type": "pheno:in_tag",
+            "tag": "minecraft:campfires"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 6,
+      "include_self": false,
+      "target": "non_hostile",
+      "action": {
+        "type": "pheno:energize",
+        "amount": 2
+      }
+    }
+  }
+}

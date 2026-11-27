@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "strike_it_rich"
+    "dowser"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,21 +21,21 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:bearing",
-      "min": 50
+      "min": 25
     },
     "action": {
       "type": "pheno:at",
       "blocks": {
         "radius": 10,
         "where": {
-          "type": "or",
+          "type": "pheno:or",
           "conditions": [
             {
-              "type": "in_tag",
+              "type": "pheno:in_tag",
               "tag": "c:ores"
             },
             {
-              "type": "in_tag",
+              "type": "pheno:in_tag",
               "tag": "forge:ores"
             }
           ]
@@ -46,7 +46,8 @@
         "particle": "minecraft:wax_on",
         "count": 6,
         "spread": 0.4
-      }
+      },
+      "optional": true
     }
   }
 }

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "stormborn"
+    "static"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -24,7 +24,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:front",
-          "min": 50
+          "min": 25
         },
         {
           "type": "pheno:environment",

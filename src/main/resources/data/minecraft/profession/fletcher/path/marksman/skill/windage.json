@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.windage"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.windage.description"
+  },
+  "cost": 1,
+  "requires": [
+    "steady_breath"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "projectile_damage",
+    "operation": "multiply",
+    "value": 1.1
+  }
+}

@@ -22,9 +22,9 @@ import net.minecraft.resources.ResourceLocation;
  * child's name is built from the parent's given name, so the edit reaches nobody else.</p>
  */
 //? if neoforge {
-public record NameSyncPayload(int entityId, String familyName, String culture, NamingTradition.Order order, NamingTradition.FamilyType familyType, String tradition) implements CustomPacketPayload {
+public record NameSyncPayload(int entityId, String familyName, String culture, NamingTradition.Order order, NamingTradition.FamilyType familyType, String tradition, boolean familyLocked) implements CustomPacketPayload {
 //?} else {
-/*public record NameSyncPayload(int entityId, String familyName, String culture, NamingTradition.Order order, NamingTradition.FamilyType familyType, String tradition) {
+/*public record NameSyncPayload(int entityId, String familyName, String culture, NamingTradition.Order order, NamingTradition.FamilyType familyType, String tradition, boolean familyLocked) {
 *///?}
 
     /** Generous, but bounded: a name arriving from a datapack should never be able to bloat a packet. */
@@ -38,9 +38,14 @@ public record NameSyncPayload(int entityId, String familyName, String culture, N
         tradition = tradition == null ? "" : tradition;
     }
 
+    public NameSyncPayload(int entityId, String familyName, String culture, NamingTradition.Order order,
+                           NamingTradition.FamilyType familyType, String tradition) {
+        this(entityId, familyName, culture, order, familyType, tradition, false);
+    }
+
     /** The same payload aimed at another entity id, for the editor's throwaway preview villager. */
     public NameSyncPayload withEntityId(int id) {
-        return new NameSyncPayload(id, familyName, culture, order, familyType, tradition);
+        return new NameSyncPayload(id, familyName, culture, order, familyType, tradition, familyLocked);
     }
 
     //? if neoforge {
@@ -63,11 +68,12 @@ public record NameSyncPayload(int entityId, String familyName, String culture, N
         buf.writeEnum(payload.order());
         buf.writeEnum(payload.familyType());
         buf.writeUtf(payload.tradition(), MAX_LENGTH);
+        buf.writeBoolean(payload.familyLocked());
     }
 
     public static NameSyncPayload decode(FriendlyByteBuf buf) {
         return new NameSyncPayload(buf.readVarInt(), buf.readUtf(MAX_LENGTH), buf.readUtf(MAX_LENGTH),
                 buf.readEnum(NamingTradition.Order.class), buf.readEnum(NamingTradition.FamilyType.class),
-                buf.readUtf(MAX_LENGTH));
+                buf.readUtf(MAX_LENGTH), buf.readBoolean());
     }
 }

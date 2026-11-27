@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "tailor_made"
+    "measure_twice"
   ],
   "power": {
     "type": "pheno:trigger",
@@ -29,7 +29,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:stitch",
-          "min": 75
+          "min": 50
         }
       ]
     },

@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.smoke_signal"
+  },
+  "icon": "minecraft:campfire",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.smoke_signal.description"
+  },
+  "cost": 1,
+  "requires": [
+    "campfire_cook"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 4,
+      "block_condition": {
+        "type": "pheno:in_tag",
+        "tag": "minecraft:campfires"
+      }
+    },
+    "action": {
+      "type": "pheno:spawn_particles",
+      "particle": "minecraft:campfire_signal_smoke",
+      "count": 2,
+      "spread": 0.3
+    }
+  }
+}

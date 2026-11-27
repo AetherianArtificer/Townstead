@@ -315,7 +315,17 @@ public record GeneCatalogEntry(
     public String abilityStyle() {
         if (!isAbility() || targetId == null) return "";
         int split = targetId.indexOf(';');
-        return split < 0 ? "" : targetId.substring(split + 1);
+        if (split < 0) return "";
+        int end = targetId.indexOf(';', split + 1);
+        return end < 0 ? targetId.substring(split + 1) : targetId.substring(split + 1, end);
+    }
+
+    /** For ABILITY genes, the attachment the ability can't work without (rides after the style); empty when none. */
+    public String abilityNeedsPart() {
+        if (!isAbility() || targetId == null) return "";
+        int split = targetId.indexOf(';');
+        int end = split < 0 ? -1 : targetId.indexOf(';', split + 1);
+        return end < 0 ? "" : targetId.substring(end + 1);
     }
 
     /** For ABILITY genes, whether it is toggle-mode (rides in {@code amount}); false = always-on passive. */

@@ -30,6 +30,54 @@ class NameSyncTest {
         } finally { buffer.release(); }
     }
 
+    @Test void aLockedFamilyNameSurvivesThePacketAndClearsWithTheStore() {
+        var original = new NameSyncPayload(5, "Stark", "", NamingTradition.Order.GIVEN_FIRST,
+                NamingTradition.FamilyType.NONE, "", true);
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            NameSyncPayload.encode(original, buffer);
+            var decoded = NameSyncPayload.decode(buffer);
+            assertEquals(original, decoded);
+            NameClientStore.set(5, decoded.familyName(), "", decoded.order(), decoded.familyType(), "", decoded.familyLocked());
+            assertTrue(NameClientStore.familyLocked(5));
+            NameClientStore.set(5, "Smith", "", null, null, "", false);
+            assertFalse(NameClientStore.familyLocked(5));
+            NameClientStore.set(5, "Stark", "", null, null, "", true);
+            NameClientStore.clear();
+            assertFalse(NameClientStore.familyLocked(5));
+        } finally { buffer.release(); }
+    }
+
+    @Test void theTraditionCatalogSurvivesThePacket() {
+        var original = new NamingCatalogS2CPayload(java.util.List.of(
+                new NamingCatalogS2CPayload.Entry("mca:iceland", NamingTradition.FamilyType.PATRONYMIC, "", ""),
+                new NamingCatalogS2CPayload.Entry("examplepack:fisherfolk", NamingTradition.FamilyType.INHERITED, "Fisherfolk", "examplepack:fisherfolk")));
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            original.write(buffer);
+            assertEquals(original, NamingCatalogS2CPayload.read(buffer));
+            assertEquals(0, buffer.readableBytes());
+        } finally { buffer.release(); }
+    }
+
+    @Test void playerFamiliesSurviveThePacketAndComposeByPlayerId() {
+        java.util.UUID player = java.util.UUID.fromString("00000000-0000-0000-0000-000000000007");
+        var original = new PlayerFamiliesS2CPayload(java.util.Map.of(player,
+                new PlayerFamiliesS2CPayload.Entry("Sato", NamingTradition.Order.FAMILY_FIRST)));
+        var buffer = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            original.write(buffer);
+            var decoded = PlayerFamiliesS2CPayload.read(buffer);
+            assertEquals(original, decoded);
+            NameClientStore.setPlayerFamilies(decoded.families());
+            assertEquals("Sato Hana", NameClientStore.playerFullName(player, "Hana"));
+            assertEquals("Sato Hana", NameClientStore.playerFullName(player, "Sato Hana"));
+            assertEquals("Ren", NameClientStore.playerFullName(java.util.UUID.randomUUID(), "Ren"));
+            NameClientStore.clear();
+            assertEquals("Hana", NameClientStore.playerFullName(player, "Hana"));
+        } finally { buffer.release(); }
+    }
+
     @Test void disconnectClearsNamesCulturesAndOrderingForReusedIds() {
         NameClientStore.set(7, "Sato", "townstead_classic:highhold", NamingTradition.Order.FAMILY_FIRST,
                 NamingTradition.FamilyType.INHERITED, "mca:japan");

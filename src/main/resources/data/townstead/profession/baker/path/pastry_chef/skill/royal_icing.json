@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.royal_icing"
+  },
+  "icon": "minecraft:white_concrete_powder",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.royal_icing.description"
+  },
+  "cost": 1,
+  "requires": [
+    "icing"
+  ]
+}

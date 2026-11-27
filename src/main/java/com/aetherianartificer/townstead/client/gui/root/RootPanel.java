@@ -8,11 +8,11 @@ import net.minecraft.client.gui.GuiGraphics;
  * (the editor is a transparent in-world screen). Used behind the origin list and
  * detail pane so they match the rest of the Destiny/editor UI.
  */
-final class RootPanel {
+public final class RootPanel {
 
     private RootPanel() {}
 
-    static void draw(GuiGraphics g, int x0, int y0, int x1, int y1) {
+    public static void draw(GuiGraphics g, int x0, int y0, int x1, int y1) {
         // Translucent dark body (world shows through faintly, like vanilla lists).
         g.fill(x0, y0, x1, y1, 0xC8101010);
         drawBorder(g, x0, y0, x1, y1);

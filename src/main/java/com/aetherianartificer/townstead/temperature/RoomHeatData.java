@@ -14,6 +14,26 @@ public final class RoomHeatData extends SavedData {
     private static final int MAX_WALLS = 65536;
     private static final int[][] NEIGHBORS = {{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
     private final Map<Long, Wall> solids = new LinkedHashMap<>(256, 0.75f, true);
+    private static final int MAX_GROUPS = 8192;
+    private final Map<Long, Double> groups = new LinkedHashMap<>(256, 0.75f, true);
+    private static long groupId(long anchor, long group) { return anchor * 0xC2B2AE3D27D4EB4FL ^ group; }
+    public double groupTemperature(long anchor, long group, double fallback) {
+        Double value = groups.get(groupId(anchor, group));
+        return value != null ? value : fallback;
+    }
+    public void putGroup(long anchor, long group, double temperature) {
+        if (!Double.isFinite(temperature)) return;
+        groups.put(groupId(anchor, group), temperature);
+        while (groups.size() > MAX_GROUPS) groups.remove(groups.keySet().iterator().next());
+        setDirty();
+    }
+    /** Walls are stored as lumps now; older saves carried one entry per block, which only cost save time. */
+    public void dropLegacyWalls() {
+        if (walls.isEmpty() && solids.isEmpty()) return;
+        walls.clear();
+        solids.clear();
+        setDirty();
+    }
     public double solidTemperature(long pos, String material, double fallback) {
         Wall value = solids.get(pos);
         if (value != null) return value.material.equals(material) ? value.temperature : fallback;
@@ -90,15 +110,22 @@ public final class RoomHeatData extends SavedData {
             if (tag.contains(key + "temperature") && Double.isFinite(temperature))
                 data.solids.put(tag.getLong(key + "pos"), new Wall(tag.getString(key + "material"), temperature));
         }
+        for (int i = 0; i < Math.max(0, Math.min(MAX_GROUPS, tag.getInt("group_count"))); i++) {
+            String key = "group_" + i + "_";
+            double temperature = tag.getFloat(key + "temperature");
+            if (tag.contains(key + "temperature") && Double.isFinite(temperature)) data.groups.put(tag.getLong(key + "id"), temperature);
+        }
         // Old unlimited cold sources could poison the entire connected thermal network.
         // This is a derived cache: rebuild it from local climate, not from impossible stored energy.
         if (data.temperatures.values().stream().anyMatch(t -> t < -273.15)
+                || data.groups.values().stream().anyMatch(t -> t < -273.15)
                 || data.solids.values().stream().anyMatch(w -> w.temperature < -273.15)
                 || data.walls.values().stream().anyMatch(w -> w.temperature < -273.15)) {
             com.mojang.logging.LogUtils.getLogger().warn(
                     "Rebuilding invalid Townstead thermal cache: stored temperatures below absolute zero ({} rooms, {} solids)",
                     data.temperatures.size(), data.solids.size());
             data.temperatures.clear();
+            data.groups.clear();
             data.solids.clear();
             data.walls.clear();
             data.setDirty();
@@ -134,6 +161,13 @@ public final class RoomHeatData extends SavedData {
             tag.putFloat(key + "temperature", (float) entry.getValue().temperature);
         }
         tag.putInt("solid_count", index);
+        index = 0;
+        for (var entry : groups.entrySet()) {
+            String key = "group_" + index++ + "_";
+            tag.putLong(key + "id", entry.getKey());
+            tag.putFloat(key + "temperature", entry.getValue().floatValue());
+        }
+        tag.putInt("group_count", index);
         return tag;
     }
 }

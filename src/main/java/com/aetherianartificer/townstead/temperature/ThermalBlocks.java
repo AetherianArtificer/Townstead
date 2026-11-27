@@ -244,6 +244,7 @@ public final class ThermalBlocks {
     public static void clearCache() {
         MAY_BE_SOURCE.clear();
         MAY_AFFECT_ROOM.clear();
+        ThermalMaterials.clearCache();
         generation++;
         ThermalSourceIndex.clear();
     }

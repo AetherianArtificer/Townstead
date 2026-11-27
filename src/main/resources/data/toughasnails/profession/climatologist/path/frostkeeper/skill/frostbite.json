@@ -9,17 +9,12 @@
   },
   "cost": 1,
   "requires": [
-    "chill"
+    "powder_walker"
   ],
   "power": {
     "type": "pheno:trigger",
     "trigger": "when_attack",
     "target": "other",
-    "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:front",
-      "min": 50
-    },
     "action": {
       "type": "pheno:freeze",
       "amount": 40

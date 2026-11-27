@@ -235,7 +235,31 @@ public final class RigJsonLoader extends SimpleJsonResourceReloadListener {
                 if (e.isJsonPrimitive()) skinParts.add(e.getAsString());
             }
         }
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote, animation, modelClass, cameraOffset, java.util.List.copyOf(overlays), java.util.List.copyOf(skinParts), hiddenSlots, parseColliders(obj), java.util.Map.copyOf(skinRemap));
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, disabledSlots, cameraBone, emote, animation, modelClass, cameraOffset, java.util.List.copyOf(overlays), java.util.List.copyOf(skinParts), hiddenSlots, parseColliders(obj), java.util.Map.copyOf(skinRemap), parseFit(worn));
+    }
+
+    /**
+     * {@code "wearables": { "fit": { "right_arm": { "bone": "right_front_leg", "offset": [0,0,0],
+     * "rotation": [0,0,0], "scale": 0.5 }, ... } }}: where each humanoid part sits on this body while
+     * other mods' layers draw. Parts left out are hidden for those layers. Null when not declared.
+     */
+    private static Map<String, java.util.List<RigDefinition.Fit>> parseFit(JsonObject worn) {
+        if (!worn.has("fit") || !worn.get("fit").isJsonObject()) return null;
+        Map<String, java.util.List<RigDefinition.Fit>> out = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> e : worn.getAsJsonObject("fit").entrySet()) {
+            if (!RigDefinition.FIT_PARTS.contains(e.getKey())) continue;
+            // One placement as an object, or several (one per bone) as an array of them.
+            java.util.List<JsonElement> entries = e.getValue().isJsonArray()
+                    ? e.getValue().getAsJsonArray().asList() : java.util.List.of(e.getValue());
+            java.util.List<RigDefinition.Fit> placements = new java.util.ArrayList<>();
+            for (JsonElement entry : entries) {
+                if (!entry.isJsonObject()) continue;
+                JsonObject o = entry.getAsJsonObject();
+                placements.add(new RigDefinition.Fit(GsonHelper.getAsString(o, "bone", ""), adjust(o)));
+            }
+            if (!placements.isEmpty()) out.put(e.getKey(), java.util.List.copyOf(placements));
+        }
+        return Map.copyOf(out);
     }
 
     /**

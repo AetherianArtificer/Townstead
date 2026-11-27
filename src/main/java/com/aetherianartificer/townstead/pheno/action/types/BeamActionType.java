@@ -20,6 +20,9 @@ import net.minecraft.world.phys.Vec3;
  * config as {@code pheno:ray} ({@code distance}/{@code direction}/{@code space}/{@code toward}) plus
  * a {@code particle} id and {@code spacing}.
  *
+ * <p>{@code speed} sends each particle on along the beam that fast (a stream rather than a still line), and
+ * {@code jitter} scatters them that far off it.</p>
+ *
  * <p>JSON: {@code { "type":"pheno:beam", "particle":"minecraft:end_rod", "toward":"target" }}</p>
  */
 public final class BeamActionType implements ActionType {
@@ -34,21 +37,34 @@ public final class BeamActionType implements ActionType {
     @Override
     public Action parse(JsonObject json) {
         RayCast ray = RayCast.parse(json);
-        ParticleOptions particle = resolveParticle(GsonHelper.getAsString(json, "particle", ""));
-        if (particle == null) return null;
+        String particleId = GsonHelper.getAsString(json, "particle", "");
+        if (ResourceLocation.tryParse(particleId) == null) return null;
         double spacing = Math.max(0.05, GsonHelper.getAsDouble(json, "spacing", 0.5));
+        double speed = Math.max(0, GsonHelper.getAsDouble(json, "speed", 0));
+        double jitter = Math.max(0, GsonHelper.getAsDouble(json, "jitter", 0));
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return;
+            // Looked up when it fires: a pack's own particles load after its genes.
+            ParticleOptions particle = resolveParticle(particleId);
+            if (particle == null) return;
             LivingEntity self = ctx.entity();
             Vec3 origin = self.getEyePosition();
             Vec3 end = ray.impactPoint(SelectorContext.of(ctx));
             if (end == null) return;
             double total = origin.distanceTo(end);
+            Vec3 along = total < 1.0e-6 ? Vec3.ZERO : end.subtract(origin).scale(1.0 / total);
+            var random = level.getRandom();
             for (double d = spacing; d < total; d += spacing) {
                 double t = d / total;
-                level.sendParticles(particle,
-                        Mth.lerp(t, origin.x, end.x), Mth.lerp(t, origin.y, end.y), Mth.lerp(t, origin.z, end.z),
-                        1, 0, 0, 0, 0);
+                double x = Mth.lerp(t, origin.x, end.x) + (random.nextDouble() - 0.5) * 2 * jitter;
+                double y = Mth.lerp(t, origin.y, end.y) + (random.nextDouble() - 0.5) * 2 * jitter;
+                double z = Mth.lerp(t, origin.z, end.z) + (random.nextDouble() - 0.5) * 2 * jitter;
+                if (speed > 0) {
+                    // A count of 0 makes the offset the particle's own velocity.
+                    level.sendParticles(particle, x, y, z, 0, along.x, along.y, along.z, speed);
+                } else {
+                    level.sendParticles(particle, x, y, z, 1, 0, 0, 0, 0);
+                }
             }
         };
     }

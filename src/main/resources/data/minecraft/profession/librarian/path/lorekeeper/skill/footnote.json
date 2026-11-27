@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.footnote"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.footnote.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cite"
+  ]
+}

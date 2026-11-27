@@ -48,11 +48,25 @@ public final class VillageResidentRoster {
                     chronotype.id(),
                     chronotype.label(),
                     chronotype.sleepHours(),
-                    state.schedule().templateId()
+                    state.schedule().templateId(),
+                    jobStatus(villager)
             ));
         }
         residents.sort(Comparator.comparing(VillageResidentClientStore.Resident::name, String.CASE_INSENSITIVE_ORDER));
         return residents;
+    }
+
+    private static VillageResidentClientStore.JobStatus jobStatus(VillagerEntityMCA villager) {
+        if (!(villager.level() instanceof ServerLevel level)) return VillageResidentClientStore.JobStatus.WORKING;
+        com.aetherianartificer.townstead.profession.JobRetention.Status status =
+                com.aetherianartificer.townstead.profession.JobRetention.status(level, villager);
+        if (status.state() == com.aetherianartificer.townstead.profession.JobRetention.WORKING) {
+            return VillageResidentClientStore.JobStatus.WORKING;
+        }
+        ResourceLocation block = status.seat() ? null : com.aetherianartificer.townstead.profession
+                .JobRetention.workstation(villager.getVillagerData().getProfession());
+        return new VillageResidentClientStore.JobStatus(status.state(), status.endsInTicks(),
+                status.seat(), block == null ? "" : block.toString());
     }
 
     private static VillagerEntityMCA findResident(ServerPlayer player, UUID residentUuid) {

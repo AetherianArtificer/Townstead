@@ -18,6 +18,7 @@ import java.util.WeakHashMap;
  * look for a village like anyone else.
  */
 public final class NonResidents {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(20);
 
     /** Someone starting over (cured, freed) who has not settled anywhere yet. */
     public static final ResourceLocation NEWCOMER = ResourceLocation.tryParse("townstead_state:newcomer");
@@ -49,7 +50,7 @@ public final class NonResidents {
 
     public static void tick(VillagerEntityMCA villager) {
         // The first tick too: a villager loaded out of villages was given a resident's brain.
-        if (villager.tickCount > 1 && villager.tickCount % 20 != 0 || !(villager.level() instanceof ServerLevel level)) return;
+        if (villager.tickCount > 1 && !STRIDE.due(villager, villager.tickCount) || !(villager.level() instanceof ServerLevel level)) return;
         // A visitor no story holds any more (turned and cured, or sent off and arrived elsewhere) is
         // only someone starting over.
         if (EntityStates.resolve(villager, VISITOR).active() && Visitors.role(villager) == null

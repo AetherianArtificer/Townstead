@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "poultice"
+    "forager"
   ],
   "power": {
     "type": "pheno:effect_immunity",

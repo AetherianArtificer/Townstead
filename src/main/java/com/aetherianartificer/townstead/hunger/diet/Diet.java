@@ -23,8 +23,12 @@ import java.util.function.Predicate;
  *
  * <p>{@code players} also refuses native foods outside the diet for a player of that Root.
  * Villagers always follow their diet.</p>
+ *
+ * <p>{@code eats_sapients} and {@code kin_flesh} work as on a Root: a diet that hunts people
+ * (a vampire's) counts as predation, and {@code kin_flesh} names the flesh that stays taboo.</p>
  */
-public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation> includes, boolean players) {
+public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation> includes, boolean players,
+                   boolean eatsSapients, @Nullable ResourceLocation kinFlesh) {
     public static final String SCHEMA = "townstead:diet/v1";
     /** Selector for every item carrying native food values. */
     public static final String ANY_FOOD = "*";
@@ -113,7 +117,9 @@ public record Diet(ResourceLocation id, List<Food> foods, List<ResourceLocation>
         if (foods.isEmpty() && includes.isEmpty() && !json.has("foods")) {
             throw new IllegalArgumentException("a diet needs 'foods' or 'includes'");
         }
-        return new Diet(id, foods, includes, GsonHelper.getAsBoolean(json, "players", false));
+        ResourceLocation kinFlesh = json.has("kin_flesh") ? id(GsonHelper.getAsString(json, "kin_flesh")) : null;
+        return new Diet(id, foods, includes, GsonHelper.getAsBoolean(json, "players", false),
+                GsonHelper.getAsBoolean(json, "eats_sapients", false), kinFlesh);
     }
 
     private static Food food(JsonObject json) {

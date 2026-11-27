@@ -48,16 +48,29 @@ public final class HazeActionType implements ActionType {
                     .setValue(HazeBlock.KIND, index).setValue(HazeBlock.DENSITY, density);
             HazeKind kind = HazeKinds.server().byIndex(index);
             boolean grounded = kind != null && kind.shape().grounded();
+            boolean solid = kind != null && kind.shape() == HazeKind.Shape.SOLID;
             boolean placed = false;
             for (BlockPos selected : selector.select(SelectorContext.of(ctx))) {
                 BlockPos pos = grounded ? groundCell(level, selected) : selected;
                 if (pos == null) continue;
                 if (!haze.canSurvive(level, pos)) continue;
+                // Haze never takes the place of a real block: when it ends, that block would be gone.
+                if (!grounded && !free(level, pos)) continue;
+                // Raised stone or ice never closes on the one who raises it.
+                if (solid && ctx.entity() != null
+                        && ctx.entity().getBoundingBox().intersects(new net.minecraft.world.phys.AABB(pos))) continue;
                 level.setBlock(pos, haze, Block.UPDATE_ALL);
                 placed = true;
             }
             if (!placed) ctx.fail();
         };
+    }
+
+    /** A cell haze may fill: air, other haze, or short cover such as grass. */
+    private static boolean free(ServerLevel level, BlockPos pos) {
+        BlockState current = level.getBlockState(pos);
+        return open(current)
+                || (current.canBeReplaced() && current.getFluidState().isEmpty() && !current.hasBlockEntity());
     }
 
     private static boolean open(BlockState state) {

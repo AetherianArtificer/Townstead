@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:faith",
-      "min": 75
+      "min": 50
     },
     "action": {
       "type": "pheno:area_of_effect",

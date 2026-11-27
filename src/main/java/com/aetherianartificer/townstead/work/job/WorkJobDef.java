@@ -46,12 +46,22 @@ public record WorkJobDef(
         @Nullable BlockTarget destination,
         @Nullable BlockTarget target,
         @Nullable com.aetherianartificer.townstead.work.martial.MartialJob martial,
-        @Nullable EntityTarget entityTarget) {
+        @Nullable EntityTarget entityTarget,
+        @Nullable Rounds rounds) {
 
     public static final String SCHEMA = "townstead:job/v3";
     public static final ResourceLocation ENTITY_DELIVERY = id("townstead:entity_delivery");
     public static final ResourceLocation BLOCK_INTERACTION = id("townstead:block_interaction");
     public static final ResourceLocation ENTITY_INTERACTION = id("townstead:entity_interaction");
+    public static final ResourceLocation ROUNDS = id("townstead:rounds");
+
+    public WorkJobDef(ResourceLocation id, ResourceLocation task, ResourceLocation type,
+                      @Nullable EntitySource source, @Nullable BlockTarget destination,
+                      @Nullable BlockTarget target,
+                      @Nullable com.aetherianartificer.townstead.work.martial.MartialJob martial,
+                      @Nullable EntityTarget entityTarget) {
+        this(id, task, type, source, destination, target, martial, entityTarget, null);
+    }
 
     public WorkJobDef(ResourceLocation id, ResourceLocation task, ResourceLocation type,
                       @Nullable EntitySource source, @Nullable BlockTarget destination,
@@ -87,6 +97,16 @@ public record WorkJobDef(
             keys.add(interaction.activityKey(this));
         }
         return List.copyOf(keys);
+    }
+
+    /**
+     * Work done by going about, not at a station: a physician's rounds of the sick, a vet's of the
+     * pens. Every {@code every} ticks of the working day the worker runs {@code action} on
+     * themselves, usually a {@code pheno:seek} that finds who to visit and what to do on arrival,
+     * unless they are still on a round ({@code busy_while}: seek ids) or {@code condition} says no.
+     */
+    public record Rounds(int every, List<ResourceLocation> busyWhile, @Nullable Condition condition,
+                         Action action, int xp) {
     }
 
     /**
@@ -222,6 +242,8 @@ public record WorkJobDef(
 
         public boolean matches(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos) {
             net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos);
+            // No blocks named: the condition alone picks the target, such as mess lying on any floor.
+            if (blocks.isEmpty() && blockTags.isEmpty()) return condition != null && !state.isAir() && condition.test(level, pos);
             if (blocks.contains(BuiltInRegistries.BLOCK.getKey(state.getBlock()))) return true;
             for (ResourceLocation tag : blockTags) {
                 if (state.is(TagKey.create(Registries.BLOCK, tag))) return true;
@@ -332,9 +354,31 @@ public record WorkJobDef(
             return animals == null ? null
                     : new WorkJobDef(definitionId, task, type, null, null, null, null, animals);
         }
+        if (ROUNDS.equals(type)) {
+            Rounds rounds = parseRounds(json);
+            return rounds == null ? null
+                    : new WorkJobDef(definitionId, task, type, null, null, null, null, null, rounds);
+        }
         var martial = com.aetherianartificer.townstead.work.martial.MartialJob.parse(type, json);
         if (martial != null) return new WorkJobDef(definitionId, task, type, null, null, null, martial);
         return null;
+    }
+
+    private static @Nullable Rounds parseRounds(JsonObject json) {
+        if (!json.has("action")) return null;
+        Action action = Actions.parse(json.get("action"));
+        if (action == null) return null;
+        int every = json.has("every") ? Math.max(20, json.get("every").getAsInt()) : 3000;
+        List<ResourceLocation> busy = new ArrayList<>();
+        if (json.has("busy_while")) {
+            for (JsonElement element : json.getAsJsonArray("busy_while")) {
+                ResourceLocation seek = ResourceLocation.tryParse(element.getAsString());
+                if (seek != null) busy.add(seek);
+            }
+        }
+        Condition condition = json.has("condition") ? Conditions.parse(json.get("condition")) : null;
+        int xp = json.has("xp") ? Math.max(0, json.get("xp").getAsInt()) : 0;
+        return new Rounds(every, List.copyOf(busy), condition, action, xp);
     }
 
     public @Nullable ResourceLocation resultFor(ResourceLocation entityType) {
@@ -454,7 +498,8 @@ public record WorkJobDef(
                 else blocks.add(block);
             }
         }
-        if (blocks.isEmpty() && blockTags.isEmpty()) return null;
+        // Without blocks, a condition must say which ones.
+        if (blocks.isEmpty() && blockTags.isEmpty() && !json.has("condition")) return null;
 
         Placement placement = json.has("placement")
                 ? parsePlacement(json.get("placement")) : Placement.DEFAULT;

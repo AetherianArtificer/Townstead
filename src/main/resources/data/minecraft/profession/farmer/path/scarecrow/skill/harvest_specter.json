@@ -12,12 +12,7 @@
     "stand_still"
   ],
   "power": {
-    "type": "pheno:action_over_time",
-    "interval": 10,
-    "resource_cost": {
-      "resource": "townstead:grit",
-      "amount": 0
-    },
+    "type": "pheno:mobs_ignore",
     "condition": {
       "type": "pheno:and",
       "conditions": [
@@ -31,15 +26,9 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:grit",
-          "min": 75
+          "min": 50
         }
       ]
-    },
-    "action": {
-      "type": "pheno:apply_effect",
-      "effect": "minecraft:invisibility",
-      "duration": 20,
-      "amplifier": 0
     }
   }
 }

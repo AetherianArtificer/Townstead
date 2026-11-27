@@ -18,8 +18,9 @@ import net.minecraft.server.level.ServerLevel;
  * only there.</p>
  *
  * <p>A culture that declares a tradition wins, so a Highhold family living in a Japanese region
- * stays named the Highhold way and passes that on. Everyone else is named by their region, which is
- * how a world with no culture packs keeps exactly the naming it already had.</p>
+ * stays named the Highhold way and passes that on. A child takes a parent's tradition, including a
+ * player parent's. Everyone else is named by their region, which is how a world with no culture
+ * packs keeps exactly the naming it already had.</p>
  */
 public final class TraditionAssignment {
 
@@ -44,9 +45,28 @@ public final class TraditionAssignment {
         String named = ofRegister(NamingRegisters.recorded(villager));
         if (!named.isEmpty()) return record(villager, life, named);
 
+        // A household keeps one way of naming, wherever the child happens to be born.
+        String fromParent = ofParents(villager);
+        if (!fromParent.isEmpty()) return record(villager, life, fromParent);
+
         // Never named through Townstead: ask MCA what it would call them, which settles a register
         // and hands back the tradition matching it without renaming anybody.
         return record(villager, life, ofRegister(NamingRegisters.deriveFromMca(villager)));
+    }
+
+    private static String ofParents(VillagerEntityMCA villager) {
+        try {
+            return villager.getRelationships().getParents()
+                    .map(parent -> parent instanceof VillagerEntityMCA person
+                            ? TownsteadVillagers.get(person).life().namingTradition()
+                            : parent instanceof net.minecraft.world.entity.player.Player player
+                            ? com.aetherianartificer.townstead.root.PlayerRoot.getNamingTradition(player) : "")
+                    .filter(tradition -> NamingTraditions.get(parse(tradition)) != null)
+                    .findFirst()
+                    .orElse("");
+        } catch (Throwable ignored) {
+            return "";
+        }
     }
 
     /** The tradition a culture declares, or empty when it declares none or does not exist. */

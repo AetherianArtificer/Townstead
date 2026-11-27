@@ -17,6 +17,8 @@ import java.util.Set;
 /** Durable history and active choices shared by player and villager Careers. */
 public final class CareerProfile {
     public static final int SCHEMA_VERSION = 1;
+    /** Raise this when skill data changes so much that learned skills no longer fit. */
+    public static final int SKILL_REVISION = 1;
 
     private ResourceLocation primaryVocation;
     private final Set<ResourceLocation> careerHistory = new LinkedHashSet<>();
@@ -28,8 +30,40 @@ public final class CareerProfile {
     private final Map<String, ProfessionXp> progress = new LinkedHashMap<>();
     private final Map<ResourceLocation, CareerStamp> stamps = new LinkedHashMap<>();
     private long lastVocationChangeDay = -1L;
+    /** Insight a career paid while it was the primary vocation, kept after switching away. */
+    private final Map<ResourceLocation, Integer> keptInsight = new LinkedHashMap<>();
+    /** False for a save from before Insight followed the primary vocation, until it is migrated. */
+    private boolean insightGated = true;
+    /** The skill data this record was last checked against; an older one is respecced once. */
+    private int skillRevision = SKILL_REVISION;
+    /** Set by a respec until the character is told (a player) or has picked skills again (a villager). */
+    private boolean respecPending;
 
     public ResourceLocation primaryVocation() { return primaryVocation; }
+    public Map<ResourceLocation, Integer> keptInsight() { return Map.copyOf(keptInsight); }
+    public boolean insightGated() { return insightGated; }
+
+    /**
+     * One-time migration for a save from before the gate: Insight already earned in every career
+     * is kept, so nothing spent goes over budget.
+     */
+    public void grandfatherInsight() {
+        // Before career data loads there is nothing to price the Insight with; try again later.
+        if (insightGated || com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().isEmpty()) return;
+        for (var def : com.aetherianartificer.townstead.profession.def.ProfessionDefs.all().values()) {
+            if (def != null) keepInsight(def.id());
+        }
+        insightGated = true;
+    }
+
+    private void keepInsight(ResourceLocation career) {
+        var def = com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(career);
+        if (def == null) return;
+        int xp = professionXp(def.id().toString()).xp();
+        if (xp <= 0) return;
+        int paid = Math.max(0, def.insightAt(xp));
+        if (paid > 0) keptInsight.merge(def.id(), paid, Math::max);
+    }
     public Set<ResourceLocation> careerHistory() { return Set.copyOf(careerHistory); }
     public Set<ResourceLocation> learnedChoices() { return Set.copyOf(learnedChoices); }
     public Map<ResourceLocation, ResourceLocation> activeBySkillGroup() { return Map.copyOf(activeBySkillGroup); }
@@ -77,7 +111,10 @@ public final class CareerProfile {
 
     public boolean setPrimaryVocation(ResourceLocation vocation) {
         if (java.util.Objects.equals(primaryVocation, vocation)) return false;
-        if (primaryVocation != null) careerHistory.add(primaryVocation);
+        if (primaryVocation != null) {
+            careerHistory.add(primaryVocation);
+            keepInsight(primaryVocation);
+        }
         primaryVocation = vocation;
         if (vocation != null) careerHistory.add(vocation);
         return true;
@@ -123,6 +160,36 @@ public final class CareerProfile {
             if (ability == null || !seen.add(ability)) continue;
             activeLoadout.put(slot, ability);
         }
+    }
+
+    /**
+     * One-time respec for a record from older skill data: every learned skill is forgotten. Insight
+     * is derived from career progress and learned skills, so all of it is free to spend again.
+     * Returns true when skills were forgotten.
+     */
+    public boolean respec() {
+        if (skillRevision >= SKILL_REVISION) return false;
+        skillRevision = SKILL_REVISION;
+        if (learnedChoices.isEmpty()) return false;
+        activeLoadout.values().removeIf(learnedChoices::contains);
+        learnedChoices.clear();
+        activeBySkillGroup.clear();
+        respecPending = true;
+        return true;
+    }
+
+    /** Marks the record as older than any skill revision, for a save that carries no revision. */
+    public void markSkillsOutdated() {
+        skillRevision = 0;
+    }
+
+    public boolean respecPending() { return respecPending; }
+
+    /** True once after a respec; the caller then tells the player or lets the villager pick again. */
+    public boolean takeRespecPending() {
+        boolean pending = respecPending;
+        respecPending = false;
+        return pending;
     }
 
     /** Explicit admin/migration repair only; normal gameplay never forgets history. */
@@ -171,6 +238,12 @@ public final class CareerProfile {
             stampTag.put(entry.getKey().toString(), entry.getValue().toTag());
         }
         if (!stampTag.isEmpty()) tag.put("stamps", stampTag);
+        tag.putBoolean("insightGated", insightGated);
+        tag.putInt("skillRevision", skillRevision);
+        if (respecPending) tag.putBoolean("respecPending", true);
+        CompoundTag keptTag = new CompoundTag();
+        keptInsight.forEach((career, paid) -> keptTag.putInt(career.toString(), paid));
+        if (!keptTag.isEmpty()) tag.put("keptInsight", keptTag);
         return tag;
     }
 
@@ -216,6 +289,18 @@ public final class CareerProfile {
                     .canonicalId(ResourceLocation.tryParse(key));
             if (skill != null) profile.stamps.put(skill, CareerStamp.fromTag(stampTag.getCompound(key)));
         }
+        CompoundTag keptTag = tag.getCompound("keptInsight");
+        for (String key : keptTag.getAllKeys()) {
+            ResourceLocation career = ResourceLocation.tryParse(key);
+            if (career != null) profile.keptInsight.put(career, keptTag.getInt(key));
+        }
+        // A save from before the gate that has progress needs its earned Insight kept once.
+        profile.insightGated = tag.contains("insightGated") ? tag.getBoolean("insightGated")
+                : profile.progress.isEmpty();
+        // A save from before skill revisions has none: it is outdated when it holds learned skills.
+        profile.skillRevision = tag.contains("skillRevision") ? tag.getInt("skillRevision")
+                : profile.learnedChoices.isEmpty() ? SKILL_REVISION : 0;
+        profile.respecPending = tag.getBoolean("respecPending");
         return profile;
     }
 

@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.fisherman.harpooner.get_over_here.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:harpooner_hook",
+  "cost": 2,
+  "skill_group": "townstead:harpooner_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,13 +22,127 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:add_velocity",
-          "away_from_other": -1.6,
-          "y": 0.25,
-          "on": {
-            "type": "pheno:ray",
-            "distance": 12
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:flag",
+                "flag": "townstead:harpooner_far"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/harpooner/leviathans_line"
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": -1.6,
+                "y": 0.25
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:fisherman/harpooner/snag"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 40,
+                      "amplifier": 3
+                    },
+                    {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:harpooner_snagged",
+                      "duration": 40
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 24
+            }
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": -1.6,
+                "y": 0.25
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:fisherman/harpooner/snag"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 40,
+                      "amplifier": 3
+                    },
+                    {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:harpooner_snagged",
+                      "duration": 40
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 12
+            }
           }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fisherman/harpooner/leviathans_line"
+          },
+          "if_action": {
+            "type": "pheno:add_velocity",
+            "relative": true,
+            "z": 0.7,
+            "y": 0.1
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:change_resource",
+          "resource": "townstead:tide",
+          "amount": 10
         },
         {
           "type": "pheno:play_sound",

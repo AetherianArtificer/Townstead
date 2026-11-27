@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.thicket"
+  },
+  "icon": "minecraft:sweet_berries",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.thicket.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bramble_ward"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.static"
+  },
+  "icon": "minecraft:lightning_rod",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.static.description"
+  },
+  "cost": 1,
+  "requires": [
+    "grounded"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "condition": {
+      "type": "pheno:environment",
+      "weather": [
+        "rain",
+        "thunder"
+      ]
+    },
+    "action": {
+      "type": "pheno:target_action",
+      "action": {
+        "type": "pheno:area_of_effect",
+        "radius": 3,
+        "include_self": false,
+        "target": "all",
+        "action": {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:damage",
+              "amount": 1
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:electric_spark",
+              "count": 6,
+              "spread": 0.3
+            }
+          ]
+        },
+        "limit": 1
+      }
+    }
+  }
+}

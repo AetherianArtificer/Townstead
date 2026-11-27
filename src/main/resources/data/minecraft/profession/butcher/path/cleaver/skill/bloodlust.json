@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "butchers_grip"
+    "dress_the_kill"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -22,35 +22,25 @@
       "type": "pheno:and",
       "conditions": [
         {
-          "type": "pheno:equipped_item",
-          "slot": "mainhand",
-          "item_condition": {
-            "type": "or",
-            "conditions": [
-              {
-                "type": "ingredient",
-                "tag": "townstead:butcher_cleavers"
-              },
-              {
-                "type": "ingredient",
-                "tag": "minecraft:axes"
-              }
-            ]
-          }
+          "type": "pheno:resource",
+          "resource": "townstead:cut",
+          "min": 25
         },
         {
           "type": "pheno:entity_in_radius",
           "radius": 8,
           "condition": {
-            "type": "pheno:hostile"
+            "type": "pheno:flag",
+            "flag": "townstead:bleeding"
           }
         }
       ]
     },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:cut",
-      "amount": 3
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
     }
   }
 }

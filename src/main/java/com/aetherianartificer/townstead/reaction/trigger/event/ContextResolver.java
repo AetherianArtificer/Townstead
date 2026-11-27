@@ -547,12 +547,7 @@ public final class ContextResolver {
         int skyLight = level.getBrightness(LightLayer.SKY, pos);
         if (blockLight < 4 && skyLight < 4) tags.add("in_dark");
 
-        if (anyFluidWithin(level, pos, Fluids.WATER.getSource(), Fluids.WATER.getFlowing(), 3)) {
-            tags.add("near_water");
-        }
-        if (anyFluidWithin(level, pos, Fluids.LAVA.getSource(), Fluids.LAVA.getFlowing(), 3)) {
-            tags.add("near_lava");
-        }
+        addNearFluidTags(level, pos, 3, tags);
     }
 
     private static void addBiomeAndDimensionTags(ServerLevel level, BlockPos pos, Set<String> tags) {
@@ -573,23 +568,29 @@ public final class ContextResolver {
         } catch (Throwable ignored) {}
     }
 
-    private static boolean anyFluidWithin(ServerLevel level, BlockPos center,
-            net.minecraft.world.level.material.Fluid source,
-            net.minecraft.world.level.material.Fluid flowing,
-            int radius) {
+    private static void addNearFluidTags(ServerLevel level, BlockPos center, int radius, Set<String> tags) {
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
         int rSq = radius * radius;
+        boolean water = false, lava = false;
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
+                if (dx * dx + dz * dz > rSq) continue;
                 for (int dy = -1; dy <= 2; dy++) {
-                    if (dx * dx + dz * dz > rSq) continue;
                     cursor.setWithOffset(center, dx, dy, dz);
                     var fluid = level.getFluidState(cursor).getType();
-                    if (fluid == source || fluid == flowing) return true;
+                    if (fluid == Fluids.WATER || fluid == Fluids.FLOWING_WATER) water = true;
+                    else if (fluid == Fluids.LAVA || fluid == Fluids.FLOWING_LAVA) lava = true;
+                    else continue;
+                    if (water && lava) {
+                        tags.add("near_water");
+                        tags.add("near_lava");
+                        return;
+                    }
                 }
             }
         }
-        return false;
+        if (water) tags.add("near_water");
+        if (lava) tags.add("near_lava");
     }
 
     private static void addBuildingTags(ServerLevel level, VillagerEntityMCA villager, Set<String> tags) {

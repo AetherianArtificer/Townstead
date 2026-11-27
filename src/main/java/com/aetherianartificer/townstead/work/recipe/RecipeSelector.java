@@ -76,6 +76,8 @@ public final class RecipeSelector {
                         com.aetherianartificer.townstead.work.producer.ProducerTaskDeclarations
                                 .allowsRecipe(villager, recipe.stationType(), recipe, taskTypes)
                                 && com.aetherianartificer.townstead.work.order.BuildingRecipeScopes
+                                .allowsAssigned(level, villager, recipe.id())
+                                && com.aetherianartificer.townstead.work.order.WorksiteRecipeGates
                                 .allowsAssigned(level, villager, recipe.id()))
                 .toList();
 
@@ -262,6 +264,8 @@ public final class RecipeSelector {
             if (!com.aetherianartificer.townstead.work.producer.ProducerTaskDeclarations
                     .allowsRecipe(villager, targetStationType, recipe, taskTypes)) continue;
             if (!com.aetherianartificer.townstead.work.order.BuildingRecipeScopes
+                    .allowsAssigned(level, villager, recipe.id())) continue;
+            if (!com.aetherianartificer.townstead.work.order.WorksiteRecipeGates
                     .allowsAssigned(level, villager, recipe.id())) continue;
             Long cooldownUntil = recipeCooldownUntil.get(recipe.output());
             if (cooldownUntil != null && cooldownUntil > now) continue;

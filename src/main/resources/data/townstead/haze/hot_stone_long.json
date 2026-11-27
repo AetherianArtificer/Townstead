@@ -1,0 +1,13 @@
+{
+  "duration": 600,
+  "inside": {
+    "interval": 10,
+    "action": {
+      "type": "pheno:ignite",
+      "seconds": 4
+    }
+  },
+  "shape": "layer",
+  "color": "#E0602A",
+  "texture": "townstead:haze/embers"
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.nimble"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.nimble.description"
+  },
+  "cost": 1,
+  "requires": [
+    "strung_right"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.0,
+    "damage_tag": "minecraft:is_fall",
+    "condition": {
+      "type": "pheno:fall_distance",
+      "max": 8
+    }
+  }
+}

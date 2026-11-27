@@ -96,11 +96,16 @@ public final class ActiveAbilities {
      * its own let a player bind a key to something that could never run from that key.</p>
      */
     public static List<Slotted> arrangeable(LivingEntity entity) {
+        List<Slotted> all = slottables(entity);
+        java.util.Set<ResourceLocation> owned = new java.util.HashSet<>();
+        for (Slotted slotted : all) owned.add(slotted.geneId());
         List<Slotted> out = new ArrayList<>();
-        for (Slotted slotted : slottables(entity)) {
-            if (com.aetherianartificer.townstead.root.gene.GeneRegistry.isCompanion(slotted.geneId())) {
-                continue;
-            }
+        for (Slotted slotted : all) {
+            // A counter-cast is a companion declared inside an ability: its parent's press fires it. One
+            // declared inside something that isn't an ability (a pack's abilities written inside a resource
+            // gene) is a real ability of its own.
+            ResourceLocation parent = com.aetherianartificer.townstead.root.gene.GeneRegistry.parentOf(slotted.geneId());
+            if (parent != null && owned.contains(parent)) continue;
             out.add(slotted);
         }
         return out;
@@ -406,6 +411,7 @@ public final class ActiveAbilities {
 
     public static void clear(UUID uuid) {
         com.aetherianartificer.townstead.assign.AssignCooldowns.clear(uuid);
+        MODES.remove(uuid);
     }
 
     // ── The wheel's view ───────────────────────────────────────────────────
@@ -472,7 +478,7 @@ public final class ActiveAbilities {
                     live == null || live.usable(),
                     live != null ? live.activeUntil() : 0L,
                     live != null ? live.activeTicks() : 0,
-                    assignable.descriptionWire()));
+                    assignable.descriptionWire(), isHold(player, id)));
         }
 
         List<AbilityLoadoutS2CPayload.Option> available = new ArrayList<>();
@@ -525,11 +531,48 @@ public final class ActiveAbilities {
     }
 
     /** Only OUR things can be toggles; a datapack action is always a one-shot. */
+    // Whether this ability keeps firing while its key is held.
+    private static boolean isHold(ServerPlayer player, ResourceLocation id) {
+        for (Slotted slotted : slottables(player)) {
+            if (slotted.geneId().equals(id)) {
+                return slotted.instance() instanceof ActiveAbilityGeneType.Instance active && active.hold();
+            }
+        }
+        return false;
+    }
+
     private static boolean isToggle(ServerPlayer player, ResourceLocation id) {
         for (Slotted slotted : slottables(player)) {
             if (slotted.geneId().equals(id)) return slotted.kind() == GeneInstanceKind.TOGGLE;
         }
         return false;
+    }
+
+    // Which mode each of a player's abilities showed last, by player.
+    private static final Map<java.util.UUID, Map<ResourceLocation, Integer>> MODES = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * Twice a second: when one of a player's abilities changes mode (a meter crosses a line), the wheel is sent
+     * again and the new mode's cue plays. The first look after joining only remembers.
+     */
+    public static void watchModes(ServerPlayer player) {
+        if (player.tickCount % 10 != 0) return;
+        Map<ResourceLocation, Integer> before = MODES.get(player.getUUID());
+        Map<ResourceLocation, Integer> now = new java.util.HashMap<>();
+        List<ActiveAbilityGeneType.Mode> entered = new ArrayList<>();
+        for (Slotted slotted : slottables(player)) {
+            if (!(slotted.instance() instanceof ActiveAbilityGeneType.Instance active) || active.modes().isEmpty()) continue;
+            int mode = active.modeOf(player);
+            now.put(slotted.geneId(), mode);
+            Integer was = before == null ? null : before.get(slotted.geneId());
+            if (before != null && (was == null || was != mode) && mode >= 0) entered.add(active.modes().get(mode));
+        }
+        MODES.put(player.getUUID(), now);
+        if (before == null || before.equals(now)) return;
+        syncView(player);
+        for (ActiveAbilityGeneType.Mode mode : entered) {
+            if (mode.onEnter() != null) mode.onEnter().run(new com.aetherianartificer.townstead.pheno.action.ActionContext(player));
+        }
     }
 
     /** Pushes the wheel's view after anything that could change it. */

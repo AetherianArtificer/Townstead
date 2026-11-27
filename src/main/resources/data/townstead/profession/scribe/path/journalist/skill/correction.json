@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.correction"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.correction.description"
+  },
+  "cost": 1,
+  "requires": [
+    "retraction"
+  ]
+}

@@ -9,16 +9,15 @@
   },
   "cost": 1,
   "requires": [
-    "powder_monkey"
+    "blast_master"
   ],
   "power": {
     "type": "pheno:attribute",
     "attribute": "minecraft:generic.knockback_resistance",
     "amount": 1.0,
     "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:knack",
-      "min": 50
+      "type": "pheno:movement",
+      "movement": "sneaking"
     }
   }
 }

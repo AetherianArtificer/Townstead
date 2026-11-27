@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.bartender.cut_off"
+  },
+  "icon": "minecraft:barrier",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.bartender.cut_off.description"
+  },
+  "cost": 1,
+  "requires": [
+    "closing_time"
+  ]
+}

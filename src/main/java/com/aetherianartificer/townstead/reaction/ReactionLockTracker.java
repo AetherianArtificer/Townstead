@@ -26,7 +26,6 @@ public final class ReactionLockTracker {
         long until;
         ResourceLocation reactionId;
         WalkTarget savedWalkTarget;
-        boolean awaitingRestore;
     }
 
     private static final WeakHashMap<LivingEntity, State> LOCKED = new WeakHashMap<>();
@@ -56,8 +55,9 @@ public final class ReactionLockTracker {
             State s = LOCKED.computeIfAbsent(entity, e -> new State());
             s.until = gameTime + lockTicks;
             s.reactionId = reactionId;
-            s.savedWalkTarget = captureWalkTarget(entity);
-            s.awaitingRestore = true;
+            // A lock on top of a lock sees the walk target the first one erased: keep what that one saved.
+            WalkTarget current = captureWalkTarget(entity);
+            if (current != null) s.savedWalkTarget = current;
         }
         freeze(entity);
     }
@@ -82,7 +82,7 @@ public final class ReactionLockTracker {
         if (s == null) return;
         if (gameTime < s.until) {
             freeze(villager);
-        } else if (s.awaitingRestore) {
+        } else {
             restoreWalkTarget(villager, s.savedWalkTarget);
             synchronized (LOCK) {
                 LOCKED.remove(villager);

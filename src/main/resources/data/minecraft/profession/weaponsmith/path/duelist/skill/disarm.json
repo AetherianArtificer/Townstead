@@ -7,25 +7,136 @@
   "description": {
     "translate": "skill.townstead.weaponsmith.duelist.disarm.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:duelist_disarm",
+  "cost": 2,
+  "requires": [
+    "lunge"
+  ],
+  "skill_group": "townstead:duelist_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
     "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 20
+      "resource": "townstead:edge",
+      "amount": 30
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:disarm",
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:disarm"
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:weakness",
+                    "duration": 160,
+                    "amplifier": 0
+                  },
+                  {
+                    "type": "pheno:set_flag",
+                    "flag": "townstead:duelist_disarmed",
+                    "duration": 160
+                  }
+                ]
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:weaponsmith/duelist/humiliate"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:flee",
+                  "duration": 100
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:weaponsmith/duelist/sweeping_disarm"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 3,
+                  "include_self": false,
+                  "target": "hostile",
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:disarm"
+                          },
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:weakness",
+                            "duration": 160,
+                            "amplifier": 0
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:duelist_disarmed",
+                            "duration": 160
+                          }
+                        ]
+                      },
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:weaponsmith/duelist/humiliate"
+                          }
+                        },
+                        "if_action": {
+                          "type": "pheno:flee",
+                          "duration": 100
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      }
+                    ]
+                  },
+                  "limit": 2
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
           "on": {
             "type": "pheno:ray",
-            "distance": 4
+            "distance": 5
           }
         },
         {
@@ -33,6 +144,9 @@
           "sound": "minecraft:item.trident.hit",
           "volume": 0.8,
           "pitch": 1.6
+        },
+        {
+          "type": "pheno:swing_hand"
         }
       ]
     }

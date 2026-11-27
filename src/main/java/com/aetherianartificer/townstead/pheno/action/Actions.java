@@ -44,12 +44,35 @@ public final class Actions {
         };
     }
 
+    private static final java.util.Set<String> SKIPPED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+    /**
+     * A step in a list whose type belongs to another mod that isn't installed ("bitofamess:add_trace" without Bit of
+     * a Mess). It's left out of the list rather than voiding it, so a pack can use another mod's extras and still
+     * work without that mod. A misspelt type of our own still fails the list.
+     */
+    private static boolean fromAbsentMod(JsonElement child) {
+        if (!child.isJsonObject()) return false;
+        String type = GsonHelper.getAsString(child.getAsJsonObject(), "type", "");
+        int colon = type.indexOf(':');
+        if (colon <= 0) return false;
+        String namespace = type.substring(0, colon);
+        if (namespace.equals("pheno") || namespace.equals("townstead") || namespace.equals("minecraft")) return false;
+        if (ActionTypes.get(type).isPresent()) return false;
+        if (SKIPPED.add(type)) {
+            org.slf4j.LoggerFactory.getLogger("townstead/Actions")
+                    .info("Action type {} isn't installed; steps using it are skipped", type);
+        }
+        return true;
+    }
+
     @Nullable
     private static Action parseNode(@Nullable JsonElement element) {
         if (element == null) return null;
         if (element.isJsonArray()) {
             List<Action> actions = new ArrayList<>();
             for (JsonElement child : element.getAsJsonArray()) {
+                if (fromAbsentMod(child)) continue;
                 Action action = parse(child);
                 if (action == null) return null;
                 actions.add(action);

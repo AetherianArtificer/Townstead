@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.scarecrow.startle"
+  },
+  "icon": "minecraft:carved_pumpkin",
+  "description": {
+    "translate": "skill.townstead.farmer.scarecrow.startle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "boo"
+  ]
+}

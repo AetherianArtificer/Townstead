@@ -21,30 +21,36 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:proof",
-      "min": 75
+      "min": 50
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 8,
-      "include_self": true,
-      "target": "non_hostile",
-      "action": {
-        "type": "pheno:and",
-        "actions": [
-          {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:speed",
-            "duration": 80,
-            "amplifier": 0
-          },
-          {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:speed",
+          "duration": 80,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:apply_effect",
+          "effect": "minecraft:haste",
+          "duration": 80,
+          "amplifier": 0
+        },
+        {
+          "type": "pheno:area_of_effect",
+          "radius": 8,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
             "type": "pheno:apply_effect",
             "effect": "minecraft:haste",
             "duration": 80,
             "amplifier": 0
           }
-        ]
-      }
+        }
+      ]
     }
   }
 }

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.spring_tide"
+  },
+  "icon": "minecraft:heart_of_the_sea",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.spring_tide.description"
+  },
+  "cost": 2,
+  "requires": [
+    "surf"
+  ]
+}

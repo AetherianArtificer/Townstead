@@ -1,0 +1,32 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.reserve"
+  },
+  "icon": "minecraft:barrel",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.reserve.description"
+  },
+  "cost": 1,
+  "requires": [
+    "terroir"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:vintage",
+      "min": 50
+    },
+    "action": {
+      "type": "pheno:set_flag",
+      "flag": "townstead:winemaker_reserve",
+      "duration": 15
+    }
+  }
+}

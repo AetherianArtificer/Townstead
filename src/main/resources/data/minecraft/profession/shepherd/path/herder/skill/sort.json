@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.herder.sort"
+  },
+  "icon": "minecraft:shears",
+  "description": {
+    "translate": "skill.townstead.shepherd.herder.sort.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lead"
+  ]
+}

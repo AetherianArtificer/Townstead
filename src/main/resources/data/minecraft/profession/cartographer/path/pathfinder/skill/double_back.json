@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.double_back"
+  },
+  "icon": "minecraft:ender_pearl",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.double_back.description"
+  },
+  "cost": 1,
+  "requires": [
+    "scout_ahead"
+  ]
+}

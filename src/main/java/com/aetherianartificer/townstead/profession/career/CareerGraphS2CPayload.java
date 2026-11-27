@@ -16,16 +16,17 @@ import java.util.List;
  * per visible skill, with display state, progress, evidence, routes, and chronicle moments
  * already resolved, localized, and authorized per subject. Hidden specializations arrive
  * masked (no name, no evidence), so progressive disclosure is enforced before the wire.
- * {@code inspect} marks a read-only view of somebody else's record.
+ * {@code inspect} marks a read-only view of somebody else's record. Only the {@code focus}
+ * career carries its full tree; every other career sends its own node alone.
  */
 //? if neoforge {
 public record CareerGraphS2CPayload(String title, boolean inspect,
                                     String notice, String authority, String dateLine,
-                                    List<Node> nodes) implements CustomPacketPayload {
+                                    String focus, List<Node> nodes) implements CustomPacketPayload {
 //?} else {
 /*public record CareerGraphS2CPayload(String title, boolean inspect,
                                     String notice, String authority, String dateLine,
-                                    List<Node> nodes) {
+                                    String focus, List<Node> nodes) {
 *///?}
 
     public static final byte KIND_ROOT = 0;
@@ -154,6 +155,7 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
         buf.writeUtf(notice);
         buf.writeUtf(authority);
         buf.writeUtf(dateLine);
+        buf.writeUtf(focus);
         buf.writeVarInt(nodes.size());
         for (Node node : nodes) {
             buf.writeUtf(node.id());
@@ -237,6 +239,7 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
         String notice = buf.readUtf();
         String authority = buf.readUtf();
         String dateLine = buf.readUtf();
+        String focus = buf.readUtf();
         int nodeCount = buf.readVarInt();
         List<Node> nodes = new ArrayList<>(nodeCount);
         for (int i = 0; i < nodeCount; i++) {
@@ -311,7 +314,7 @@ public record CareerGraphS2CPayload(String title, boolean inspect,
                     insightPrev, insightNext));
         }
         return new CareerGraphS2CPayload(title, inspect, notice, authority, dateLine,
-                List.copyOf(nodes));
+                focus, List.copyOf(nodes));
     }
 
     //? if neoforge {

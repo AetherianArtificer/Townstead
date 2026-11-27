@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.work.station;
 
 import com.aetherianartificer.townstead.Townstead;
+import com.aetherianartificer.townstead.data.ModGate;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -69,6 +70,10 @@ public final class WorkstationRecipeTypes {
                                 throw new IllegalArgumentException("values must be an array");
                             }
                             for (JsonElement value : json.getAsJsonArray("values")) {
+                                if (value.isJsonObject() && value.getAsJsonObject().has(ModGate.MODS)
+                                        && !Boolean.TRUE.equals(ModGate.evaluate(value.getAsJsonObject().get(ModGate.MODS)))) {
+                                    continue;
+                                }
                                 String raw;
                                 if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
                                     raw = value.getAsString();

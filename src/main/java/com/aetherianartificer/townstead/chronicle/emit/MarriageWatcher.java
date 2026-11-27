@@ -17,6 +17,7 @@ import java.util.WeakHashMap;
 public final class MarriageWatcher {
 
     private static final int STRIDE_TICKS = 100;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(STRIDE_TICKS);
 
     private static final WeakHashMap<VillagerEntityMCA, Boolean> LAST_MARRIED = new WeakHashMap<>();
     private static final Object LOCK = new Object();
@@ -24,7 +25,7 @@ public final class MarriageWatcher {
     private MarriageWatcher() {}
 
     public static void tick(VillagerEntityMCA villager, long gameTime) {
-        if ((gameTime + villager.getId()) % STRIDE_TICKS != 0) return;
+        if (!STRIDE.due(villager, gameTime + villager.getId())) return;
         boolean married;
         try {
             var relationship = EntityRelationship.of(villager).orElse(null);

@@ -1,0 +1,254 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.hang_garlic"
+  },
+  "icon": "vampirism:purified_garlic",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.hang_garlic.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:nightward_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:hunter/nightward/sanctuary"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:vigil",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:vigil",
+                "amount": -10
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:hunter/nightward/hallowed_circle"
+                },
+                "if_action": {
+                  "type": "pheno:cloud",
+                  "radius": 8.0,
+                  "height": 3.0,
+                  "duration": 6000,
+                  "wait_time": 10,
+                  "reapply_delay": 20,
+                  "particle": "minecraft:white_ash",
+                  "do": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:entity_group",
+                          "group": "undead"
+                        },
+                        {
+                          "type": "pheno:state",
+                          "state": "townstead_state:vampire"
+                        }
+                      ]
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "vampirism:garlic",
+                          "duration": 60,
+                          "amplifier": 1
+                        },
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:slowness",
+                          "duration": 40,
+                          "amplifier": 3
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:cloud",
+                  "radius": 5.0,
+                  "height": 3.0,
+                  "duration": 6000,
+                  "wait_time": 10,
+                  "reapply_delay": 20,
+                  "particle": "minecraft:white_ash",
+                  "do": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:entity_group",
+                          "group": "undead"
+                        },
+                        {
+                          "type": "pheno:state",
+                          "state": "townstead_state:vampire"
+                        }
+                      ]
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "vampirism:garlic",
+                          "duration": 60,
+                          "amplifier": 1
+                        },
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:slowness",
+                          "duration": 40,
+                          "amplifier": 3
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:hunter/nightward/hallowed_circle"
+            },
+            "if_action": {
+              "type": "pheno:cloud",
+              "radius": 8.0,
+              "height": 3.0,
+              "duration": 1200,
+              "wait_time": 10,
+              "reapply_delay": 20,
+              "particle": "minecraft:white_ash",
+              "do": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:entity_group",
+                      "group": "undead"
+                    },
+                    {
+                      "type": "pheno:state",
+                      "state": "townstead_state:vampire"
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "vampirism:garlic",
+                      "duration": 60,
+                      "amplifier": 1
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 40,
+                      "amplifier": 3
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            },
+            "else_action": {
+              "type": "pheno:cloud",
+              "radius": 5.0,
+              "height": 3.0,
+              "duration": 1200,
+              "wait_time": 10,
+              "reapply_delay": 20,
+              "particle": "minecraft:white_ash",
+              "do": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:entity_group",
+                      "group": "undead"
+                    },
+                    {
+                      "type": "pheno:state",
+                      "state": "townstead_state:vampire"
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "vampirism:garlic",
+                      "duration": 60,
+                      "amplifier": 1
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 40,
+                      "amplifier": 3
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.grass.break",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

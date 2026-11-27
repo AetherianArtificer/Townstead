@@ -7,11 +7,11 @@
   "description": {
     "translate": "skill.townstead.tailor.weaver.cocoon.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "bind"
+    "stitch_together"
   ],
-  "skill_group": "townstead:weaver_bind",
+  "skill_group": "townstead:weaver_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
@@ -25,28 +25,189 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:slowness",
-          "duration": 120,
-          "amplifier": 4
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:origin",
+              "condition": {
+                "type": "pheno:skill",
+                "skill": "townstead:tailor/weaver/loom_of_fate"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 160,
+                      "amplifier": 6
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:item_cobweb",
+                      "count": 8,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:weakness",
+                  "duration": 160,
+                  "amplifier": 4
+                },
+                {
+                  "type": "pheno:ward",
+                  "id": "cocoon",
+                  "amount": 1000,
+                  "fraction": 0.5,
+                  "duration": 160
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:tailor/weaver/silk_shroud"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:delay",
+                    "ticks": 160,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:slowness",
+                          "duration": 100,
+                          "amplifier": 1
+                        },
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:weakness",
+                          "duration": 100,
+                          "amplifier": 0
+                        }
+                      ]
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 100,
+                      "amplifier": 6
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:item_cobweb",
+                      "count": 8,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:weakness",
+                  "duration": 100,
+                  "amplifier": 4
+                },
+                {
+                  "type": "pheno:ward",
+                  "id": "cocoon",
+                  "amount": 1000,
+                  "fraction": 0.5,
+                  "duration": 100
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:tailor/weaver/silk_shroud"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:delay",
+                    "ticks": 100,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:slowness",
+                          "duration": 100,
+                          "amplifier": 1
+                        },
+                        {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:weakness",
+                          "duration": 100,
+                          "amplifier": 0
+                        }
+                      ]
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 12
+          }
         },
         {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:weakness",
-          "duration": 120,
-          "amplifier": 1
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:tailor/weaver/loom_of_fate"
+          },
+          "if_action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 160,
+            "amplifier": 0
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
         },
         {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:blindness",
-          "duration": 120,
-          "amplifier": 0
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.sheep.shear",
+          "volume": 1.0,
+          "pitch": 1.4
         }
-      ],
-      "on": {
-        "type": "pheno:ray",
-        "distance": 10
-      }
+      ]
     }
   }
 }

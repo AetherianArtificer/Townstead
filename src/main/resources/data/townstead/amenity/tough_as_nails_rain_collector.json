@@ -26,15 +26,9 @@
       }
     ]
   },
+  "vessel": "minecraft:glass_bottle",
   "behavior": {
-    "type": "pheno:modify_block_state",
-    "property": "level",
-    "operation": "add",
-    "amount": -1
-  },
-  "effect": {
-    "type": "pheno:hydrate",
-    "immediate": 5,
-    "lasting": 8
+    "type": "pheno:use_block",
+    "item": "vessel"
   }
 }

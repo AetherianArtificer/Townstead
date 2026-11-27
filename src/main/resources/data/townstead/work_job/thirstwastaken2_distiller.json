@@ -1,0 +1,87 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": [
+    "thirstwastaken2"
+  ],
+  "task": "townstead_work:maintain_water",
+  "type": "townstead:block_interaction",
+  "target": {
+    "buildings": [
+      "*"
+    ],
+    "blocks": [
+      "thirstwastaken2:copper_distiller"
+    ],
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:block_state",
+          "property": "part",
+          "value": "boiler"
+        },
+        {
+          "type": "pheno:block_state",
+          "property": "piped",
+          "value": "true"
+        }
+      ]
+    },
+    "interactions": [
+      {
+        "item": "minecraft:water_bucket",
+        "condition": {
+          "type": "pheno:block_entity",
+          "property": "boilerRoom",
+          "value": 0,
+          "inverted": true
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "activity": "townstead:barista_water",
+        "xp": 1
+      },
+      {
+        "item": "minecraft:potion",
+        "condition": {
+          "type": "pheno:block_entity",
+          "property": "boilerRoom",
+          "value": 0,
+          "inverted": true
+        },
+        "action": {
+          "type": "pheno:use_block",
+          "item": "item"
+        },
+        "activity": "townstead:barista_water",
+        "xp": 1
+      },
+      {
+        "item": "#minecraft:coals",
+        "action": {
+          "type": "pheno:insert_item",
+          "item": "item",
+          "side": "north",
+          "slot": 0,
+          "count": 1,
+          "limit": 1,
+          "reject_remainders": true
+        },
+        "activity": "townstead:barista_water",
+        "xp": 1
+      },
+      {
+        "action": {
+          "type": "pheno:extract_item",
+          "side": "down",
+          "slot": 1,
+          "count": 64
+        },
+        "activity": "townstead:barista_water",
+        "xp": 1
+      }
+    ]
+  }
+}

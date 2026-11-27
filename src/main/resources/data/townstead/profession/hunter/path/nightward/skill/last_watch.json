@@ -29,7 +29,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:vigil",
-          "min": 75
+          "min": 50
         }
       ]
     },

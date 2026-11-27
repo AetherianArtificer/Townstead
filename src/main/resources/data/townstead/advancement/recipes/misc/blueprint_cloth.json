@@ -1,0 +1,25 @@
+{
+  "parent": "minecraft:recipes/root",
+  "rewards": {
+    "recipes": [
+      "townstead:blueprint_cloth"
+    ]
+  },
+  "criteria": {
+    "has_surface": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": "#townstead:blueprint_surface/cloth"
+          }
+        ]
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_surface"
+    ]
+  ]
+}

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "sentinel"
+    "threshold_salt"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -29,7 +29,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:vigil",
-          "min": 50
+          "min": 25
         }
       ]
     },

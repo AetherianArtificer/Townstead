@@ -7,29 +7,272 @@
   "description": {
     "translate": "skill.townstead.baker.jam_maker.jam_jar_toss.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:jam_jam",
+  "cost": 2,
+  "skill_group": "townstead:jam_maker_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
       "amount": 20
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 5,
-      "include_self": false,
-      "target": "hostile",
-      "action": {
-        "type": "pheno:haze",
-        "kind": "townstead:jam",
-        "blocks": {
-          "radius": 0
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:haze",
+          "kind": "townstead:jam",
+          "blocks": {
+            "radius": [
+              1,
+              1,
+              1
+            ],
+            "around": "looking_at"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:entity_in_radius",
+            "radius": 12,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:hostile"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:jam_maker_jammed",
+                      "duration": 200
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:jump_boost",
+                      "duration": 200,
+                      "amplifier": 128
+                    },
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 16,
+                      "include_self": false,
+                      "target": "all",
+                      "action": {
+                        "type": "pheno:set_attack_target",
+                        "condition": {
+                          "type": "pheno:entity_type",
+                          "entity_type": "minecraft:bee"
+                        }
+                      }
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "townstead:baker/jam_maker/setting_point"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 200,
+                        "amplifier": 1
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:and",
+                          "conditions": [
+                            {
+                              "type": "pheno:skill",
+                              "skill": "townstead:baker/jam_maker/jam_session"
+                            },
+                            {
+                              "type": "pheno:resource",
+                              "resource": "townstead:proof",
+                              "min": 10
+                            }
+                          ]
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:haze",
+                        "kind": "townstead:bramble",
+                        "blocks": {
+                          "radius": 0
+                        }
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:falling_honey",
+                      "count": 8,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:area_of_effect",
+                  "radius": 2,
+                  "include_self": false,
+                  "target": "hostile",
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:set_flag",
+                        "flag": "townstead:jam_maker_jammed",
+                        "duration": 200
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:jump_boost",
+                        "duration": 200,
+                        "amplifier": 128
+                      },
+                      {
+                        "type": "pheno:area_of_effect",
+                        "radius": 16,
+                        "include_self": false,
+                        "target": "all",
+                        "action": {
+                          "type": "pheno:set_attack_target",
+                          "condition": {
+                            "type": "pheno:entity_type",
+                            "entity_type": "minecraft:bee"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "townstead:baker/jam_maker/setting_point"
+                          }
+                        },
+                        "if_action": {
+                          "type": "pheno:apply_effect",
+                          "effect": "minecraft:slowness",
+                          "duration": 200,
+                          "amplifier": 1
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      },
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:and",
+                            "conditions": [
+                              {
+                                "type": "pheno:skill",
+                                "skill": "townstead:baker/jam_maker/jam_session"
+                              },
+                              {
+                                "type": "pheno:resource",
+                                "resource": "townstead:proof",
+                                "min": 10
+                              }
+                            ]
+                          }
+                        },
+                        "if_action": {
+                          "type": "pheno:haze",
+                          "kind": "townstead:bramble",
+                          "blocks": {
+                            "radius": 0
+                          }
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:falling_honey",
+                        "count": 8,
+                        "spread": 0.4
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 12
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "townstead:baker/jam_maker/jam_session"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:proof",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:proof",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.glass.break",
+          "volume": 1.0,
+          "pitch": 1.1
+        },
+        {
+          "type": "pheno:swing_hand"
         }
-      }
+      ]
     }
   }
 }

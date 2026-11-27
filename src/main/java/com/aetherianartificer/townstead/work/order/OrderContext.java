@@ -26,6 +26,11 @@ public interface OrderContext {
                 : stockOf(order.output(), scope);
     }
 
+    /** The time claim leases are judged against; without a world, none ever lapses. */
+    default long gameTime() {
+        return Long.MIN_VALUE;
+    }
+
     /** Villagers the per-villager targets scale against. */
     int villagerCount();
 

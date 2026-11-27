@@ -1,0 +1,43 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.look_it_up"
+  },
+  "icon": "minecraft:writable_book",
+  "description": {
+    "translate": "skill.townstead.librarian.look_it_up.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "well_read"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 40,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 5
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:report_blocks",
+          "blocks": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.book.page_turn",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

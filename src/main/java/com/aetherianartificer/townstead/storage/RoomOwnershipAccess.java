@@ -60,11 +60,27 @@ public final class RoomOwnershipAccess {
                 BuildingLodging.isLodging(village, building));
     }
 
-    /** Whether a villager may use the storage and work blocks at {@code target}. */
+    /** Whether a villager may use the storage and work blocks at {@code target}. Work seats and stations check this too. */
     public static boolean mayAccess(ServerLevel level, VillagerEntityMCA actor, BlockPos target) {
         if (actor == null) return true;
         Place place = placeAt(level, target);
         return place == null || !place.restricts() || place.lists(actor.getUUID(), actor);
+    }
+
+    /** The plaque governing a building, or null when none does. */
+    public static @Nullable Place placeFor(ServerLevel level, @Nullable Building building) {
+        if (level == null || building == null || level.getServer() == null) return null;
+        return placeOf(level, building);
+    }
+
+    /**
+     * Whether a person may hold a work seat in a place. Unloaded villagers are judged by the names
+     * on the plaque alone, since where MCA houses them cannot be read without the entity.
+     */
+    public static boolean mayWork(ServerLevel level, @Nullable Place place, java.util.UUID worker) {
+        if (place == null || !place.restricts()) return true;
+        VillagerEntityMCA villager = level.getEntity(worker) instanceof VillagerEntityMCA loaded ? loaded : null;
+        return place.lists(worker, villager);
     }
 
     /**

@@ -2,6 +2,8 @@ package com.aetherianartificer.townstead.api.impl.v1;
 
 import com.aetherianartificer.townstead.Townstead;
 import com.aetherianartificer.townstead.api.v1.event.BuildingEstablishedEvent;
+import com.aetherianartificer.townstead.api.v1.event.VillageDatedEvent;
+import com.aetherianartificer.townstead.api.v1.event.VillageFireEvent;
 import com.aetherianartificer.townstead.api.v1.event.BuildingRemovedEvent;
 import com.aetherianartificer.townstead.api.v1.event.BuildingUpgradedEvent;
 import com.aetherianartificer.townstead.api.v1.event.CalendarRolloverEvent;
@@ -173,6 +175,18 @@ public final class ApiEvents {
 
     public static void lifeStageChanged(LivingEntity villager, String before, String after, boolean senior) {
         safe(() -> post(new VillagerLifeStageChangedEvent(villager, villager.getUUID(), before, after, senior)));
+    }
+
+    public static void villageDated(ServerLevel level, Village village, long foundedDay, long today, boolean playerFounded,
+                                    net.minecraft.core.BlockPos at) {
+        safe(() -> post(new VillageDatedEvent(level, ApiSupport.villageId(level, village), foundedDay, today, playerFounded,
+                at.immutable())));
+    }
+
+    public static void villageFire(ServerLevel level, Village village, net.minecraft.core.BlockPos buildingCenter,
+                                   @Nullable Integer buildingId) {
+        safe(() -> post(new VillageFireEvent(level, ApiSupport.villageId(level, village), buildingCenter.immutable(),
+                buildingId == null ? java.util.OptionalInt.empty() : java.util.OptionalInt.of(buildingId), level.getGameTime())));
     }
 
     public static void buildingEstablished(ServerLevel level, Village village, int buildingId, String type) {

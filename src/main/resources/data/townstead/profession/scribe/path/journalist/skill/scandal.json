@@ -1,0 +1,224 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.scandal"
+  },
+  "icon": "minecraft:writable_book",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.scandal.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:journalist_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:scribe/journalist/front_page"
+          }
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:journalist_watching"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:origin",
+              "condition": {
+                "type": "pheno:skill",
+                "skill": "townstead:scribe/journalist/extra_extra"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:area_of_effect",
+                      "radius": 16,
+                      "include_self": false,
+                      "target": "all",
+                      "action": {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:hostile"
+                        },
+                        "if_action": {
+                          "type": "pheno:set_attack_target"
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      }
+                    },
+                    {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:journalist_story",
+                      "duration": 6000
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:glowing",
+                      "duration": 200,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:angry_villager",
+                      "count": 6,
+                      "spread": 0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 200,
+                  "action": {
+                    "type": "pheno:area_of_effect",
+                    "radius": 16,
+                    "include_self": false,
+                    "target": "hostile",
+                    "action": {
+                      "type": "pheno:set_attack_target"
+                    },
+                    "on": "origin"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:scribe/journalist/byline"
+                }
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:area_of_effect",
+                    "radius": 12,
+                    "include_self": false,
+                    "target": "all",
+                    "action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:hostile"
+                      },
+                      "if_action": {
+                        "type": "pheno:set_attack_target"
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  {
+                    "type": "pheno:set_flag",
+                    "flag": "townstead:journalist_story",
+                    "duration": 6000
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:glowing",
+                    "duration": 200,
+                    "amplifier": 0
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:angry_villager",
+                    "count": 6,
+                    "spread": 0.5
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:area_of_effect",
+                    "radius": 8,
+                    "include_self": false,
+                    "target": "all",
+                    "action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:hostile"
+                      },
+                      "if_action": {
+                        "type": "pheno:set_attack_target"
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  {
+                    "type": "pheno:set_flag",
+                    "flag": "townstead:journalist_story",
+                    "duration": 6000
+                  },
+                  {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:glowing",
+                    "duration": 200,
+                    "amplifier": 0
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:angry_villager",
+                    "count": 6,
+                    "spread": 0.5
+                  }
+                ]
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 24
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.book.page_turn",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

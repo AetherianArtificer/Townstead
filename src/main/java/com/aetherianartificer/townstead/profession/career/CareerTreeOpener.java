@@ -134,7 +134,7 @@ public final class CareerTreeOpener {
                     : Component.translatable("townstead.career.learn.blocked", result.error()));
             return;
         }
-        send(player);
+        resend(player);
     }
 
     /**
@@ -190,11 +190,60 @@ public final class CareerTreeOpener {
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.7f, 0.7f);
         player.playNotifySound(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN,
                 net.minecraft.sounds.SoundSource.PLAYERS, 0.8f, 1.0f);
-        send(player);
+        resend(player);
     }
 
+    /**
+     * The screen's career picker: answer with the same record, now carrying the picked career's
+     * full tree. Only a screen the server opened can ask, so this never opens one on its own.
+     */
+    public static void handleFocus(ServerPlayer player, String careerIdRaw) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
+        Session session = SESSIONS.get(player.getUUID());
+        if (session == null) return;
+        net.minecraft.resources.ResourceLocation careerId =
+                com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(
+                        net.minecraft.resources.ResourceLocation.tryParse(careerIdRaw));
+        if (careerId == null
+                || com.aetherianartificer.townstead.profession.def.ProfessionDefs.byId(careerId) == null) {
+            return;
+        }
+        net.minecraft.world.entity.LivingEntity target = session.target().equals(player.getUUID())
+                ? player : findLiving(player.getServer(), session.target());
+        if (target == null) return;
+        SESSIONS.put(player.getUUID(), new Session(session.target(), careerId, session.inspect()));
+        send(player, target, session.inspect(), "");
+    }
+
+    private static net.minecraft.world.entity.LivingEntity findLiving(
+            net.minecraft.server.MinecraftServer server, java.util.UUID id) {
+        if (server == null) return null;
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            if (level.getEntity(id) instanceof net.minecraft.world.entity.LivingEntity living) {
+                return living;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Whose record each viewer has open, and which career's tree it shows. A record carries one
+     * full tree at a time, because all of them together outgrew a single packet.
+     */
+    private record Session(java.util.UUID target, net.minecraft.resources.ResourceLocation focus,
+                           boolean inspect) {}
+
+    private static final java.util.Map<java.util.UUID, Session> SESSIONS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Opens the viewer's own record on the work they hold. */
     public static void send(ServerPlayer player) {
         if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
+        send(player, player, false);
+    }
+
+    /** An answer inside the open screen: same record, same career in view. */
+    private static void resend(ServerPlayer player) {
         send(player, player, false, "");
     }
 
@@ -224,6 +273,8 @@ public final class CareerTreeOpener {
      */
     public static void send(ServerPlayer viewer, net.minecraft.world.entity.LivingEntity target,
                             boolean inspect) {
+        // A fresh open starts on the target's own work, not on whatever was viewed last time.
+        SESSIONS.remove(viewer.getUUID());
         send(viewer, target, inspect, "");
     }
 
@@ -232,6 +283,15 @@ public final class CareerTreeOpener {
         net.minecraft.server.MinecraftServer server = viewer.getServer();
         if (server == null) return;
         if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.CAREERS)) return;
+        Session previous = SESSIONS.get(viewer.getUUID());
+        net.minecraft.resources.ResourceLocation focus;
+        if (previous != null && previous.target().equals(target.getUUID())) {
+            focus = previous.focus();
+        } else {
+            CareerProfile profile = CareerProfiles.of(target);
+            focus = profile == null ? null : profile.primaryVocation();
+        }
+        SESSIONS.put(viewer.getUUID(), new Session(target.getUUID(), focus, inspect));
         com.aetherianartificer.townstead.chronicle.Chronicles.bySubject(target.getUUID(), 0L, 64)
                 .thenAccept(events -> server.execute(() -> {
                     java.util.Map<String, java.util.List<String>> moments = new java.util.LinkedHashMap<>();
@@ -242,12 +302,14 @@ public final class CareerTreeOpener {
                     CareerGraphS2CPayload payload = new CareerGraphS2CPayload(
                             titleFor(viewer, target), inspect, notice,
                             authorityFor(viewer), todayFor(server, viewer),
+                            focus == null ? "" : focus.toString(),
                             CareerGraphBuilder.build(server, target, moments,
                                     //? if >=1.21 {
-                                    viewer.clientInformation().language()));
+                                    viewer.clientInformation().language(),
                                     //?} else {
-                                    /*viewer.getLanguage()));
+                                    /*viewer.getLanguage(),
                                     *///?}
+                                    focus));
                     //? if neoforge {
                     net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(viewer, payload);
                     //?} else {

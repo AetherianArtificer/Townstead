@@ -1,0 +1,198 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.tiller.irrigate"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.farmer.tiller.irrigate.description"
+  },
+  "cost": 2,
+  "requires": [
+    "seed_drill"
+  ],
+  "skill_group": "townstead:tiller_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:block_in_radius",
+      "radius": 4,
+      "block_condition": {
+        "type": "pheno:block",
+        "block": "minecraft:farmland"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:farmer/tiller/breaking_ground"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:farmer/tiller/mulch"
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:at",
+                      "blocks": {
+                        "radius": [
+                          12,
+                          1,
+                          12
+                        ],
+                        "where": {
+                          "type": "pheno:block",
+                          "block": "minecraft:farmland"
+                        }
+                      },
+                      "do": {
+                        "type": "pheno:modify_block_state",
+                        "property": "moisture",
+                        "value": "7"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:splash",
+                      "count": 30,
+                      "spread": 3.0
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:at",
+                      "blocks": {
+                        "radius": [
+                          6,
+                          1,
+                          6
+                        ],
+                        "where": {
+                          "type": "pheno:block",
+                          "block": "minecraft:farmland"
+                        }
+                      },
+                      "do": {
+                        "type": "pheno:modify_block_state",
+                        "property": "moisture",
+                        "value": "7"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:splash",
+                      "count": 30,
+                      "spread": 3.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "mainhand",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": 5
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:farmer/tiller/mulch"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      8,
+                      1,
+                      8
+                    ],
+                    "where": {
+                      "type": "pheno:block",
+                      "block": "minecraft:farmland"
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:modify_block_state",
+                    "property": "moisture",
+                    "value": "7"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:splash",
+                  "count": 30,
+                  "spread": 3.0
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      4,
+                      1,
+                      4
+                    ],
+                    "where": {
+                      "type": "pheno:block",
+                      "block": "minecraft:farmland"
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:modify_block_state",
+                    "property": "moisture",
+                    "value": "7"
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:splash",
+                  "count": 30,
+                  "spread": 3.0
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.bucket.empty",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

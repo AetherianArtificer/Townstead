@@ -7,8 +7,8 @@
   "description": {
     "translate": "skill.townstead.beverage_artisan.sandy_merchant.beach_ball.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:sandy_party",
+  "cost": 2,
+  "skill_group": "townstead:sandy_merchant_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
@@ -22,23 +22,94 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 5,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:add_velocity",
-                "away_from_other": 1.0,
-                "y": 0.3
-              },
-              {
-                "type": "pheno:add_velocity",
-                "y": 0.6
-              }
-            ]
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:beverage_artisan/sandy_merchant/volley"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.0,
+                  "y": 0.9
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:item_slime",
+                  "count": 6,
+                  "spread": 0.3
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:beverage_artisan/sandy_merchant/beach_party"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:weakness",
+                    "duration": 100,
+                    "amplifier": 4
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "limit": 8
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.0,
+                  "y": 0.9
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:item_slime",
+                  "count": 6,
+                  "spread": 0.3
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:beverage_artisan/sandy_merchant/beach_party"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:weakness",
+                    "duration": 100,
+                    "amplifier": 4
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "limit": 4
           }
         },
         {

@@ -24,6 +24,15 @@ class GroundClimateTest {
     }
 
     @Test
+    void depthCountsOnceForEachKindOfBackend() {
+        assertEquals(7.2f, GroundClimate.depthShift(false, 10f, 17.2f, 0f, false), 1e-4);
+        assertEquals(-7.8f, GroundClimate.depthShift(false, 10f, 27.2f, -25f, false), 1e-4);
+        assertEquals(0f, GroundClimate.depthShift(false, 10f, 5f, 0f, false));
+        assertEquals(0f, GroundClimate.depthShift(true, 0f, 17.2f, 2f, false));
+        assertEquals(-25f, GroundClimate.depthShift(true, 0f, 17.2f, -25f, true));
+    }
+
+    @Test
     void openAirFadesAcrossTheSurfaceLayer() {
         assertEquals(1f, GroundClimate.surfaceWeight(0, 3f));
         assertEquals(0.5f, GroundClimate.surfaceWeight(1.5, 3f), 1e-6);

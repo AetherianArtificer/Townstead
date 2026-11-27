@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.marginalia"
+  },
+  "icon": "minecraft:writable_book",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.marginalia.description"
+  },
+  "cost": 1,
+  "requires": [
+    "bestiary"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "xp_gain",
+    "operation": "multiply",
+    "value": 1.25
+  }
+}

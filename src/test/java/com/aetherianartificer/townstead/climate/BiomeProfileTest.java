@@ -59,6 +59,8 @@ class BiomeProfileTest {
     void caveBiomesShiftTheGroundAndTheDeepDarkIsChilled() {
         assertEquals(2f, shipped("lush_caves").undergroundOffset());
         assertEquals(-1f, shipped("dripstone_caves").undergroundOffset());
+        assertTrue(shipped("deep_dark").undergroundOverBackend());
+        assertFalse(shipped("lush_caves").undergroundOverBackend());
         assertTrue(shipped("deep_dark").undergroundOffset() <= -20f, "sculk chill outweighs the deep-rock heat");
         assertEquals(0f, shipped("plains").undergroundOffset());
     }

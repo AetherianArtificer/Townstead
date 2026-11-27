@@ -26,7 +26,9 @@ public enum Ability {
     GROUNDED("grounded", true),
     ELYTRA_FLIGHT("elytra_flight", true),
     CREATIVE_FLIGHT("creative_flight", true),
-    PHASING("phasing", true);
+    PHASING("phasing", true),
+    /** Sinks in water and walks the bottom, as the {@code buoyancy} power does, but switchable. */
+    SINK("sink", false);
 
     private final String key;
     private final boolean playerOnly;

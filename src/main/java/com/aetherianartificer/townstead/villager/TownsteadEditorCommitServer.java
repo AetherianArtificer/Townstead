@@ -11,10 +11,11 @@ import com.aetherianartificer.townstead.root.LifeStageProgression;
 import com.aetherianartificer.townstead.thirst.ThirstData;
 import com.aetherianartificer.townstead.thirst.ThirstSyncPayload;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
 
 public final class TownsteadEditorCommitServer {
     private TownsteadEditorCommitServer() {}
@@ -29,7 +30,13 @@ public final class TownsteadEditorCommitServer {
 
     public static Result apply(ServerPlayer player, TownsteadEditorCommitPayload payload) {
         if (payload == null || payload.isEmpty()) return null;
-        VillagerEntityMCA villager = findVillager(player.getServer(), payload.villagerUuid());
+        // A player's editor targets themselves, and naming is all it commits here.
+        if (player.getUUID().equals(payload.villagerUuid())) {
+            if (payload.hasTradition()) com.aetherianartificer.townstead.naming.PlayerNames.setIdentity(player, payload.culture(), payload.tradition());
+            if (payload.hasFamilyName()) com.aetherianartificer.townstead.naming.PlayerNames.setFamily(player, payload.familyName());
+            return null;
+        }
+        VillagerEntityMCA villager = editableVillager(player, payload.villagerUuid());
         if (villager == null) return null;
 
         TownsteadVillager state = TownsteadVillagers.get(villager);
@@ -83,7 +90,8 @@ public final class TownsteadEditorCommitServer {
             lifeChanged = true;
         }
 
-        if (payload.hasFamilyName()) {
+        // A name another mod holds cannot be typed over. The publish below still corrects the screen.
+        if (payload.hasFamilyName() && !com.aetherianartificer.townstead.naming.VillagerNames.parts(villager).familyLocked()) {
             TownsteadVillager.Life life = state.life();
             String typed = payload.familyName() == null ? "" : payload.familyName().trim();
             life.setFamilyName(typed);
@@ -91,6 +99,10 @@ public final class TownsteadEditorCommitServer {
             // nothing derived replaces it afterwards. Emptying the field hands the name back to the
             // villager's tradition, which settles a new one the next time it is asked for.
             life.setFamilyNameFixed(!typed.isEmpty());
+        }
+
+        if (payload.hasTradition()) {
+            com.aetherianartificer.townstead.naming.Naming.reassign(player.serverLevel(), villager, payload.culture(), payload.tradition());
         }
 
         com.aetherianartificer.townstead.calendar.VillagerLifeSyncPayload lifeSync =
@@ -103,18 +115,34 @@ public final class TownsteadEditorCommitServer {
         TownsteadVillagers.flush(villager);
         // After the flush, so every surface that draws a name is told at once: the nameplate, the
         // dialogue header, and MCA Capitals' identity where it is installed.
-        if (payload.hasFamilyName()) {
+        if (payload.hasFamilyName() || payload.hasTradition()) {
             com.aetherianartificer.townstead.naming.VillagerNames.publish(villager);
         }
         return new Result(villager, hungerSync, thirstSync, fatigueSync, lifeSync);
     }
 
-    private static VillagerEntityMCA findVillager(MinecraftServer server, java.util.UUID uuid) {
-        if (server == null || uuid == null) return null;
-        for (ServerLevel level : server.getAllLevels()) {
-            Entity entity = level.getEntity(uuid);
-            if (entity instanceof VillagerEntityMCA villager) return villager;
+    // Same gate as MCA's VillagerEditorSyncRequest: a living villager in the sender's level,
+    // and the sender is an operator or holds the Villager Editor.
+    private static VillagerEntityMCA editableVillager(ServerPlayer player, java.util.UUID uuid) {
+        if (uuid == null) return null;
+        Entity entity = player.serverLevel().getEntity(uuid);
+        // A zombie villager is edited through the person they still are; its state saves to the zombie.
+        if (entity instanceof net.minecraft.world.entity.Mob mob && !(entity instanceof VillagerEntityMCA)
+                && mob.isAlive()) {
+            entity = ZombifiedVillagers.person(mob);
+        }
+        if (!(entity instanceof VillagerEntityMCA villager) || !villager.isAlive()) return null;
+        if (player.hasPermissions(2)
+                || isVillagerEditor(player.getMainHandItem())
+                || isVillagerEditor(player.getOffhandItem())) {
+            return villager;
         }
         return null;
     }
+
+    private static boolean isVillagerEditor(ItemStack stack) {
+        return !stack.isEmpty() && VILLAGER_EDITOR_ID.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
+    }
+
+    private static final String VILLAGER_EDITOR_ID = "mca:villager_editor";
 }

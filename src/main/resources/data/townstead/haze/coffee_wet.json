@@ -1,0 +1,26 @@
+{
+  "shape": "layer",
+  "color": "#4A2E1C",
+  "duration": 160,
+  "texture": "townstead:haze/coffee",
+  "inside": {
+    "interval": 5,
+    "condition": {
+      "type": "pheno:hostile"
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:damage",
+          "amount": 1.0
+        },
+        {
+          "type": "pheno:add_velocity",
+          "relative": true,
+          "z": 0.3
+        }
+      ]
+    }
+  }
+}

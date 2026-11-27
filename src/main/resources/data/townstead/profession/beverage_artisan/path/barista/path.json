@@ -16,22 +16,22 @@
     [
       "morning_cup",
       "espresso_shot",
-      "coffee_service"
+      "jitters"
     ],
     [
       "steady_hands",
       "double_shot",
-      "jitters"
+      "shakes"
     ],
     [
       "crema",
-      "cold_brew",
-      "decaf"
+      "decaf",
+      "spilled_coffee"
     ],
     [
       "caffeinated",
-      "rush_hour",
-      "spilled_coffee"
+      "slow_sip",
+      "wet_floor"
     ],
     [
       "perfect_pour",
@@ -51,21 +51,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:beverage_artisan/barista/crema"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:beverage_artisan/barista/cold_brew"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:beverage_artisan/barista/decaf"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "townstead:beverage_artisan",
+            "at_least": 300
           },
           {
             "type": "pheno:block_in_radius",

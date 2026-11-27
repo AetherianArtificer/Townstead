@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.dye_job"
+  },
+  "icon": "minecraft:red_dye",
+  "description": {
+    "translate": "skill.townstead.tailor.dye_job.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "layered"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 40,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 5
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:invert",
+          "action": {
+            "type": "pheno:use_item_on",
+            "item": "#townstead:dyes"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 8
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.dye.use",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

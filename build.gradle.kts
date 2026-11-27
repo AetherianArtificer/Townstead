@@ -84,6 +84,8 @@ dependencies {
     // Townstead compiles against the current MCA snapshot. verifyMcaDependency checks that the
     // local jar still declares the supported snapshot version before Java compilation.
     compileOnly(files(mcaJar))
+    // Bit of a Mess (runtime optional): compat.mess only touches it when it's installed.
+    compileOnly(files(rootProject.file("libs/bitofamess-0.1.0+1.21.1.jar")))
     runtimeOnly(files(mcaJar))
     implementation(jarJar("io.github.llamalad7:mixinextras-neoforge:${property("mixin_extras_version")}")!!)
     // JEI plugin API (runtime optional; the plugin class is only loaded by JEI's scan)
@@ -268,8 +270,29 @@ if (providers.gradleProperty("packCheck").isPresent) {
             register("townstead_pack_check") { sourceSet(packCheck) }
         }
         runs {
+            // A scripted scene on a real client: gradlew :1.21.1-neoforge:runBodyCheck -PpackCheck=... -PbodyCheckRoots=a:b,c:d@-100000
+            // Report and screenshots land in .cache/body-check.
+            register("bodyCheck") {
+                client()
+                sourceSet = packCheck
+                gameDirectory = rootProject.file(".cache/body-check")
+                systemProperty("townstead.bodyCheck", "true")
+                systemProperty("townstead.bodyCheck.roots", providers.gradleProperty("bodyCheckRoots").getOrElse(""))
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
             register("packCheck") {
                 type = "gameTestServer"
+                systemProperty("townstead.bodyTest.root", providers.gradleProperty("bodyTestRoot").getOrElse(""))
+                systemProperty("townstead.bodyTest.part", providers.gradleProperty("bodyTestPart").getOrElse(""))
+                systemProperty("townstead.bodyTest.meter", providers.gradleProperty("bodyTestMeter").getOrElse(""))
                 sourceSet = packCheck
                 gameDirectory = rootProject.file(".cache/pack-check")
                 systemProperty("neoforge.enabledGameTestNamespaces", "townstead_pack_check")
@@ -306,6 +329,58 @@ if (providers.gradleProperty("bodySizeGameTests").isPresent) {
                 sourceSet = bodySizeGameTest
                 gameDirectory = rootProject.file(".cache/body-size-gametest")
                 systemProperty("neoforge.enabledGameTestNamespaces", "townstead_size_tests")
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
+        }
+    }
+}
+
+// Career skill check: every skill file must load with its power, and each converted tool must do
+// what its text says. Never shipped. Run with: gradlew :1.21.1-neoforge:runSkillCheck -PskillCheck
+if (providers.gradleProperty("skillCheck").isPresent) {
+    val skillCheck by sourceSets.creating {
+        java.setSrcDirs(listOf(rootProject.file("src/skillCheck/java")))
+        resources.setSrcDirs(listOf(rootProject.file("src/skillCheck/resources")))
+        compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+    neoForge {
+        mods {
+            register("townstead_skill_check") { sourceSet(skillCheck) }
+        }
+        runs {
+            register("skillCheck") {
+                type = "gameTestServer"
+                sourceSet = skillCheck
+                gameDirectory = rootProject.file(".cache/skill-check")
+                systemProperty("neoforge.enabledGameTestNamespaces", "townstead_skill_check")
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink:${property("blade_ink_version")}")
+                )
+                additionalRuntimeClasspathConfiguration.dependencies.add(
+                    project.dependencies.create("com.bladecoder.ink:blade-ink-compiler:${property("blade_ink_version")}")
+                )
+            }
+            // The same skills on a real client, one scene and one screenshot each:
+            // gradlew :1.21.1-neoforge:runSkillScene -PskillCheck. Pictures: .cache/skill-scene/screenshots.
+            register("skillScene") {
+                client()
+                sourceSet = skillCheck
+                gameDirectory = rootProject.file(".cache/skill-scene")
+                systemProperty("townstead.scene", "true")
+                programArguments.addAll("--width", "1600", "--height", "900")
+                systemProperty("townstead.scene.only", providers.gradleProperty("scene").getOrElse(""))
                 additionalRuntimeClasspathConfiguration.dependencies.add(
                     project.dependencies.create("com.h2database:h2-mvstore:${property("h2_mvstore_version")}")
                 )

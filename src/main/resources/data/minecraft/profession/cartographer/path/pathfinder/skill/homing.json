@@ -19,9 +19,21 @@
       "amount": 0
     },
     "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:bearing",
-      "min": 75
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:village",
+            "within_border": true
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:bearing",
+          "min": 50
+        }
+      ]
     },
     "action": {
       "type": "pheno:apply_effect",

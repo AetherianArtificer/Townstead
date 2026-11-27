@@ -7,46 +7,57 @@
   "description": {
     "translate": "skill.townstead.cartographer.surveyor.grand_survey.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "signal_fire"
+    "shockwave"
   ],
-  "skill_group": "townstead:surveyor_survey",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 1200,
-    "slot": 2,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:bearing",
-      "amount": 60
+    "type": "pheno:trigger",
+    "trigger": "when_land",
+    "condition": {
+      "type": "pheno:flag",
+      "flag": "townstead:surveyor_diving"
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 32,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:glowing",
-            "duration": 400,
-            "amplifier": 0
-          }
+          "type": "pheno:set_flag",
+          "flag": "townstead:surveyor_diving",
+          "duration": 0
         },
         {
           "type": "pheno:area_of_effect",
-          "radius": 16,
-          "include_self": true,
-          "target": "non_hostile",
+          "radius": 5,
+          "include_self": false,
+          "target": "hostile",
           "action": {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:speed",
-            "duration": 400,
-            "amplifier": 0
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:damage",
+                "amount": 8,
+                "source": "other"
+              },
+              {
+                "type": "pheno:add_velocity",
+                "away_from_other": 1.2,
+                "y": 0.35
+              }
+            ]
           }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:explosion",
+          "count": 3,
+          "spread": 1.0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.generic.explode",
+          "volume": 0.7,
+          "pitch": 1.2
         }
       ]
     }

@@ -176,6 +176,14 @@ public final class AttachmentGeoLoader {
             uvRects[F_SOUTH] = new float[]{u + sz + sx + sz, v + sz, u + sz + sx + sz + sx, v + sz + sy};
         }
 
+        // A face mapped to no width of texture shows one line of it, and that line lies between two
+        // columns: rounding picks one or the other at each pixel, and if one is clear it speckles. Pick one.
+        for (float[] rect : uvRects) {
+            if (rect == null) continue;
+            if (rect[0] == rect[2]) rect[0] = rect[2] = rect[0] + (rect[0] + 0.5f > texWidth ? -0.5f : 0.5f);
+            if (rect[1] == rect[3]) rect[1] = rect[3] = rect[1] + (rect[1] + 0.5f > texHeight ? -0.5f : 0.5f);
+        }
+
         // A flat cube (a wing membrane, a fin) is one plane: its two faces lie on each other and the
         // attachment layers draw without culling, so both would show and z-fight. Keep the front
         // face of the box layout, which shows from behind too, and drop the zero-area edges.

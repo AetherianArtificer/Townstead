@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.family_meal"
+  },
+  "icon": "minecraft:bread",
+  "description": {
+    "translate": "skill.townstead.cook.chef.family_meal.description"
+  },
+  "cost": 1,
+  "requires": [
+    "running_the_pass"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "status_effect_duration",
+    "operation": "multiply",
+    "value": 1.5,
+    "applies_to": {
+      "radius": 6,
+      "self": false
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:flow",
+      "min": 25
+    }
+  }
+}

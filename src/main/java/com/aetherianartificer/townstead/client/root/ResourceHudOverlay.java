@@ -2331,8 +2331,8 @@ public final class ResourceHudOverlay {
     private static void squircleFrame(GuiGraphics graphics, ResourceSyncS2CPayload.Bar bar,
                                     int centerX, int centerY, float alpha) {
         int background = troughColor(bar, alpha);
-        int light = withAlpha(Accessibility.highContrast() ? 0xFFFFFFFF : bar.frameSecondaryColor(), alpha);
-        int dark = withAlpha(Accessibility.highContrast() ? 0xFF000000 : bar.framePrimaryColor(), alpha);
+        int light = withAlpha(Accessibility.highContrast() ? 0xFFFFFFFF : 0xFF000000 | bar.frameSecondaryColor(), alpha);
+        int dark = withAlpha(Accessibility.highContrast() ? 0xFF000000 : 0xFF000000 | bar.framePrimaryColor(), alpha);
         for (int py = -18; py <= 18; py++) {
             for (int px = -18; px <= 18; px++) {
                 if (!insideRoundedSquare(px, py, 18, 6)
@@ -2420,8 +2420,8 @@ public final class ResourceHudOverlay {
         }
         int thickness = Math.max(1, Math.min(4, bar.frameThickness()));
         int background = troughColor(bar, alpha);
-        int light = withAlpha(Accessibility.highContrast() ? 0xFFFFFFFF : bar.frameSecondaryColor(), alpha);
-        int dark = withAlpha(Accessibility.highContrast() ? 0xFF000000 : bar.framePrimaryColor(), alpha);
+        int light = withAlpha(Accessibility.highContrast() ? 0xFFFFFFFF : 0xFF000000 | bar.frameSecondaryColor(), alpha);
+        int dark = withAlpha(Accessibility.highContrast() ? 0xFF000000 : 0xFF000000 | bar.framePrimaryColor(), alpha);
         graphics.fill(x, y, x + width, y + height, background);
         for (int i = 0; i < thickness; i++) {
             graphics.fill(x + i, y + i, x + width - i, y + i + 1, light);

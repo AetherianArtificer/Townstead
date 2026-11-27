@@ -32,6 +32,10 @@ public abstract class PlayerElytraGeneMixin {
     /*@Inject(method = "m_36319_", at = @At("HEAD"), cancellable = true, remap = false)
     *///?}
     private void townstead$elytraGene(CallbackInfoReturnable<Boolean> cir) {
+        if (com.aetherianartificer.townstead.root.attachment.BodyVolumes.folded((net.minecraft.world.entity.player.Player) (Object) this)) {
+            cir.setReturnValue(false);
+            return;
+        }
         net.minecraft.world.entity.player.Player self = (net.minecraft.world.entity.player.Player) (Object) this;
         if (self.onGround() || self.isFallFlying() || self.isInWater()) return;
         if (!MovementAbilities.isActive(self, Ability.ELYTRA_FLIGHT)) return;

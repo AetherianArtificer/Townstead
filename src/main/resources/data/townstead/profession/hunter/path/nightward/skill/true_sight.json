@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.true_sight"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.true_sight.description"
+  },
+  "cost": 1,
+  "requires": [
+    "mirror"
+  ]
+}

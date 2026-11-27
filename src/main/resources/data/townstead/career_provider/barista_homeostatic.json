@@ -1,0 +1,31 @@
+{
+  "schema": "townstead:career_provider/v1",
+  "profession": "townstead:beverage_artisan",
+  "path": "barista",
+  "mods": "homeostatic",
+  "priority": 35,
+  "contributes": {
+    "path": {
+      "worksites": [
+        "farmersdelight:skillet"
+      ]
+    },
+    "profession": {
+      "tasks": [
+        {
+          "type": "townstead_work:brew",
+          "workstations": [
+            "farmersdelight:skillet",
+            "farmersdelight:stove",
+            "#minecraft:campfires"
+          ],
+          "recipes": [
+            "townstead:purification",
+            "homeostatic:purified_water_bottle"
+          ],
+          "weight": 10
+        }
+      ]
+    }
+  }
+}

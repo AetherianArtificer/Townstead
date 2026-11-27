@@ -7,19 +7,19 @@
   "description": {
     "translate": "skill.townstead.hunter.trailreader.called_shot.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "mark_quarry"
+    "tangle"
   ],
-  "skill_group": "townstead:hunter_trailreader_a",
+  "skill_group": "townstead:trailreader_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 200,
-    "slot": 1,
+    "cooldown": 300,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 20
+      "resource": "townstead:vigil",
+      "amount": 30
     },
     "action": {
       "type": "pheno:and",
@@ -34,10 +34,81 @@
           "do": {
             "type": "pheno:target_action",
             "action": {
-              "type": "pheno:damage",
-              "amount": 3,
-              "source": "other"
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "townstead:hunter/trailreader/cull"
+                        }
+                      },
+                      {
+                        "type": "pheno:health",
+                        "max": 0.2,
+                        "relative": true
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": {
+                      "type": "pheno:arithmetic",
+                      "operation": "multiply",
+                      "values": [
+                        1000,
+                        1
+                      ]
+                    },
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:damage",
+                    "amount": 5,
+                    "source": "other"
+                  }
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:hunter/trailreader/cornered"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:add_velocity",
+                    "away_from_other": -0.9,
+                    "y": 0.2
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
             }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:hunter/trailreader/cull"
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:vigil",
+            "operation": "set",
+            "amount": 0
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {

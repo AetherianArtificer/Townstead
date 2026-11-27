@@ -3,7 +3,7 @@
   "mods": [
     "butchery"
   ],
-  "task": "townstead_work:clean",
+  "task": "townstead_work:tidy",
   "type": "townstead:block_interaction",
   "target": {
     "block": "butchery:blood_puddle",

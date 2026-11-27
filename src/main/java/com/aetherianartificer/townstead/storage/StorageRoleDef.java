@@ -52,6 +52,8 @@ public record StorageRoleDef(
         OUTPUTS,
         /** Reusable work implements. */
         TOOLS,
+        /** A shop's display: finished goods go here after ordinary output stores; never ingredients. */
+        DISPLAY,
         /** Emergency ingredients/tools, consulted only after ordinary stores. */
         RESERVES,
         /** Private belongings, deliberately outside profession automation. */
@@ -64,6 +66,7 @@ public record StorageRoleDef(
                 case "storage" -> STORAGE;
                 case "input", "inputs" -> INPUTS;
                 case "output", "outputs", "finished_goods" -> OUTPUTS;
+                case "display", "shop_display" -> DISPLAY;
                 case "tool", "tools" -> TOOLS;
                 case "reserve", "reserves" -> RESERVES;
                 case "personal", "personal_storage" -> PERSONAL;

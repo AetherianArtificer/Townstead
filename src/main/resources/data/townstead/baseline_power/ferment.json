@@ -4,7 +4,7 @@
   "max": 100,
   "start": 0,
   "regen": -1,
-  "regen_interval": 30,
+  "regen_interval": 120,
   "color": "#C9A24A",
   "display": {
     "shape": "horizontal",

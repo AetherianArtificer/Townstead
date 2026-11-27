@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "pack_bond"
+    "scent"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:flock",
-      "min": 50
+      "min": 25
     },
     "action": {
       "type": "pheno:area_of_effect",
@@ -38,6 +38,9 @@
           "effect": "minecraft:strength",
           "duration": 30,
           "amplifier": 0
+        },
+        "else_action": {
+          "type": "pheno:nothing"
         }
       }
     }

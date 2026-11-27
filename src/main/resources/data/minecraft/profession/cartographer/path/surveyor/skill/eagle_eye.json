@@ -9,25 +9,56 @@
   },
   "cost": 1,
   "requires": [
-    "vantage"
+    "clear_air"
   ],
   "power": {
     "type": "pheno:action_over_time",
-    "interval": 20,
+    "interval": 40,
     "resource_cost": {
       "resource": "townstead:bearing",
       "amount": 0
     },
     "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:bearing",
-      "min": 50
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:bearing",
+          "min": 25
+        },
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:block",
+              "y": 0,
+              "block_condition": {
+                "type": "pheno:height",
+                "min": 100
+              }
+            },
+            {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:movement",
+                "movement": "grounded"
+              }
+            }
+          ]
+        }
+      ]
     },
     "action": {
-      "type": "pheno:apply_effect",
-      "effect": "minecraft:night_vision",
-      "duration": 300,
-      "amplifier": 0
+      "type": "pheno:area_of_effect",
+      "radius": 32,
+      "include_self": false,
+      "target": "all",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:glowing",
+        "duration": 60,
+        "amplifier": 0
+      }
     }
   }
 }

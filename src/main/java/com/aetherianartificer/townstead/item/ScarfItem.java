@@ -1,6 +1,5 @@
 package com.aetherianartificer.townstead.item;
 
-import com.aetherianartificer.townstead.root.EntityGroups;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
@@ -32,6 +31,21 @@ public class ScarfItem extends Item implements Equipable, Wearable
                 com.aetherianartificer.townstead.root.gene.types.EntityGroupGeneType.Group.ARTHROPOD);
     }
     private static final ResourceLocation TEXTURE = rl("textures/entity/scarf.png");
+    private static final String ID = "townstead:scarf";
+
+    /**
+     * Whether this body is made to wear a scarf: its rig says where one sits on it, under
+     * {@code wearables.head.items."townstead:scarf"}. The scarf is shaped for that body and no other, so a
+     * body without a seat for it can't wear it, whatever group it's in. Server side; a client defers to it.
+     */
+    public static boolean fits(net.minecraft.world.entity.LivingEntity entity) {
+        if (entity.level().isClientSide) return true;
+        return seats(com.aetherianartificer.townstead.root.rig.ServerRig.defFor(entity));
+    }
+
+    private static boolean seats(com.aetherianartificer.townstead.root.rig.RigDefinition rig) {
+        return rig != null && rig.head() != null && rig.head().items().containsKey(ID);
+    }
 
     private static ResourceLocation rl(String path) {
         //? if >=1.21 {
@@ -62,7 +76,7 @@ public class ScarfItem extends Item implements Equipable, Wearable
         if (level.isClientSide) {
             return InteractionResultHolder.success(player.getItemInHand(hand));
         }
-        if (!EntityGroups.isArthropod(player)) {
+        if (!fits(player)) {
             player.displayClientMessage(Component.translatable(ScarfEquip.DENY_KEY), true);
             return InteractionResultHolder.fail(player.getItemInHand(hand));
         }

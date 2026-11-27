@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.bad_luck"
+  },
+  "icon": "minecraft:fermented_spider_eye",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.bad_luck.description"
+  },
+  "cost": 1,
+  "requires": [
+    "hex_bolt"
+  ]
+}

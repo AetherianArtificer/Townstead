@@ -1,0 +1,28 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.forecast"
+  },
+  "icon": "minecraft:clock",
+  "description": {
+    "translate": "skill.townstead.climatologist.forecast.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "weathered"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 5
+    },
+    "action": {
+      "type": "pheno:forecast"
+    }
+  }
+}

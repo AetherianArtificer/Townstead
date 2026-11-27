@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.blast_plate"
+  },
+  "icon": "minecraft:tnt",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.blast_plate.description"
+  },
+  "cost": 1,
+  "requires": [
+    "douse"
+  ]
+}

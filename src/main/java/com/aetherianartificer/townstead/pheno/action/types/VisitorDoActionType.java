@@ -12,9 +12,11 @@ import net.minecraft.world.entity.LivingEntity;
 
 /**
  * Runs an action on the nearest visitor with {@code role}, with the one who ran it as the other
- * entity. Fails when no such visitor is near.
+ * entity. Fails when no such visitor is near. With {@code mortal}, an essential visitor can be killed
+ * again first, so the action can kill them.
  * <pre>
  * { "type": "pheno:visitor_action", "role": "vampire_couple_thrall", "action": { "type": "pheno:release_thrall" } }
+ * { "type": "pheno:visitor_action", "role": "father", "mortal": true, "action": { "type": "pheno:damage", "amount": 1000 } }
  * </pre>
  */
 public final class VisitorDoActionType implements ActionType {
@@ -29,6 +31,7 @@ public final class VisitorDoActionType implements ActionType {
     public Action parse(JsonObject json) {
         String role = GsonHelper.getAsString(json, "role", "");
         double radius = GsonHelper.getAsDouble(json, "radius", 32);
+        boolean mortal = GsonHelper.getAsBoolean(json, "mortal", false);
         Action action = Actions.parse(json.get("action"));
         if (role.isBlank() || action == null) return null;
         return ctx -> {
@@ -38,6 +41,7 @@ public final class VisitorDoActionType implements ActionType {
                 ctx.fail();
                 return;
             }
+            if (mortal) Visitors.mortal(visitor);
             action.run(new ActionContext(visitor, ctx.entity()));
         };
     }

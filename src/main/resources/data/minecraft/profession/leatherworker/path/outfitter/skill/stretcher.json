@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.stretcher"
+  },
+  "icon": "minecraft:white_bed",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.stretcher.description"
+  },
+  "cost": 1,
+  "requires": [
+    "emergency_kit"
+  ]
+}

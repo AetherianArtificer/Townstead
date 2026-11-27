@@ -76,6 +76,7 @@ public final class StationProduceCatalog implements WorksiteCatalogs.Catalog {
             // craft is stonecutter-only, so a crafting table in the mason's room drives nothing.
             for (DiscoveredRecipe recipe : ProtocolRecipes.discover(level, def)) {
                 if (!BuildingRecipeScopes.allows(buildingType, recipe.id())) continue;
+                if (!WorksiteRecipeGates.allows(level, site, recipe.id())) continue;
                 if (!allowedByAny(declared, recipe)) continue;
                 // A duplicating line is a service, not production: the option says so, and the
                 // screen asks for the workpiece instead of adding a plain line.

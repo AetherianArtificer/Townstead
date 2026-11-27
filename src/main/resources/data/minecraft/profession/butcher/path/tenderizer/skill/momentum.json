@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "rhythm"
+    "tender_cuts"
   ],
   "power": {
     "type": "pheno:stacking_effect",

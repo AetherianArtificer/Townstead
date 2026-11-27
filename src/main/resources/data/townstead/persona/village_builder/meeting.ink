@@ -67,7 +67,7 @@
     -> beds ->
 - "well":
     How far is water from your nearest door? In steps. Guess.
-    We measured water in cups, back home. Let's put water where people live.
+    We measured water in cups, back home. Let's keep clean water in every house.
     -> water ->
 }
 ->->

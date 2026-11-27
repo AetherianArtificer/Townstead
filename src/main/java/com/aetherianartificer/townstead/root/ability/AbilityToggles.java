@@ -16,8 +16,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Per-entity state for toggle-mode ability genes, stored as the DEVIATION from each
- * gene's authored default (transient; a reload therefore restores the default — wings
- * fold, darkvision comes back on). For the common default-off toggle the deviation
+ * gene's authored default. A player's state is saved with their player data and comes
+ * back on login; a villager's is transient. For the common default-off toggle the deviation
  * set IS the on-set, so single-arg reads keep their historical meaning; default-on
  * toggles must read through the default-aware overload. Flipped by the Root Ability
  * key; read by the ability ticker to decide whether a toggle ability applies this tick.
@@ -25,6 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class AbilityToggles {
 
     private static final Map<UUID, Set<ResourceLocation>> FLIPPED = new ConcurrentHashMap<>();
+    private static final String SAVE_KEY = "townstead:ability_toggles";
 
     private AbilityToggles() {}
 
@@ -59,10 +60,12 @@ public final class AbilityToggles {
         Set<ResourceLocation> set = FLIPPED.computeIfAbsent(entity.getUUID(), k -> ConcurrentHashMap.newKeySet());
         if (set.contains(geneId)) {
             set.remove(geneId);
+            save(entity, set);
             Powers.invalidate(entity);
             return false;
         }
         set.add(geneId);
+        save(entity, set);
         Powers.invalidate(entity);
         return true;
     }
@@ -74,7 +77,41 @@ public final class AbilityToggles {
     public static void set(LivingEntity entity, ResourceLocation geneId, boolean on) {
         Set<ResourceLocation> set = FLIPPED.computeIfAbsent(entity.getUUID(), k -> ConcurrentHashMap.newKeySet());
         boolean changed = on ? set.add(geneId) : set.remove(geneId);
-        if (changed) Powers.invalidate(entity);
+        if (!changed) return;
+        save(entity, set);
+        Powers.invalidate(entity);
+    }
+
+    /** Load a player's saved toggles on login; call before the login sync. */
+    public static void restore(net.minecraft.world.entity.player.Player player) {
+        net.minecraft.nbt.CompoundTag owner = player.getPersistentData()
+                .getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG);
+        net.minecraft.nbt.ListTag list = owner.getList(SAVE_KEY, net.minecraft.nbt.Tag.TAG_STRING);
+        Set<ResourceLocation> set = ConcurrentHashMap.newKeySet();
+        for (int i = 0; i < list.size(); i++) {
+            ResourceLocation id = ResourceLocation.tryParse(list.getString(i));
+            if (id != null) set.add(id);
+        }
+        if (set.isEmpty()) FLIPPED.remove(player.getUUID());
+        else FLIPPED.put(player.getUUID(), set);
+        Powers.invalidate(player);
+    }
+
+    /** Write the live state onto the respawned player, so a death does not drop the saved copy. */
+    public static void onClone(net.minecraft.world.entity.player.Player replacement) {
+        Set<ResourceLocation> set = FLIPPED.get(replacement.getUUID());
+        save(replacement, set == null ? Set.of() : set);
+    }
+
+    private static void save(LivingEntity entity, Set<ResourceLocation> set) {
+        if (!(entity instanceof net.minecraft.world.entity.player.Player player) || player.level().isClientSide()) return;
+        net.minecraft.nbt.CompoundTag data = player.getPersistentData();
+        net.minecraft.nbt.CompoundTag owner = data.getCompound(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG);
+        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        for (ResourceLocation id : set) list.add(net.minecraft.nbt.StringTag.valueOf(id.toString()));
+        if (list.isEmpty()) owner.remove(SAVE_KEY);
+        else owner.put(SAVE_KEY, list);
+        data.put(net.minecraft.world.entity.player.Player.PERSISTED_NBT_TAG, owner);
     }
 
     /** Whether the entity has any toggle deviating from its default — a cheap gate for per-tick AI. */

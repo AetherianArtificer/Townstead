@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.stake_a_claim"
+  },
+  "icon": "minecraft:oak_sign",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.stake_a_claim.description"
+  },
+  "cost": 1,
+  "requires": [
+    "core_sample"
+  ]
+}

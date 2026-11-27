@@ -42,6 +42,8 @@ class WorkTaskSchemaTest {
         // The isolated Beekeeper-style examples stand in for a custom pack whose Job loader
         // would have declared this task before its Profession document was parsed.
         WorkTaskTypes.register(id("townstead_work:interact"));
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habit.HabitDueConditionType());
     }
 
     @Test
@@ -121,6 +123,8 @@ class WorkTaskSchemaTest {
                 "Caupona's pots need a task of their own or the recipe gate refuses them");
         assertFalse(potTask.allowsBlock(id("minecraft:furnace")));
 
+        assertTrue(cook.workTasks().stream().noneMatch(t -> t.type().equals(id("townstead_work:tidy"))),
+                "Bit of a Mess contributes the Cook's tidy task");
         WorkTaskDef pizzaTask = cook.workTasks().get(6);
         WorkTaskDef rawPizzaTask = cook.workTasks().get(7);
         assertTrue(pizzaTask.allowsBlock(id("pizzadelight:pizza_station")));
@@ -624,10 +628,10 @@ class WorkTaskSchemaTest {
                 .collect(java.util.stream.Collectors.toSet());
         assertEquals(java.util.Set.of(
                         id("townstead_work:dismantle"),
-                        id("townstead_work:clean"),
+                        id("townstead_work:tidy"),
                         id("townstead_work:hammer"),
                         id("townstead_work:slaughter")), orderable,
-                "the four optional Butchery jobs must remain available to the order sheet");
+                "the four optional Butcher jobs must remain available to the order sheet");
 
         for (String building : java.util.List.of("butcher_shop_l1", "butcher_shop_l2",
                 "butcher_shop_l3", "slaughter_pen", "slaughterhouse", "smokehouse")) {

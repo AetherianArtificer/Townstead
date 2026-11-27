@@ -38,18 +38,22 @@ public final class PersonaMoves {
     private static final int ROAD_DAYS = 2;
     /** A town must stay empty this many days before a Persona gives up on it. */
     private static final long EMPTY_DAYS = 3;
-    /** When each Persona's town was first seen empty, by villager. */
-    private static final java.util.Map<UUID, Long> EMPTY_SINCE = new java.util.HashMap<>();
     private static boolean listening;
 
     private PersonaMoves() {}
 
     /** Checks each loaded Persona that can move on, and sends it on the road when it must. */
     static void tick(MinecraftServer server) {
-        listen();
         PersonaInstances instances = PersonaInstances.get(server);
+        Journeys journeys = Journeys.get(server);
         for (PersonaInstances.Instance instance : List.copyOf(instances.all())) {
             if (instance.village() == PersonaInstances.TRAVELLING) continue;
+            // One who left before the listener heard them is on the road whatever their record says.
+            Journeys.Journey journey = journeys.of(instance.villager());
+            if (journey != null && PURPOSE.equals(journey.purpose())) {
+                instances.move(instance.villager(), instance.dimension(), PersonaInstances.TRAVELLING);
+                continue;
+            }
             PersonaDefinition persona = Personas.byId(instance.persona());
             if (persona == null || persona.movesOn().isEmpty()) continue;
             VillagerEntityMCA villager = PersonaService.find(server, instance.villager());
@@ -65,7 +69,7 @@ public final class PersonaMoves {
     }
 
     /** Marks a moving Persona as on the road the moment they actually leave. */
-    private static void listen() {
+    static void listen() {
         if (listening) return;
         listening = true;
         Journeys.onDepart(journey -> {
@@ -79,7 +83,6 @@ public final class PersonaMoves {
             PersonaInstances instances = PersonaInstances.get(server);
             PersonaInstances.Instance instance = instances.of(journey.traveller());
             if (instance != null) instances.move(journey.traveller(), instance.dimension(), PersonaInstances.TRAVELLING);
-            EMPTY_SINCE.remove(journey.traveller());
         });
     }
 
@@ -163,11 +166,10 @@ public final class PersonaMoves {
         }
         long today = com.aetherianartificer.townstead.calendar.TownsteadCalendar.worldDay(server);
         if (!empty) {
-            EMPTY_SINCE.remove(instance.villager());
+            instances.clearEmptySince(instance.villager());
             return false;
         }
-        long since = EMPTY_SINCE.computeIfAbsent(instance.villager(), k -> today);
-        return today - since >= EMPTY_DAYS;
+        return today - instances.emptySince(instance.villager(), today) >= EMPTY_DAYS;
     }
 
     /**

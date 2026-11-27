@@ -38,9 +38,16 @@ public final class HomePoints {
     /** From the tags-updated event on the server, when tags and rest spots are both current. */
     public static synchronized void refresh() {
         dirty = false;
+        // The two loaders keep this table with different value types, and a wrong one only fails when read.
+        //? if neoforge {
         Map<BlockState, Holder<PoiType>> table = table();
         if (table == null) return;
         Holder<PoiType> home = BuiltInRegistries.POINT_OF_INTEREST_TYPE.getHolderOrThrow(PoiTypes.HOME);
+        //?} else {
+        /*Map<BlockState, PoiType> table = net.minecraftforge.registries.GameData.getBlockStatePointOfInterestTypeMap();
+        PoiType home = net.minecraftforge.registries.ForgeRegistries.POI_TYPES.getValue(PoiTypes.HOME.location());
+        if (home == null) return;
+        *///?}
         for (BlockState state : ADDED) table.remove(state, home);
         ADDED.clear();
         if (RestSpots.all().isEmpty()) return;
@@ -82,19 +89,12 @@ public final class HomePoints {
         }
     }
 
+    //? if neoforge {
     @SuppressWarnings("unchecked")
     private static Map<BlockState, Holder<PoiType>> table() {
         try {
             if (typeByState == null) {
-                Field found = null;
-                for (String name : new String[]{"TYPE_BY_STATE", "f_218070_"}) {
-                    try {
-                        found = PoiTypes.class.getDeclaredField(name);
-                        break;
-                    } catch (NoSuchFieldException ignored) {
-                    }
-                }
-                if (found == null) throw new NoSuchFieldException("TYPE_BY_STATE");
+                Field found = PoiTypes.class.getDeclaredField("TYPE_BY_STATE");
                 found.setAccessible(true);
                 typeByState = found;
             }
@@ -104,4 +104,5 @@ public final class HomePoints {
             return null;
         }
     }
+    //?}
 }

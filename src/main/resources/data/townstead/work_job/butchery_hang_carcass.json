@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:job/v3",
+  "mods": ["butchery"],
+  "task": "townstead_work:butcher",
+  "type": "townstead:block_interaction",
+  "target": {
+    "block": "butchery:hook",
+    "interactions": [
+      {
+        "item": "#townstead:butcher_hangable_carcasses",
+        "condition": {
+          "type": "pheno:offset",
+          "y": -1,
+          "condition": { "type": "pheno:air" }
+        },
+        "action": [
+          {
+            "type": "pheno:offset",
+            "y": -1,
+            "block_action": {
+              "type": "pheno:set_block",
+              "block": { "from": "item" },
+              "properties": { "blockstate": "1" },
+              "copy_from": [0, 1, 0],
+              "copy_properties": ["facing"]
+            }
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.chain.hit",
+            "volume": 1
+          },
+          {
+            "type": "pheno:item_action",
+            "action": { "type": "pheno:consume", "amount": 1 }
+          }
+        ],
+        "xp": 1
+      }
+    ]
+  }
+}

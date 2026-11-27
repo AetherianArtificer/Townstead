@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.red_tape"
+  },
+  "icon": "minecraft:red_dye",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.red_tape.description"
+  },
+  "cost": 2,
+  "requires": [
+    "rule_of_law"
+  ]
+}

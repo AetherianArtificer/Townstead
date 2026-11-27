@@ -19,21 +19,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fisherman/netter/full_net"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fisherman/netter/seine"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fisherman/netter/chum"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:fisherman",
+            "at_least": 80
           },
           {
             "type": "pheno:entity_in_radius",
@@ -56,35 +44,155 @@
       "action": {
         "type": "pheno:change_resource",
         "resource": "townstead:tide",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:tide",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:fisherman",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:ingredient",
+                      "item": "minecraft:fishing_rod"
+                    },
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "starcatcher:rods"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 8,
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:hostile"
+                      },
+                      {
+                        "type": "pheno:status_effect",
+                        "effect": "minecraft:slowness"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "pheno:block_in_radius",
+                "radius": 4,
+                "block_condition": {
+                  "type": "pheno:fluid",
+                  "fluid": "water"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:tide",
         "amount": 1
+      }
+    },
+    {
+      "type": "pheno:modifier",
+      "target": "fishing_lure",
+      "operation": "add",
+      "value": 2,
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:netter_chum"
+      }
+    },
+    {
+      "type": "pheno:modifier",
+      "target": "fishing_lure",
+      "operation": "add",
+      "value": 2,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:netter_chum"
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "minecraft:fisherman/netter/feeding_frenzy"
+          }
+        ]
+      }
+    },
+    {
+      "type": "pheno:attribute",
+      "attribute": "minecraft:generic.movement_speed",
+      "amount": -0.3,
+      "operation": "multiply_total",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:netter_netted"
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "minecraft:fisherman/netter/the_big_one"
+          }
+        ]
       }
     }
   ],
   "skills": [
     [
       "knot_work",
-      "toss_net",
-      "lure"
-    ],
-    [
-      "tangle",
-      "drag_net",
-      "bait_and_switch"
-    ],
-    [
-      "full_net",
-      "seine",
-      "chum"
+      "landing_net",
+      "toss_net"
     ],
     [
       "mended_nets",
-      "trawl_net",
-      "iron_gut"
+      "full_catch",
+      "weighted_net"
+    ],
+    [
+      "tangle",
+      "chum",
+      "lure"
+    ],
+    [
+      "full_net",
+      "feeding_frenzy",
+      "bait_and_switch"
     ],
     [
       "master_netter",
-      "great_net",
-      "the_big_one"
+      "the_big_one",
+      "great_net"
     ]
   ]
 }

@@ -5,7 +5,7 @@ plugins {
 
 val mcaNamespace = "forge.net.conczin.mca"
 val mcaArtifact = "minecraft-comes-alive"
-val mcaVersion = "7.7.1-beta.5+1.20.1"
+val mcaVersion = "7.7.1-beta.6+1.20.1"
 val mcaDevelopmentVersion = "1.20.1-SNAPSHOT"
 
 stonecutter {
@@ -75,6 +75,8 @@ dependencies {
     // Resolve through flatDir so ForgeGradle can remap the universal production jar for the
     // named development/test runtime. A files(...) dependency cannot be deobfuscated.
     compileOnly(fg.deobf("townstead.libs:$mcaArtifact:$mcaVersion-universal"))
+    // Bit of a Mess (runtime optional): compat.mess only touches it when it's installed.
+    compileOnly(fg.deobf("townstead.libs:bitofamess:0.1.0+1.20.1"))
     // MCA's shared classes carry Fabric's @Environment(EnvType.CLIENT); this only lets javac resolve the enum.
     compileOnly("net.fabricmc:fabric-loader:0.16.14") { isTransitive = false }
     compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:${property("mixin_extras_version")}")!!)
@@ -193,6 +195,9 @@ tasks.withType<ProcessResources> {
         if (path.contains("/recipe/")) {
             path = path.replace("/recipe/", "/recipes/")
         }
+        if (path.contains("/advancement/")) {
+            path = path.replace("/advancement/", "/advancements/")
+        }
         if (path.contains("/loot_table/")) {
             path = path.replace("/loot_table/", "/loot_tables/")
         }
@@ -203,6 +208,10 @@ tasks.withType<ProcessResources> {
     // 1.20.1 recipe format uses "item" instead of "id" in results
     filesMatching("data/*/recipe/*.json") {
         filter { it.replace("\"id\":", "\"item\":") }
+    }
+    // 1.20.1 item predicates use a "tag" key instead of "items": "#tag"
+    filesMatching("data/*/advancement/**/*.json") {
+        filter { it.replace("\"items\": \"#", "\"tag\": \"") }
     }
     // 1.20.1 recipe conditions use "conditions" key and "forge:mod_loaded" type
     filesMatching("data/*/recipe/*.json") {
@@ -268,4 +277,23 @@ tasks.named<Jar>("jarJar") {
         )
     }
     finalizedBy("reobfJarJar")
+}
+
+// Career skill checks for 1.20.1, as a mod with the game's production names. A dev run cannot load
+// this build's mixins, so the checks run on a real Forge install: tools/skills/run_forge.sh.
+// Sources are written by tools/skills/port_forge.py. Build with: gradlew :1.20.1-forge:reobfSkillCheckJar -PskillCheck
+if (providers.gradleProperty("skillCheck").isPresent) {
+    val skillCheck by sourceSets.creating {
+        java.setSrcDirs(listOf(rootProject.file("src/skillCheckForge/java")))
+        resources.setSrcDirs(listOf(rootProject.file("src/skillCheckForge/resources")))
+        compileClasspath += sourceSets.main.get().compileClasspath + sourceSets.main.get().output
+        runtimeClasspath += sourceSets.main.get().runtimeClasspath
+    }
+    val skillCheckJar by tasks.registering(Jar::class) {
+        archiveClassifier.set("skillcheck")
+        from(skillCheck.output)
+    }
+    reobf {
+        create("skillCheckJar")
+    }
 }

@@ -26,12 +26,14 @@ import net.minecraftforge.client.event.RegisterClientCommandsEvent;
  * by default): the synced root under its id and the self key, the expressed genes and carried
  * variants, the proportions gene the model uses, and for a player, MCA's stand-in villager (whose
  * genetics scale the player's villager model). Printed and written to the log.
+ * {@code /townstead-roots-client attachments}: one line on how far the attachment sync got.
  */
 public final class RootsClientCommands {
     @SubscribeEvent
     public static void register(RegisterClientCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("townstead-roots-client")
                 .executes(c -> report(-1))
+                .then(Commands.literal("attachments").executes(c -> attachments()))
                 .then(Commands.argument("entityId", IntegerArgumentType.integer(0))
                         .executes(c -> report(IntegerArgumentType.getInteger(c, "entityId")))));
     }
@@ -79,6 +81,22 @@ public final class RootsClientCommands {
         }
         //?}
         String report = out.toString();
+        mc.player.displayClientMessage(Component.literal(report), false);
+        org.slf4j.LoggerFactory.getLogger("townstead/roots-client").info(report);
+        return 1;
+    }
+
+    private static int attachments() {
+        var mc = Minecraft.getInstance();
+        if (mc.player == null) return 0;
+        var worn = com.aetherianartificer.townstead.client.attachment.AttachmentRenderLayer.worn(mc.player);
+        long drawable = worn.stream()
+                .filter(com.aetherianartificer.townstead.client.attachment.AttachmentClient::drawable).count();
+        String mode = net.conczin.mca.MCAClient.useVillagerRenderer(mc.player.getUUID()) ? "villager"
+                : net.conczin.mca.MCAClient.useGeneticsRenderer(mc.player.getUUID()) ? "player" : "vanilla or none";
+        String report = "Attachments: " + com.aetherianartificer.townstead.client.attachment.AttachmentClient.status()
+                + "; root " + RootClientStore.resolve(mc.player) + ", model " + mode
+                + ", wearing " + worn.size() + " (" + drawable + " drawable)";
         mc.player.displayClientMessage(Component.literal(report), false);
         org.slf4j.LoggerFactory.getLogger("townstead/roots-client").info(report);
         return 1;

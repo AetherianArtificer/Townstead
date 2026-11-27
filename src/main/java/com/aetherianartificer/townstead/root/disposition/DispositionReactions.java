@@ -22,13 +22,14 @@ import net.minecraft.world.phys.Vec3;
 public final class DispositionReactions {
 
     private static final int INTERVAL = 20;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(INTERVAL);
     private static final double RADIUS = 12.0;
 
     private DispositionReactions() {}
 
     public static void tick(VillagerEntityMCA villager) {
         if (villager.level().isClientSide) return;
-        if ((villager.level().getGameTime() + villager.getId()) % INTERVAL != 0) return;
+        if (!STRIDE.due(villager, villager.level().getGameTime() + villager.getId())) return;
         // A hunter picks its own fights; fleeing would undo them.
         if (com.aetherianartificer.townstead.replace.behavior.BehaviorProfiles.behavior(villager,
                 com.aetherianartificer.townstead.replace.behavior.BehaviorTypes.HUNT,

@@ -41,7 +41,17 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
                         boolean toggledOn, int cooldownTicks, long readyAt,
                         int costAmount, String costLabel, int kind, String clientValue,
                         String source, int costColor, int costHave,
-                        boolean usable, long activeUntil, int activeTicks, String description) {
+                        boolean usable, long activeUntil, int activeTicks, String description, boolean hold) {
+
+        /** One that fires once per press. */
+        public Entry(int slot, String id, String name, String icon, boolean toggle,
+                     boolean toggledOn, int cooldownTicks, long readyAt,
+                     int costAmount, String costLabel, int kind, String clientValue,
+                     String source, int costColor, int costHave,
+                     boolean usable, long activeUntil, int activeTicks, String description) {
+            this(slot, id, name, icon, toggle, toggledOn, cooldownTicks, readyAt, costAmount, costLabel,
+                    kind, clientValue, source, costColor, costHave, usable, activeUntil, activeTicks, description, false);
+        }
 
         /** One whose owner keeps no timers of its own: usable, and not running. */
         public Entry(int slot, String id, String name, String icon, boolean toggle,
@@ -85,6 +95,7 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             buf.writeLong(entry.activeUntil());
             buf.writeVarInt(entry.activeTicks());
             buf.writeUtf(entry.description());
+            buf.writeBoolean(entry.hold());
         }
         buf.writeVarInt(available.size());
         for (Option option : available) {
@@ -110,7 +121,7 @@ public record AbilityLoadoutS2CPayload(List<Entry> entries, List<Option> availab
             entries.add(new Entry(buf.readVarInt(), buf.readUtf(), buf.readUtf(), buf.readUtf(),
                     buf.readBoolean(), buf.readBoolean(), buf.readVarInt(), buf.readLong(),
                     buf.readVarInt(), buf.readUtf(), buf.readVarInt(), buf.readUtf(), buf.readUtf(),
-                    buf.readInt(), buf.readVarInt(), buf.readBoolean(), buf.readLong(), buf.readVarInt(), buf.readUtf()));
+                    buf.readInt(), buf.readVarInt(), buf.readBoolean(), buf.readLong(), buf.readVarInt(), buf.readUtf(), buf.readBoolean()));
         }
         int optionCount = buf.readVarInt();
         List<Option> available = new ArrayList<>(optionCount);

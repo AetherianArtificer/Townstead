@@ -1,0 +1,27 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.parting_shot"
+  },
+  "icon": "minecraft:tipped_arrow",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.parting_shot.description"
+  },
+  "cost": 1,
+  "requires": [
+    "shoot_and_scoot"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "projectile_damage",
+    "operation": "multiply",
+    "value": 1.5,
+    "condition": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:movement",
+        "movement": "grounded"
+      }
+    }
+  }
+}

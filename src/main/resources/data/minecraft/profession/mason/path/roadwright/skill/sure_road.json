@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.sure_road"
+  },
+  "icon": "minecraft:dirt_path",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.sure_road.description"
+  },
+  "cost": 1,
+  "requires": [
+    "graded"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "condition": {
+      "type": "pheno:block",
+      "y": -1,
+      "block_condition": {
+        "type": "in_tag",
+        "tag": "townstead:roads"
+      }
+    },
+    "action": {
+      "type": "pheno:clear_effect",
+      "effect": "minecraft:slowness"
+    }
+  }
+}

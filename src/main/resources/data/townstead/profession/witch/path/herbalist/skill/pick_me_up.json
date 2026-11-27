@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.pick_me_up"
+  },
+  "icon": "minecraft:honey_bottle",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.pick_me_up.description"
+  },
+  "cost": 1,
+  "requires": [
+    "smelling_salts"
+  ]
+}

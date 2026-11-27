@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.clean_sweep"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.baker.miller.clean_sweep.description"
+  },
+  "cost": 1,
+  "requires": [
+    "winnow"
+  ]
+}

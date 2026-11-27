@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.tidecaller.drenched"
+  },
+  "icon": "minecraft:wet_sponge",
+  "description": {
+    "translate": "skill.townstead.fisherman.tidecaller.drenched.description"
+  },
+  "cost": 1,
+  "requires": [
+    "gills"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 10,
+    "resource_cost": {
+      "resource": "townstead:tide",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:tide",
+      "min": 25
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:extinguish"
+        },
+        {
+          "type": "pheno:at",
+          "blocks": {
+            "radius": 1,
+            "where": {
+              "type": "pheno:in_tag",
+              "tag": "minecraft:fire"
+            }
+          },
+          "do": {
+            "type": "pheno:destroy",
+            "drop_item": false
+          },
+          "optional": true
+        }
+      ]
+    }
+  }
+}

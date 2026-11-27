@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "hit_and_run"
+    "nimble"
   ],
   "power": {
     "type": "pheno:damage_modifier",
@@ -18,7 +18,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:draw",
-      "min": 50
+      "min": 25
     }
   }
 }

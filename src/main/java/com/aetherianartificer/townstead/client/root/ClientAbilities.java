@@ -31,6 +31,8 @@ public final class ClientAbilities {
         for (String geneId : geneIds) {
             GeneCatalogEntry gene = RootCatalogClient.gene(geneId);
             if (gene == null || !gene.isAbility() || !gene.abilityKey().equals(key)) continue;
+            String part = gene.abilityNeedsPart();
+            if (!part.isEmpty() && com.aetherianartificer.townstead.root.attachment.BodyParts.anyLost(entity, part)) continue;
             if (gene.abilityToggle()) {
                 if (RootClientStore.isToggled(entity.getId(), geneId)) return true;
             } else {

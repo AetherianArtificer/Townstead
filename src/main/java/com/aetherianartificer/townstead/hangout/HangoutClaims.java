@@ -55,6 +55,13 @@ public final class HangoutClaims {
         return true;
     }
 
+    /** Whether {@code owner} still holds any live lease. */
+    public synchronized boolean holdsAny(UUID owner, long now) {
+        prune(now);
+        for (Lease lease : leases.values()) if (lease.owner().equals(owner)) return true;
+        return false;
+    }
+
     public synchronized boolean owns(UUID owner, Key key, long now) {
         prune(now);
         Lease lease = leases.get(key);

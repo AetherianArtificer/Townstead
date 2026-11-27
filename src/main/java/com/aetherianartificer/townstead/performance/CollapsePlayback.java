@@ -14,6 +14,8 @@ import java.util.WeakHashMap;
 /** Server-owned collapse movement; navigation never competes with the authored steps. */
 public final class CollapsePlayback {
     private static final int LEASE = 1200;
+    /** Written on someone sleeping rough, so a reload finds them still lying there. */
+    private static final String ROUGH = "townstead:sleeping_rough";
     private static final Map<VillagerEntityMCA, State> ACTIVE = new WeakHashMap<>();
     private static final class State {
         long start;
@@ -33,12 +35,16 @@ public final class CollapsePlayback {
     }
 
     public static PerformanceHandle start(VillagerEntityMCA actor, String channel, int duration, int priority, String clip) {
+        State prior = ACTIVE.get(actor);
         stop(actor);
         State s = new State();
         s.clip = clip;
-        s.start = s.lastTick = actor.level().getGameTime();
-        s.expires = s.start + duration;
-        s.yaw = actor.yBodyRot;
+        s.lastTick = actor.level().getGameTime();
+        // Someone already on the ground in this clip stays there; one clip taking over from another never replays the fall.
+        boolean continuing = prior != null && prior.clip.equals(clip);
+        s.start = continuing ? prior.start : s.lastTick;
+        s.expires = s.lastTick + duration;
+        s.yaw = continuing ? prior.yaw : actor.yBodyRot;
         s.channel = channel;
         s.priority = priority;
         ACTIVE.put(actor, s);
@@ -46,6 +52,22 @@ public final class CollapsePlayback {
         freeze(actor, s);
         broadcast(actor, packet(actor, s));
         return () -> { if (ACTIVE.get(actor) == s) stop(actor); };
+    }
+
+    /** Holds someone who is already on the ground, as when a downed villager's playback lapsed or they reloaded. */
+    public static void holdDown(VillagerEntityMCA actor, String channel, int duration, int priority) {
+        stop(actor);
+        State s = new State();
+        s.lastTick = actor.level().getGameTime();
+        s.start = Math.max(0, s.lastTick - CollapseMotion.DURATION);
+        s.expires = s.lastTick + duration;
+        s.yaw = actor.getYRot();
+        s.channel = channel;
+        s.priority = priority;
+        ACTIVE.put(actor, s);
+        actor.stopRiding();
+        freeze(actor, s);
+        broadcast(actor, packet(actor, s));
     }
 
     public static void startFatigue(VillagerEntityMCA actor) {
@@ -57,6 +79,7 @@ public final class CollapsePlayback {
     public static void startRough(VillagerEntityMCA actor) {
         start(actor, CollapseMotion.CHANNEL, LEASE, 1000, CollapseMotion.LIE_DOWN_CLIP);
         ACTIVE.get(actor).rough = true;
+        actor.getPersistentData().putBoolean(ROUGH, true);
     }
 
     public static boolean sleepingRough(VillagerEntityMCA actor) {
@@ -66,16 +89,32 @@ public final class CollapsePlayback {
 
     /** Loaded unconscious villagers resume the hold, never repeat or reapply the fall. */
     private static State restore(VillagerEntityMCA actor) {
+        State s = restored(actor, CollapseMotion.CLIP);
+        s.fatigue = true;
+        return s;
+    }
+
+    private static State restoreRough(VillagerEntityMCA actor) {
+        State s = restored(actor, CollapseMotion.LIE_DOWN_CLIP);
+        s.rough = true;
+        return s;
+    }
+
+    private static State restored(VillagerEntityMCA actor, String clip) {
         State s = new State();
+        s.clip = clip;
         s.lastTick = actor.level().getGameTime();
-        s.start = Math.max(0, s.lastTick - CollapseMotion.DURATION);
+        s.start = Math.max(0, s.lastTick - CollapseMotion.duration(clip));
         s.expires = s.lastTick + LEASE;
         s.yaw = actor.getYRot(); // Entity yaw survives reload; the transient body yaw may not.
         s.channel = CollapseMotion.CHANNEL;
         s.priority = 1000;
-        s.fatigue = true;
         ACTIVE.put(actor, s);
         return s;
+    }
+
+    private static boolean savedRough(VillagerEntityMCA actor) {
+        return actor.getPersistentData().getBoolean(ROUGH);
     }
 
     public static boolean active(VillagerEntityMCA actor) { return ACTIVE.containsKey(actor); }
@@ -98,8 +137,8 @@ public final class CollapsePlayback {
                 && TownsteadVillagers.get(actor).needs().collapsed();
         State s = ACTIVE.get(actor);
         long now = actor.level().getGameTime();
-        if (s == null && collapsed) {
-            s = restore(actor);
+        if (s == null && (collapsed || savedRough(actor))) {
+            s = collapsed ? restore(actor) : restoreRough(actor);
             broadcast(actor, packet(actor, s));
         }
         if (s == null) return;
@@ -138,8 +177,10 @@ public final class CollapsePlayback {
 
     public static void syncToWatcher(ServerPlayer watcher, VillagerEntityMCA actor) {
         State s = ACTIVE.get(actor);
-        if (s == null && !actor.isSleeping() && TownsteadConfig.isVillagerFatigueEnabled()
-                && TownsteadVillagers.get(actor).needs().collapsed()) s = restore(actor);
+        if (s == null && !actor.isSleeping() && TownsteadConfig.isVillagerFatigueEnabled()) {
+            if (TownsteadVillagers.get(actor).needs().collapsed()) s = restore(actor);
+            else if (savedRough(actor)) s = restoreRough(actor);
+        }
         if (s == null) return;
         //? if neoforge {
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(watcher, packet(actor, s));
@@ -149,6 +190,7 @@ public final class CollapsePlayback {
     }
 
     public static void stop(VillagerEntityMCA actor) {
+        actor.getPersistentData().remove(ROUGH);
         State s = ACTIVE.remove(actor);
         if (s != null) broadcast(actor, new NativePerformanceS2CPayload(actor.getId(), s.channel, "", 0, s.priority));
     }

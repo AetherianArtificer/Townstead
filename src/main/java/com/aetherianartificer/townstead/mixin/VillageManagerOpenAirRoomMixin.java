@@ -9,6 +9,7 @@ import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.server.level.ServerLevel;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -46,11 +47,12 @@ public abstract class VillageManagerOpenAirRoomMixin {
      * pen around it down with it.
      */
     @WrapOperation(method = "getBlockedResult",
-            at = @At(value = "INVOKE", target = "Lnet/conczin/mca/server/world/data/Building;containsPos(Lnet/minecraft/core/BlockPos;)Z"),
+            at = @At(value = "INVOKE", target = "Lnet/conczin/mca/server/world/data/Building;containsPos(Lnet/minecraft/core/Vec3i;)Z"),
             remap = false, require = 0)
-    private boolean townstead$openAirSiteGround(Building building, BlockPos pos, Operation<Boolean> original) {
-        boolean contains = original.call(building, pos);
+    private boolean townstead$openAirSiteGround(Building building, Vec3i target, Operation<Boolean> original) {
+        boolean contains = original.call(building, target);
         if (!contains) return false;
+        BlockPos pos = new BlockPos(target);
         ServerLevel level = ((VillageManagerAccessor) (Object) this).townstead$world();
         Village village = level == null ? null
                 : ((VillageManager) (Object) this).findNearestVillage(pos, Village.MERGE_MARGIN).orElse(null);

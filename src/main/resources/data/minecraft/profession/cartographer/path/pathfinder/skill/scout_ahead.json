@@ -7,25 +7,113 @@
   "description": {
     "translate": "skill.townstead.cartographer.pathfinder.scout_ahead.description"
   },
-  "cost": 1,
-  "requires": [
-    "keen_sight"
-  ],
-  "skill_group": "townstead:pathfinder_trail",
+  "cost": 2,
+  "skill_group": "townstead:pathfinder_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 200,
+    "cooldown": 240,
     "slot": 2,
-    "ai_trigger": "never",
+    "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
       "amount": 30
     },
     "action": {
-      "type": "pheno:add_velocity",
-      "relative": true,
-      "z": 1.6,
-      "y": 0.15
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/pathfinder/pathfinders_mark"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:bearing",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:bearing",
+                "amount": -10
+              },
+              {
+                "type": "pheno:spawn_entity",
+                "entity": "minecraft:armor_stand",
+                "count": 1,
+                "radius": 0,
+                "owner": true,
+                "follow": false,
+                "allied": false,
+                "duration": 40,
+                "on_spawn": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 8,
+                  "include_self": false,
+                  "target": "all",
+                  "action": {
+                    "type": "pheno:set_attack_target"
+                  }
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:ward",
+          "id": "scout_ahead",
+          "amount": 100,
+          "duration": 60,
+          "damage_condition": {
+            "type": "pheno:projectile"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "sneaking"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/pathfinder/double_back"
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:add_velocity",
+            "relative": true,
+            "z": -1.6,
+            "y": 0.15
+          },
+          "else_action": {
+            "type": "pheno:add_velocity",
+            "relative": true,
+            "z": 1.6,
+            "y": 0.15
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:cloud",
+          "count": 8,
+          "spread": 0.3
+        }
+      ]
     }
   }
 }

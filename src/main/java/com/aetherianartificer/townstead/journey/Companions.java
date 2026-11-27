@@ -1,7 +1,7 @@
 package com.aetherianartificer.townstead.journey;
 
 import com.aetherianartificer.townstead.building.BuildingCells;
-import com.aetherianartificer.townstead.downed.DownedService;
+import com.aetherianartificer.townstead.villager.VillagerControl;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.ai.MemoryModuleTypeMCA;
 import net.conczin.mca.entity.ai.MoveState;
@@ -41,6 +41,8 @@ public final class Companions {
 
     /** {@code villager} travels with {@code player} until {@link #end}. */
     public static void start(VillagerEntityMCA villager, ServerPlayer player, boolean leavePets) {
+        // A trip ended a moment ago may still have them walking off; this one replaces that.
+        Journeys.cancelLeaving(villager);
         CompoundTag data = new CompoundTag();
         data.putUUID(LEADER, player.getUUID());
         data.putBoolean(LEAVE_PETS, leavePets);
@@ -108,7 +110,19 @@ public final class Companions {
             return;
         }
         ServerPlayer player = server.getPlayerList().getPlayer(leaderId);
-        if (player == null || DownedService.isDowned(villager)) return;
+        if (player == null) return;
+        // MCA does not keep who is being followed across a reload.
+        //? if >=1.21 {
+        boolean following = villager.getBrain().hasMemoryValue(MemoryModuleTypeMCA.PLAYER_FOLLOWING);
+        //?} else {
+        /*boolean following = villager.getBrain().hasMemoryValue(MemoryModuleTypeMCA.PLAYER_FOLLOWING.get());
+        *///?}
+        if (VillagerControl.outranked(villager, VillagerControl.Owner.COMPANION)) {
+            // The trip resumes when that lets go; until then they stop trailing after the player.
+            if (following) villager.getVillagerBrain().setMoveState(MoveState.MOVE, null);
+            return;
+        }
+        if (!VillagerControl.mayMove(villager, VillagerControl.Owner.COMPANION)) return;
         if (player.level() != villager.level()) {
             // The player went through a portal: follow them there as a journey, pets and all.
             LOADED.remove(villager);
@@ -119,12 +133,6 @@ public final class Companions {
             Journeys.depart(villager, CATCH_UP, 0, data);
             return;
         }
-        // MCA does not keep who is being followed across a reload.
-        //? if >=1.21 {
-        boolean following = villager.getBrain().hasMemoryValue(MemoryModuleTypeMCA.PLAYER_FOLLOWING);
-        //?} else {
-        /*boolean following = villager.getBrain().hasMemoryValue(MemoryModuleTypeMCA.PLAYER_FOLLOWING.get());
-        *///?}
         if (!following) {
             villager.getVillagerBrain().setMoveState(MoveState.FOLLOW, player);
         }

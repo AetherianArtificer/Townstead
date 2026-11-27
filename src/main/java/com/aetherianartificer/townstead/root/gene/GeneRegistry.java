@@ -100,6 +100,17 @@ public final class GeneRegistry {
      * authored without a name or icon of its own, so anything offering the player a list of genes
      * has to be able to leave them out.</p>
      */
+    /** The gene a companion is declared inside, or null when this gene isn't a companion. */
+    @Nullable
+    public static ResourceLocation parentOf(ResourceLocation id) {
+        if (id == null) return null;
+        ResourceLocation legacy = com.aetherianartificer.townstead.root.LegacyNamespace.remap(id);
+        for (Map.Entry<ResourceLocation, List<ResourceLocation>> entry : COMPANIONS.entrySet()) {
+            if (entry.getValue().contains(id) || (legacy != null && entry.getValue().contains(legacy))) return entry.getKey();
+        }
+        return null;
+    }
+
     public static boolean isCompanion(ResourceLocation id) {
         if (id == null) return false;
         if (COMPANION_IDS.contains(id)) return true;
@@ -144,6 +155,32 @@ public final class GeneRegistry {
                 ambiguous.add(shortId);
             }
         }
+        // A companion keeps its parent's prefix: example:elf/triple_jump/jumps also answers to
+        // example:triple_jump/jumps, so a gene moved into a folder keeps its companions' references.
+        // Its bare basename stays unclaimed, since companion names (jumps, mana) are generic.
+        Map<ResourceLocation, ResourceLocation> companionAliases = new LinkedHashMap<>();
+        for (ResourceLocation id : companionIds) {
+            String path = id.getPath();
+            int slash = path.lastIndexOf('/');
+            if (slash <= 0) continue;
+            //? if >=1.21 {
+            ResourceLocation parent = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), path.substring(0, slash));
+            //?} else {
+            /*ResourceLocation parent = new ResourceLocation(id.getNamespace(), path.substring(0, slash));
+            *///?}
+            for (Map.Entry<ResourceLocation, ResourceLocation> alias : aliases.entrySet()) {
+                if (!alias.getValue().equals(parent)) continue;
+                //? if >=1.21 {
+                ResourceLocation shortId = ResourceLocation.fromNamespaceAndPath(id.getNamespace(),
+                        alias.getKey().getPath() + path.substring(slash));
+                //?} else {
+                /*ResourceLocation shortId = new ResourceLocation(id.getNamespace(),
+                        alias.getKey().getPath() + path.substring(slash));
+                *///?}
+                if (!ids.contains(shortId)) companionAliases.putIfAbsent(shortId, id);
+            }
+        }
+        companionAliases.forEach(aliases::putIfAbsent);
         return new AliasIndex(Map.copyOf(aliases), Set.copyOf(ambiguous));
     }
 

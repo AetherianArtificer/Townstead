@@ -493,6 +493,7 @@ public final class StationProtocols {
         CampfireStationAdapter.bootstrap();
         FurnaceStationAdapter.bootstrap();
         CraftSurfaceAdapter.bootstrap();
+        UseOnBlockAdapter.bootstrap();
         BrewingStandStationAdapter.bootstrap();
         DataDrivenStationAdapter.bootstrap();
     }

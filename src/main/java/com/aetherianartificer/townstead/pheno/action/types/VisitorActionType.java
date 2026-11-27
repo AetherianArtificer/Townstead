@@ -21,7 +21,8 @@ import java.util.Map;
  * from the edge to the player. With {@code "from": "near"} they come up from {@code distance}
  * blocks away instead, wherever the player is, village or not. With {@code thrall}, a second
  * visitor comes with them, bound as their thrall, with the role {@code <role>_thrall}. Nothing
- * happens when a visitor with the same role is already near.
+ * happens when a visitor with the same role is already near. With {@code essential}, they are
+ * downed instead of killed while they are a visitor (the thrall too, when the thrall says so).
  * <pre>
  * { "type": "pheno:visitor", "role": "fledgling", "states": { "townstead_state:vampire": 1 } }
  * { "type": "pheno:visitor", "role": "vampire_couple", "states": { "townstead_state:vampire": 1 },
@@ -91,6 +92,6 @@ public final class VisitorActionType implements ActionType {
         String gender = json.has("gender") ? GsonHelper.getAsString(json, "gender") : null;
         ResourceLocation profession = json.has("profession") ? DataPackLang.parseId(GsonHelper.getAsString(json, "profession")) : null;
         @Nullable Visitors.Spec thrall = json.has("thrall") ? spec(role + "_thrall", GsonHelper.getAsJsonObject(json, "thrall")) : null;
-        return new Visitors.Spec(role, states, gender, profession, thrall);
+        return new Visitors.Spec(role, states, gender, profession, thrall, GsonHelper.getAsBoolean(json, "essential", false));
     }
 }

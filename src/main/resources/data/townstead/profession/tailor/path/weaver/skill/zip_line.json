@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.zip_line"
+  },
+  "icon": "minecraft:chain",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.zip_line.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tightrope"
+  ]
+}

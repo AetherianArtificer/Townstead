@@ -17,7 +17,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:edge",
-      "min": 50
+      "min": 25
     },
     "bientity_condition": {
       "type": "pheno:target_condition",

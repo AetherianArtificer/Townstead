@@ -74,6 +74,20 @@ public final class RayCast {
         return hit.getType() == HitResult.Type.BLOCK ? hit : null;
     }
 
+    /** The first {@code limit} solid blocks along this ray, nearest first, passing through each. */
+    public List<net.minecraft.core.BlockPos> blocksAlong(SelectorContext ctx, int limit) {
+        Ray ray = build(ctx);
+        if (ray == null) return List.of();
+        Vec3 end = ray.end();
+        double length = ray.origin.distanceTo(end);
+        List<net.minecraft.core.BlockPos> out = new ArrayList<>();
+        for (double d = 0; d <= length && out.size() < limit; d += 0.25) {
+            net.minecraft.core.BlockPos pos = net.minecraft.core.BlockPos.containing(ray.origin.lerp(end, d / Math.max(length, 1e-4)));
+            if (!out.contains(pos) && !ctx.level().getBlockState(pos).getCollisionShape(ctx.level(), pos).isEmpty()) out.add(pos);
+        }
+        return out;
+    }
+
     /** The entities this ray strikes (the first, or all when piercing), nearest first, never past a wall. */
     public List<LivingEntity> entityHits(SelectorContext ctx) {
         Ray ray = build(ctx);

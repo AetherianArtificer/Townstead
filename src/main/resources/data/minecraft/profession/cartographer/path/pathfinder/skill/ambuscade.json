@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.ambuscade"
+  },
+  "icon": "minecraft:black_dye",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.ambuscade.description"
+  },
+  "cost": 1,
+  "requires": [
+    "trailhead"
+  ]
+}

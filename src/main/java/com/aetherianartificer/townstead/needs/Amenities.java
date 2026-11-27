@@ -54,6 +54,8 @@ import java.util.Set;
  */
 public final class Amenities {
     public static final String SCHEMA = "townstead:amenity/v1";
+    /** The item role a vessel amenity lends to its block interaction. */
+    public static final String VESSEL_ROLE = "vessel";
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/Amenities");
     private static volatile List<Definition> DEFINITIONS = List.of();
     private static final Map<ResourceLocation, WorldSource> WORLD_SOURCES = new LinkedHashMap<>();
@@ -64,7 +66,8 @@ public final class Amenities {
                              Set<ResourceLocation> blockTags, @Nullable BlockCondition anchor,
                              @Nullable BlockCondition requires,
                              @Nullable BlockAction prepare, @Nullable BlockAction behavior,
-                             @Nullable Action effect, NeedEffectProjection projection, @Nullable String kind) {
+                             @Nullable Action effect, NeedEffectProjection projection, @Nullable String kind,
+                             @Nullable net.minecraft.world.item.Item vessel) {
         boolean matches(ResourceLocation blockId, BlockState state) {
             if (blocks.contains(blockId)) return true;
             for (ResourceLocation tag : blockTags) {
@@ -112,7 +115,8 @@ public final class Amenities {
         }
 
         public boolean hydrates(ServerLevel level) {
-            return definition != null ? definition.projection().hydrates()
+            // A vessel amenity serves whatever the block fills it with; the thirst mod values it on use.
+            return definition != null ? definition.projection().hydrates() || definition.vessel() != null
                     : worldSource != null && worldSource.hydrates(level, pos);
         }
     }
@@ -234,13 +238,57 @@ public final class Amenities {
         }
         if (definition.behavior() != null) {
             BlockActionContext behavior = new BlockActionContext(level, candidate.pos(), villager);
+            var bridge = definition.vessel() == null ? null
+                    : com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver.get();
+            Object sample = bridge == null ? null : bridge.sampleBlockWater(level, candidate.pos());
+            if (definition.vessel() != null) behavior.setItemRole(VESSEL_ROLE, new ItemStack(definition.vessel()));
             definition.behavior().run(behavior);
             if (!behavior.succeeded()) return false;
+            if (definition.vessel() != null && !drinkServing(villager, definition.vessel(), behavior, sample)) return false;
         }
         if (definition.effect() == null) return true;
         ActionContext effect = new ActionContext(villager);
         definition.effect().run(effect);
         return effect.succeeded();
+    }
+
+    /**
+     * The block filled the vessel through its own interaction; the villager drinks what came back
+     * the way it drinks a carried item, so the thirst mod values it, grades it and makes it ill.
+     * The vessel was only ever lent, so an emptied one is not handed back; one with servings left
+     * stays with the villager.
+     */
+    private static boolean drinkServing(VillagerEntityMCA villager, net.minecraft.world.item.Item vessel,
+                                        BlockActionContext behavior, @Nullable Object sample) {
+        List<ItemStack> results = new ArrayList<>();
+        results.add(behavior.itemRole(VESSEL_ROLE));
+        results.addAll(behavior.returnedItems());
+        var bridge = com.aetherianartificer.townstead.compat.thirst.ThirstBridgeResolver.get();
+        for (ItemStack serving : results) {
+            if (serving.isEmpty() || unchangedVessel(serving, vessel)) continue;
+            if (bridge != null) serving = bridge.gradeServing(serving, sample);
+            if (bridge != null && !bridge.itemRestoresThirst(serving)) continue;
+            if (!com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.applyServing(villager, serving)) return false;
+            // A vessel that holds more than one serving (a flask filled from a whole source) keeps the
+            // rest; the villager drew that water and carries it, the way a player would.
+            ItemStack rest = bridge == null ? ItemStack.EMPTY : bridge.onDrinkConsumed(serving);
+            if (!rest.isEmpty() && bridge.itemRestoresThirst(rest)) {
+                ItemStack left = villager.getInventory().addItem(rest);
+                if (!left.isEmpty()) villager.spawnAtLocation(left);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /** The lent vessel came back as it went: empty, nothing poured into it. */
+    private static boolean unchangedVessel(ItemStack serving, net.minecraft.world.item.Item vessel) {
+        if (!serving.is(vessel)) return false;
+        //? if >=1.21 {
+        return ItemStack.isSameItemSameComponents(serving, new ItemStack(vessel));
+        //?} else {
+        /*return ItemStack.isSameItemSameTags(serving, new ItemStack(vessel));
+        *///?}
     }
 
     private static Optional<Village> resolveVillage(VillagerEntityMCA villager) {
@@ -298,7 +346,15 @@ public final class Amenities {
     private static @Nullable Definition parse(ResourceLocation id, JsonObject json) {
         String kind = json.has("kind") ? net.minecraft.util.GsonHelper.getAsString(json, "kind", "") : null;
         if (kind != null && kind.isBlank()) return null;
-        if (!json.has("blocks") || !json.get("blocks").isJsonArray() || (!json.has("effect") && kind == null)) return null;
+        net.minecraft.world.item.Item vessel = null;
+        if (json.has("vessel")) {
+            ResourceLocation vesselId = ResourceLocation.tryParse(net.minecraft.util.GsonHelper.getAsString(json, "vessel", ""));
+            if (vesselId == null || !BuiltInRegistries.ITEM.containsKey(vesselId)) return null;
+            vessel = BuiltInRegistries.ITEM.get(vesselId);
+            if (!json.has("behavior")) return null;
+        }
+        if (!json.has("blocks") || !json.get("blocks").isJsonArray()
+                || (!json.has("effect") && kind == null && vessel == null)) return null;
         Set<ResourceLocation> blocks = new LinkedHashSet<>();
         Set<ResourceLocation> tags = new LinkedHashSet<>();
         for (JsonElement element : json.getAsJsonArray("blocks")) {
@@ -321,6 +377,6 @@ public final class Amenities {
         Action effect = json.has("effect") ? Actions.parse(json.get("effect")) : null;
         if (json.has("effect") && effect == null) return null;
         return new Definition(id, Set.copyOf(blocks), Set.copyOf(tags), anchor, requires, prepare, behavior,
-                effect, NeedEffectProjection.project(json.get("effect")), kind);
+                effect, NeedEffectProjection.project(json.get("effect")), kind, vessel);
     }
 }

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "pollinate"
+    "honey_keeper"
   ],
   "power": {
     "type": "pheno:mobs_ignore",

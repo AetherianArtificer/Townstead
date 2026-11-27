@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.overwatch"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.overwatch.description"
+  },
+  "cost": 2,
+  "requires": [
+    "flare"
+  ]
+}

@@ -15,8 +15,18 @@
     "type": "pheno:action_over_time",
     "interval": 400,
     "condition": {
-      "type": "pheno:village",
-      "within_border": true
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:village",
+          "within_border": true
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:proof",
+          "min": 50
+        }
+      ]
     },
     "action": {
       "type": "pheno:and",
@@ -116,6 +126,10 @@
           }
         }
       ]
+    },
+    "resource_cost": {
+      "resource": "townstead:proof",
+      "amount": 0
     }
   }
 }

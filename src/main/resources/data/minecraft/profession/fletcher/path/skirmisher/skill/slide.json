@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.slide"
+  },
+  "icon": "minecraft:ice",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.slide.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tumble"
+  ]
+}

@@ -1,0 +1,166 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.waypoint"
+  },
+  "icon": "minecraft:map",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.waypoint.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:pathfinder_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:pathfinder_locked"
+          }
+        },
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:movement",
+              "movement": "sneaking"
+            },
+            {
+              "type": "pheno:resource",
+              "resource": "townstead:bearing",
+              "min": 25
+            }
+          ]
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:if_else",
+      "condition": {
+        "type": "pheno:movement",
+        "movement": "sneaking"
+      },
+      "if_action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:at",
+            "blocks": "here",
+            "do": {
+              "type": "pheno:change_collection",
+              "collection": "townstead:waypoint",
+              "operation": "add"
+            }
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:end_rod",
+            "count": 12,
+            "spread": 0.5
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.amethyst_block.chime",
+            "volume": 1.0,
+            "pitch": 1.2
+          }
+        ]
+      },
+      "else_action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:cartographer/pathfinder/homeward"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:area_of_effect",
+                  "radius": 6,
+                  "include_self": false,
+                  "target": "non_hostile",
+                  "action": {
+                    "type": "pheno:teleport",
+                    "to": {
+                      "blocks": {
+                        "type": "pheno:collection",
+                        "collection": "townstead:waypoint"
+                      }
+                    },
+                    "safe": true
+                  }
+                },
+                {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:pathfinder_locked",
+                  "duration": 1200
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            }
+          },
+          {
+            "type": "pheno:teleport",
+            "to": {
+              "blocks": {
+                "type": "pheno:collection",
+                "collection": "townstead:waypoint"
+              }
+            },
+            "safe": true
+          },
+          {
+            "type": "pheno:change_resource",
+            "resource": "townstead:bearing",
+            "amount": -25
+          },
+          {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:cartographer/pathfinder/second_camp"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:energize",
+                  "amount": 4
+                },
+                {
+                  "type": "pheno:clear_effect",
+                  "effect": "minecraft:slowness"
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            }
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.amethyst_block.chime",
+            "volume": 1.0,
+            "pitch": 0.8
+          }
+        ]
+      }
+    }
+  }
+}

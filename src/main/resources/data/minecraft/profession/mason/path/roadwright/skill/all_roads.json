@@ -22,17 +22,17 @@
       "type": "pheno:and",
       "conditions": [
         {
-          "type": "pheno:resource",
-          "resource": "townstead:mortar",
-          "min": 75
-        },
-        {
           "type": "pheno:block",
           "y": -1,
           "block_condition": {
             "type": "in_tag",
             "tag": "townstead:roads"
           }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:mortar",
+          "min": 50
         }
       ]
     },

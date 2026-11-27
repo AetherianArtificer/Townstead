@@ -12,6 +12,8 @@ import org.jetbrains.annotations.Nullable;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Which open states a Root's people can have, declared as {@code "states": {"townstead_state:vampire": false}}
@@ -25,6 +27,8 @@ public final class RootStates {
 
     private static final Map<Kind, Map<ResourceLocation, Map<ResourceLocation, Boolean>>> DECLARED =
             new EnumMap<>(Kind.class);
+    // Asked per state per villager per tick, and a world holds only a handful of Root ids.
+    private static final Map<String, Optional<ResourceLocation>> PARSED_ROOT_IDS = new ConcurrentHashMap<>();
 
     private RootStates() {}
 
@@ -74,7 +78,7 @@ public final class RootStates {
                 ? com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life().rootId()
                 : entity instanceof Player player ? PlayerRoot.getRootId(player) : null;
         if (raw == null || raw.isEmpty()) return true;
-        return !Boolean.FALSE.equals(declared(ResourceLocation.tryParse(raw), state));
+        return !Boolean.FALSE.equals(declared(parsedRootId(raw), state));
     }
 
     /** Whether the entity's Root chain declares {@code state} true outright. */
@@ -83,7 +87,11 @@ public final class RootStates {
                 ? com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).life().rootId()
                 : entity instanceof Player player ? PlayerRoot.getRootId(player) : null;
         if (raw == null || raw.isEmpty()) return false;
-        return Boolean.TRUE.equals(declared(ResourceLocation.tryParse(raw), state));
+        return Boolean.TRUE.equals(declared(parsedRootId(raw), state));
+    }
+
+    private static @Nullable ResourceLocation parsedRootId(String raw) {
+        return PARSED_ROOT_IDS.computeIfAbsent(raw, id -> Optional.ofNullable(ResourceLocation.tryParse(id))).orElse(null);
     }
 
     private static @Nullable Boolean lookup(Kind kind, ResourceLocation id, ResourceLocation state) {

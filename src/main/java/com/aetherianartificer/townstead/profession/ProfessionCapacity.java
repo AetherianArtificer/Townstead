@@ -65,26 +65,19 @@ public final class ProfessionCapacity {
     }
 
     /**
-     * Residents occupying this career's sites. A def declaring work tasks is occupied by every
-     * profession sharing one of those task types (a Baker works the kitchen a Cook would;
-     * a Beverage Artisan, declaring only brew, does not) — the same rule kitchen slot assignment uses.
-     * A def without work tasks falls back to canonical-career identity.
+     * Residents holding this career, or a profession that resolves to it. Shared task types do
+     * not count: most careers declare {@code craft}, so a mason is not a librarian.
      */
     public static int employed(ServerLevel level, Village village, ProfessionDef def) {
-        ResourceLocation[] taskTypes = def.workTasks().stream()
-                .map(com.aetherianartificer.townstead.profession.def.WorkTaskDef::type)
-                .distinct()
-                .toArray(ResourceLocation[]::new);
+        // Seats are held on the roll, so a worker in an unloaded chunk still counts.
+        if (ProfessionAutoAssign.managesDefinition(def)) {
+            return ProfessionSites.staffCount(level, village, def);
+        }
         int count = 0;
         for (VillagerEntityMCA resident : village.getResidents(level)) {
-            VillagerProfession profession = resident.getVillagerData().getProfession();
-            if (taskTypes.length > 0) {
-                if (com.aetherianartificer.townstead.work.WorkTaskDeclarations
-                        .professionDeclares(profession, taskTypes)) count++;
-            } else {
-                ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION.getKey(profession);
-                if (id != null && def.id().equals(ProfessionDefs.canonicalId(id))) count++;
-            }
+            ResourceLocation id = BuiltInRegistries.VILLAGER_PROFESSION
+                    .getKey(resident.getVillagerData().getProfession());
+            if (id != null && def.id().equals(ProfessionDefs.canonicalId(id))) count++;
         }
         return count;
     }
@@ -146,6 +139,7 @@ public final class ProfessionCapacity {
                     .map(BlockPos::immutable)
                     .filter(pos -> block.blocks().contains(BuiltInRegistries.BLOCK.getKey(
                             level.getBlockState(pos).getBlock())))
+                    .filter(pos -> block.counts(level, pos))
                     .filter(pos -> (block.ownsSeats() && !hasBuildingProvider)
                             || !insideAnyBuilding(level, village, pos))
                     .filter(seen::add)

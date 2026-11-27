@@ -1,0 +1,13 @@
+{
+  "color": "ff5fb3d9",
+  "visible": true,
+  "priority": -1,
+  "icon": false,
+  "iconU": 240,
+  "iconV": 188,
+  "margin": 4,
+  "mergeRange": 8,
+  "blocks": {
+    "#townstead:clean_water": 4
+  }
+}

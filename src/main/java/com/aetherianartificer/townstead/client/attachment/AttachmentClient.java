@@ -52,6 +52,13 @@ public final class AttachmentClient {
     // The parsed JSON of each geo blob, kept so a rig can graft bones from several geometry files.
     private static final Map<String, com.google.gson.JsonObject> GEO_JSON = new ConcurrentHashMap<>();
 
+    // What this client has seen of the sync, for the status report: logs aren't always to hand.
+    private static int manifests;
+    private static int requested;
+    private static int received;
+    private static int failed;
+    private static String lastFailure = "";
+
     private AttachmentClient() {}
 
     private static final class Buffer {
@@ -77,7 +84,9 @@ public final class AttachmentClient {
         NAMED_ANIM.clear();
         AttachmentPoses.onManifest();
         AttachmentPhysics.onManifest();
+        SoftLook.onManifest();
         AttachmentAnimations.onManifest();
+        manifests++;
         for (AttachmentDef def : defs) DEFS.put(def.id(), def);
         for (AttachmentPointDef slot : slots) SLOTS.put(slot.id(), slot);
         NAMED.putAll(namedTextures);
@@ -85,6 +94,20 @@ public final class AttachmentClient {
         NAMED_ANIM.putAll(namedAnimations);
         com.aetherianartificer.townstead.client.species.RigAssets.clear();
 
+        Map<String, Integer> needed = needed(defs, namedTextures, namedGeo, namedAnimations);
+
+        List<String> request = new ArrayList<>();
+        needed.forEach((sha1, kind) -> {
+            if (GEO.containsKey(sha1) || TEXTURES.containsKey(sha1) || ANIMATIONS.containsKey(sha1)) return;
+            byte[] cached = AttachmentCache.read(sha1);
+            if (cached != null) materialize(sha1, kind, cached);
+            else request.add(sha1);
+        });
+        if (!request.isEmpty()) sendRequest(request);
+    }
+
+    private static Map<String, Integer> needed(Iterable<AttachmentDef> defs, Map<String, String> namedTextures,
+                                               Map<String, String> namedGeo, Map<String, String> namedAnimations) {
         Map<String, Integer> needed = new LinkedHashMap<>();
         for (AttachmentDef def : defs) {
             needed.putIfAbsent(def.geoSha1(), AttachmentServerData.KIND_GEO);
@@ -111,15 +134,7 @@ public final class AttachmentClient {
         for (String sha1 : namedAnimations.values()) {
             needed.putIfAbsent(sha1, AttachmentServerData.KIND_ANIMATION);
         }
-
-        List<String> request = new ArrayList<>();
-        needed.forEach((sha1, kind) -> {
-            if (GEO.containsKey(sha1) || TEXTURES.containsKey(sha1) || ANIMATIONS.containsKey(sha1)) return;
-            byte[] cached = AttachmentCache.read(sha1);
-            if (cached != null) materialize(sha1, kind, cached);
-            else request.add(sha1);
-        });
-        if (!request.isEmpty()) sendRequest(request);
+        return needed;
     }
 
     public static void onChunk(String sha1, int index, int total, int kind, byte[] data) {
@@ -131,6 +146,7 @@ public final class AttachmentClient {
         if (buffer.received < buffer.total) return;
 
         BUFFERS.remove(sha1);
+        received++;
         int size = 0;
         for (byte[] part : buffer.parts) size += part.length;
         byte[] bytes = new byte[size];
@@ -167,6 +183,8 @@ public final class AttachmentClient {
                 TEXTURES.put(sha1, id);
             }
         } catch (Exception e) {
+            failed++;
+            lastFailure = sha1 + " " + e;
             Townstead.LOGGER.error("Failed to materialize attachment blob {}", sha1, e);
         }
     }
@@ -181,6 +199,11 @@ public final class AttachmentClient {
 
     public static ModelPart geometry(String sha1) {
         return GEO.get(sha1);
+    }
+
+    /** A synced geo blob as it came, or null until it has arrived. */
+    public static com.google.gson.JsonObject geometryJson(String sha1) {
+        return GEO_JSON.get(sha1);
     }
 
     /** The attachment-model bake (per-face UV, mirror, named bones) of a synced geo blob. */
@@ -226,7 +249,7 @@ public final class AttachmentClient {
                 var json = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8)).getAsJsonObject();
                 for (AttachmentDef.PhysicsChain chain : def.physics()) {
                     if (chain.segments() > 1 && chain.bones().size() == 1) {
-                        json = com.aetherianartificer.townstead.client.attachment.geo.AttachmentGeoSegmenter
+                        json = com.aetherianartificer.townstead.root.attachment.AttachmentGeoSegmenter
                                 .segment(json, chain.bones().get(0), chain.segments(), chain.axis());
                     }
                 }
@@ -441,12 +464,39 @@ public final class AttachmentClient {
         // and reused if the same blobs appear again next session.
     }
 
+    /** Whether the render layer has what it needs to draw this definition. */
+    public static boolean drawable(AttachmentDef def) {
+        return ATTACHMENT_GEO.containsKey(def.geoSha1()) && TEXTURES.containsKey(def.textureSha1());
+    }
+
+    /** One line on how far the sync got, to read back from a player who can't send logs. */
+    public static String status() {
+        Map<String, Integer> needed = needed(DEFS.values(), NAMED, NAMED_GEO, NAMED_ANIM);
+        int loaded = 0;
+        for (String sha1 : needed.keySet()) {
+            if (GEO_JSON.containsKey(sha1) || TEXTURES.containsKey(sha1) || ANIMATIONS.containsKey(sha1)) loaded++;
+        }
+        int drawable = 0;
+        for (AttachmentDef def : DEFS.values()) {
+            if (drawable(def)) drawable++;
+        }
+        return "lists received " + manifests + ", " + DEFS.size() + " definitions, " + SLOTS.size() + " points, "
+                + drawable + " drawable, " + loaded + "/" + needed.size() + " blobs loaded, requested " + requested
+                + ", received " + received + ", in transfer " + BUFFERS.size() + ", failed " + failed
+                + (lastFailure.isEmpty() ? "" : " (last: " + lastFailure + ")");
+    }
+
     private static void sendRequest(List<String> hashes) {
-        AttachmentRequestC2SPayload payload = new AttachmentRequestC2SPayload(hashes);
-        //? if neoforge {
-        net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
-        //?} else {
-        /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
-        *///?}
+        requested += hashes.size();
+        for (int start = 0; start < hashes.size(); start += AttachmentRequestC2SPayload.MAX_HASHES) {
+            int end = Math.min(start + AttachmentRequestC2SPayload.MAX_HASHES, hashes.size());
+            AttachmentRequestC2SPayload payload =
+                    new AttachmentRequestC2SPayload(new ArrayList<>(hashes.subList(start, end)));
+            //? if neoforge {
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(payload);
+            //?} else {
+            /*com.aetherianartificer.townstead.TownsteadNetwork.sendToServer(payload);
+            *///?}
+        }
     }
 }

@@ -179,6 +179,7 @@ public final class TownsteadKeybinds {
         wheelPrevDown = down;
         if (down) {
             wheelPressedAt = Util.getMillis();
+            streamSlot = 0;
             if (mc.screen == null && mc.player != null) {
                 mc.setScreen(new com.aetherianartificer.townstead.client.gui.ability
                         .AbilityWheelScreen());
@@ -205,11 +206,50 @@ public final class TownsteadKeybinds {
         wheel.onClose();
     }
 
+    // When each held ability key may ask again.
+    private static final long[] HELD_NEXT = new long[64];
+    // A held ability fired from the wheel: which slot streams, and until when. Opening the wheel again stops it.
+    private static final int STREAM_TICKS = 40;
+    private static int streamSlot;
+    private static long streamUntil;
+
+    /** Keeps a held ability going for a while after the wheel fired it. */
+    public static void stream(int slot) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        streamSlot = slot;
+        streamUntil = mc.level.getGameTime() + STREAM_TICKS;
+        if (slot >= 1 && slot <= HELD_NEXT.length) {
+            var entry = com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.slot(slot);
+            HELD_NEXT[slot - 1] = mc.level.getGameTime() + Math.max(1, entry == null ? 1 : entry.cooldownTicks());
+        }
+    }
+
+    private static void tickStream(Minecraft mc) {
+        if (streamSlot <= 0 || mc.level == null || mc.player == null) return;
+        long now = mc.level.getGameTime();
+        if (now >= streamUntil || streamSlot > HELD_NEXT.length) {
+            streamSlot = 0;
+            return;
+        }
+        var entry = com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.slot(streamSlot);
+        if (entry == null || !entry.hold()) {
+            streamSlot = 0;
+            return;
+        }
+        if (now >= HELD_NEXT[streamSlot - 1]
+                && com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.isReady(entry)) {
+            HELD_NEXT[streamSlot - 1] = now + Math.max(1, entry.cooldownTicks());
+            com.aetherianartificer.townstead.client.gui.ability.AbilityWheelScreen.dispatch(streamSlot);
+        }
+    }
+
     public static void onClientTick() {
         Minecraft mc = Minecraft.getInstance();
         // Releases any borrowed binding whose hold has run out, before anything presses a new one.
         com.aetherianartificer.townstead.client.input.SyntheticKey.tick();
         tickWheel(mc);
+        tickStream(mc);
         while (QUEST_LEDGER.consumeClick()) {
             if (mc.player != null && mc.screen == null && com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.QUESTS)) mc.setScreen(new QuestLedgerScreen());
         }
@@ -237,6 +277,18 @@ public final class TownsteadKeybinds {
                 // Through the wheel's dispatch, not a second copy of the send: a slot holding a
                 // datapack keybind action has to be pressed locally whichever way it was reached.
                 com.aetherianartificer.townstead.client.gui.ability.AbilityWheelScreen.dispatch(slot);
+            }
+            // A held ability goes again whenever it's ready, for as long as its key stays down. The server still
+            // checks the cooldown and the cost each time; this only asks.
+            if (slot <= HELD_NEXT.length && ABILITIES[i].isDown() && mc.player != null && mc.screen == null) {
+                var entry = com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.slot(slot);
+                if (entry != null && entry.hold()
+                        && com.aetherianartificer.townstead.client.root.ClientAbilityLoadout.isReady(entry)
+                        && mc.level != null && mc.level.getGameTime() >= HELD_NEXT[i]) {
+                    HELD_NEXT[i] = mc.level.getGameTime() + Math.max(1, entry.cooldownTicks());
+                    streamSlot = 0;
+                    com.aetherianartificer.townstead.client.gui.ability.AbilityWheelScreen.dispatch(slot);
+                }
             }
         }
 

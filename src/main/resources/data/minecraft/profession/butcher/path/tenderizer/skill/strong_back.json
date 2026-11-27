@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.tenderizer.strong_back"
+  },
+  "icon": "minecraft:iron_ingot",
+  "description": {
+    "translate": "skill.townstead.butcher.tenderizer.strong_back.description"
+  },
+  "cost": 1,
+  "requires": [
+    "heave"
+  ]
+}

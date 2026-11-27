@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.soft_landing"
+  },
+  "icon": "minecraft:feather",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.soft_landing.description"
+  },
+  "cost": 1,
+  "requires": [
+    "rocket_jump"
+  ]
+}

@@ -7,8 +7,8 @@
   "description": {
     "translate": "skill.townstead.librarian.curse_breaker.nullify.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:curse_counter",
+  "cost": 2,
+  "skill_group": "townstead:curse_breaker_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
@@ -27,7 +27,56 @@
           "include_self": false,
           "target": "hostile",
           "action": {
-            "type": "pheno:clear_effect"
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:clear_effect"
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/curse_breaker/silence"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:weakness",
+                  "duration": 100,
+                  "amplifier": 1
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/curse_breaker/sanctum_arcana"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:change_resource",
+                  "resource": "townstead:focus",
+                  "amount": 10,
+                  "on": "origin"
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:enchant",
+                "count": 6,
+                "spread": 0.4
+              }
+            ]
           }
         },
         {

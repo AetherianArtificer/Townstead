@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.cover_our_tracks"
+  },
+  "icon": "minecraft:brush",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.cover_our_tracks.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fall_back"
+  ]
+}

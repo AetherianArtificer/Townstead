@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.boarding"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.boarding.description"
+  },
+  "cost": 1,
+  "requires": [
+    "cast_off"
+  ]
+}

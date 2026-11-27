@@ -1,0 +1,122 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.shepherd.packmaster.fetch"
+  },
+  "icon": "minecraft:stick",
+  "description": {
+    "translate": "skill.townstead.shepherd.packmaster.fetch.description"
+  },
+  "cost": 2,
+  "requires": [
+    "stay"
+  ],
+  "skill_group": "townstead:packmaster_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:flock",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:entity_in_radius",
+      "radius": 8,
+      "condition": {
+        "type": "pheno:tamed"
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:retrieve_item",
+          "range": 16,
+          "speed": 0.8,
+          "aim_radius": 0.7,
+          "color": "#B08050"
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:shepherd/packmaster/retriever"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 16,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:tamed"
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:heal",
+                    "amount": 4
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:heart",
+                    "count": 2,
+                    "spread": 0.3
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:shepherd/packmaster/pack_bond"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 24,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:tamed"
+              },
+              "if_action": {
+                "type": "pheno:share_damage",
+                "id": "pack_bond",
+                "fraction": 0.3,
+                "duration": 600,
+                "reach": 32
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.wolf.ambient",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

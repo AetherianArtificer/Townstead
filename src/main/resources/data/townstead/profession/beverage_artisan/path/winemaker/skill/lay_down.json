@@ -1,0 +1,165 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.lay_down"
+  },
+  "icon": "minecraft:glass_bottle",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.winemaker.lay_down.description"
+  },
+  "cost": 2,
+  "requires": [
+    "wine_flight"
+  ],
+  "skill_group": "townstead:winemaker_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:vintage",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:beverage_artisan/winemaker/vertical_tasting"
+          },
+          "if_action": {
+            "type": "pheno:nothing"
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:winemaker_laid_morning",
+                "duration": 0
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:winemaker_laid_noon",
+                "duration": 0
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:winemaker_laid_evening",
+                "duration": 0
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:winemaker_laid_night",
+                "duration": 0
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:if_else_list",
+          "actions": [
+            {
+              "condition": {
+                "type": "pheno:time_of_day",
+                "min": 0,
+                "max": 5999
+              },
+              "action": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:beverage_artisan/winemaker/estate"
+                },
+                "if_action": {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:winemaker_laid_morning",
+                  "duration": 72000
+                },
+                "else_action": {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:winemaker_laid_morning",
+                  "duration": 24000
+                }
+              }
+            },
+            {
+              "condition": {
+                "type": "pheno:time_of_day",
+                "min": 6000,
+                "max": 11999
+              },
+              "action": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:beverage_artisan/winemaker/estate"
+                },
+                "if_action": {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:winemaker_laid_noon",
+                  "duration": 72000
+                },
+                "else_action": {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:winemaker_laid_noon",
+                  "duration": 24000
+                }
+              }
+            },
+            {
+              "condition": {
+                "type": "pheno:time_of_day",
+                "min": 12000,
+                "max": 17999
+              },
+              "action": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:beverage_artisan/winemaker/estate"
+                },
+                "if_action": {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:winemaker_laid_evening",
+                  "duration": 72000
+                },
+                "else_action": {
+                  "type": "pheno:set_flag",
+                  "flag": "townstead:winemaker_laid_evening",
+                  "duration": 24000
+                }
+              }
+            }
+          ],
+          "fallback_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "townstead:beverage_artisan/winemaker/estate"
+            },
+            "if_action": {
+              "type": "pheno:set_flag",
+              "flag": "townstead:winemaker_laid_night",
+              "duration": 72000
+            },
+            "else_action": {
+              "type": "pheno:set_flag",
+              "flag": "townstead:winemaker_laid_night",
+              "duration": 24000
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.barrel.close",
+          "volume": 1.0,
+          "pitch": 0.9
+        }
+      ]
+    }
+  }
+}

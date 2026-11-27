@@ -20,9 +20,6 @@ import net.conczin.mca.resources.data.BuildingType;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.conczin.mca.server.world.data.Building;
-//? if >=1.21 {
-import net.conczin.mca.server.world.data.RoomScanPlan;
-//?}
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.util.compat.ButtonWidget;
 import net.minecraft.client.gui.GuiGraphics;
@@ -171,7 +168,9 @@ public abstract class BlueprintScreenMixin extends Screen implements com.aetheri
      * a nearby datapack-declared open-air building instead.
      */
     @Inject(method = "updateStructureScanControl", remap = false, at = @At("TAIL"))
-    private void townstead$showRemoveForOpenAirBuilding(RoomScanPlan plan, CallbackInfo ci) {
+    // No target parameters: MCA changed this method's argument type (RoomScanPlan, then
+    // Village.ClientPositionTarget), and a handler that names either fails on the other build.
+    private void townstead$showRemoveForOpenAirBuilding(CallbackInfo ci) {
         if (removeBuildingButton == null || village == null || minecraft == null || minecraft.player == null) {
             return;
         }
@@ -186,9 +185,12 @@ public abstract class BlueprintScreenMixin extends Screen implements com.aetheri
      * open-air building. Send it untargeted; the server removes the building at the player.
      */
     @Inject(method = "targetedEditMessage", remap = false, require = 0, at = @At("RETURN"), cancellable = true)
-    private static void townstead$removeOpenAirBuilding(net.conczin.mca.network.c2s.ReportBuildingMessage.Action action,
-            Village village, RoomScanPlan plan, Integer selectedFloor,
-            CallbackInfoReturnable<Optional<net.conczin.mca.network.c2s.ReportBuildingMessage>> cir) {
+    // The third argument's type changed between MCA builds, so the first two are read as locals.
+    private static void townstead$removeOpenAirBuilding(
+            CallbackInfoReturnable<Optional<net.conczin.mca.network.c2s.ReportBuildingMessage>> cir,
+            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true)
+            net.conczin.mca.network.c2s.ReportBuildingMessage.Action action,
+            @com.llamalad7.mixinextras.sugar.Local(argsOnly = true) Village village) {
         if (action != net.conczin.mca.network.c2s.ReportBuildingMessage.Action.REMOVE
                 || cir.getReturnValue().isPresent() || village == null) return;
         var player = net.minecraft.client.Minecraft.getInstance().player;
@@ -677,6 +679,8 @@ public abstract class BlueprintScreenMixin extends Screen implements com.aetheri
         int startIdx = townstead$profPage * PROF_ROWS_PER_PAGE;
         int endIdx = Math.min(startIdx + PROF_ROWS_PER_PAGE, townstead$profVillagerUuids.size());
 
+        VillageResidentClientStore.JobStatus hoveredJob = null;
+        long sinceSync = VillageResidentClientStore.ticksSinceReceived();
         for (int row = 0; row < endIdx - startIdx; row++) {
             UUID uuid = townstead$profVillagerUuids.get(startIdx + row);
             String name = townstead$profVillagerNames.getOrDefault(uuid, "???");
@@ -703,14 +707,41 @@ public abstract class BlueprintScreenMixin extends Screen implements com.aetheri
             context.drawString(this.font, truncName,
                     leftX + 2, rowY + (rowH - this.font.lineHeight) / 2 + 1, 0xFFFFFF, false);
 
-            // Current profession (right, smaller)
+            // Current profession (right, smaller): amber with no workplace, red with the
+            // time left when the job is ending.
+            VillageResidentClientStore.Resident rowResident = VillageResidentClientStore.get(uuid);
+            VillageResidentClientStore.JobStatus job = rowResident == null
+                    ? VillageResidentClientStore.JobStatus.WORKING : rowResident.job();
+            int jobTicksLeft = job.remainingTicks(sinceSync);
+            String jobClock = jobTicksLeft >= 0
+                    ? VillageResidentClientStore.JobStatus.clock(jobTicksLeft) : "";
+            int profColor = job.state() == com.aetherianartificer.townstead.profession.JobRetention.ENDING
+                    ? 0xFF6666
+                    : job.state() == com.aetherianartificer.townstead.profession.JobRetention.LOOKING
+                            ? 0xFFB84D : 0xA0A0A0;
             String profText = townstead$profDisplayName(townstead$currentProfessionId(uuid));
-            context.pose().pushPose();
             int profTextX = leftX + 58;
+            int profSpace = (int) ((listRight - 2 - profTextX) / 0.7f);
+            int clockW = jobClock.isEmpty() ? 0 : this.font.width(jobClock);
+            int profMaxW = profSpace - (clockW == 0 ? 0 : clockW + 4);
+            String truncProf = profText;
+            while (this.font.width(truncProf) > profMaxW && truncProf.length() > 1) {
+                truncProf = truncProf.substring(0, truncProf.length() - 1);
+            }
+            if (!truncProf.equals(profText)) truncProf += "..";
+            context.pose().pushPose();
             context.pose().translate(profTextX, rowY + (rowH - this.font.lineHeight * 0.7f) / 2 + 1, 0);
             context.pose().scale(0.7f, 0.7f, 1.0f);
-            context.drawString(this.font, profText, 0, 0, 0xA0A0A0, false);
+            context.drawString(this.font, truncProf, 0, 0, profColor, false);
+            if (clockW > 0) {
+                context.drawString(this.font, jobClock, profSpace - clockW, 0, profColor, false);
+            }
             context.pose().popPose();
+
+            if (job.state() != com.aetherianartificer.townstead.profession.JobRetention.WORKING
+                    && mouseX >= leftX && mouseX < listRight && mouseY >= rowY && mouseY < rowY + rowH) {
+                hoveredJob = job;
+            }
         }
 
         // Right panel: available professions for selected villager
@@ -774,6 +805,35 @@ public abstract class BlueprintScreenMixin extends Screen implements com.aetheri
             context.drawCenteredString(this.font, Component.translatable("townstead.profession.select"),
                     (profPanelX + profPanelRight) / 2, this.height / 2, 0x808080);
         }
+
+        if (hoveredJob != null) {
+            context.renderComponentTooltip(this.font,
+                    townstead$jobStatusLines(hoveredJob, sinceSync), mouseX, mouseY);
+        }
+    }
+
+    @Unique
+    private static List<Component> townstead$jobStatusLines(VillageResidentClientStore.JobStatus job,
+                                                           long sinceSync) {
+        List<Component> lines = new ArrayList<>();
+        if (job.seat()) {
+            lines.add(Component.translatable("townstead.profession.job.no_seat"));
+        } else {
+            ResourceLocation blockId = ResourceLocation.tryParse(job.blockId());
+            Component workstation = blockId != null && BuiltInRegistries.BLOCK.containsKey(blockId)
+                    ? BuiltInRegistries.BLOCK.get(blockId).getName()
+                    : Component.translatable("townstead.profession.job.workstation");
+            lines.add(Component.translatable(
+                    job.state() == com.aetherianartificer.townstead.profession.JobRetention.ENDING
+                            ? "townstead.profession.job.no_block"
+                            : "townstead.profession.job.no_claim", workstation));
+        }
+        int ticksLeft = job.remainingTicks(sinceSync);
+        if (ticksLeft >= 0) {
+            lines.add(Component.translatable("townstead.profession.job.ends",
+                    VillageResidentClientStore.JobStatus.clock(ticksLeft)));
+        }
+        return lines;
     }
 
     //? if neoforge {

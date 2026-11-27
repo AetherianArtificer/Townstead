@@ -13,6 +13,7 @@ import java.util.Map;
 
 /** The vampire moments worth remembering: a bite nobody asked for, a full turning, a hunter's kill. */
 public final class VampireChronicles {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site RANK_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(100);
     private static final String RANK_SEEN = "townstead:vampire_rank_seen";
     private static final int FULL_VAMPIRE = 4;
 
@@ -33,7 +34,7 @@ public final class VampireChronicles {
      * not announced.
      */
     public static void observeRank(VillagerEntityMCA villager) {
-        if (villager.tickCount % 100 != 0 || MobReplacer.isWild(villager)) return;
+        if (!RANK_STRIDE.due(villager, villager.tickCount) || MobReplacer.isWild(villager)) return;
         EntityStates.Resolved state = EntityStates.resolve(villager, VampireVillagers.STATE);
         int level = state.active() ? (int) Math.floor(state.amount()) : 0;
         var data = villager.getPersistentData();

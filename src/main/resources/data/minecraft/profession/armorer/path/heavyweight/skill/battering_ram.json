@@ -7,55 +7,109 @@
   "description": {
     "translate": "skill.townstead.armorer.heavyweight.battering_ram.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "trample"
+    "earthshaker"
   ],
-  "skill_group": "townstead:heavy_charge",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 400,
-    "slot": 2,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:temper",
-      "amount": 30
+    "type": "pheno:action_over_time",
+    "interval": 2,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:toggled",
+              "gene": "minecraft:armorer/heavyweight/iron_tread"
+            },
+            {
+              "type": "pheno:flag",
+              "flag": "townstead:plunging"
+            }
+          ]
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:gamemode",
+            "gamemode": "adventure"
+          }
+        },
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:temper",
+          "min": 5
+        },
+        {
+          "type": "pheno:block_in_radius",
+          "radius": 1,
+          "block_condition": {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:in_tag",
+                "tag": "minecraft:impermeable"
+              },
+              {
+                "type": "pheno:in_tag",
+                "tag": "minecraft:ice"
+              },
+              {
+                "type": "pheno:in_tag",
+                "tag": "minecraft:leaves"
+              }
+            ]
+          }
+        }
+      ]
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:add_velocity",
-          "relative": true,
-          "z": 2.0,
-          "y": 0.15
-        },
-        {
-          "type": "pheno:area_of_effect",
-          "radius": 4,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:add_velocity",
-                "away_from_other": 1.8,
-                "y": 0.3
-              },
-              {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
-              }
-            ]
+          "type": "pheno:at",
+          "blocks": {
+            "radius": 1,
+            "where": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "minecraft:impermeable"
+                },
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "minecraft:ice"
+                },
+                {
+                  "type": "pheno:in_tag",
+                  "tag": "minecraft:leaves"
+                }
+              ]
+            },
+            "limit": 1
+          },
+          "do": {
+            "type": "pheno:destroy",
+            "drop_item": false
           }
         },
         {
+          "type": "pheno:change_resource",
+          "resource": "townstead:temper",
+          "amount": -5
+        },
+        {
           "type": "pheno:play_sound",
-          "sound": "minecraft:block.anvil.use",
-          "volume": 0.7,
-          "pitch": 1.2
+          "sound": "minecraft:block.glass.break",
+          "volume": 0.8,
+          "pitch": 0.8
         }
       ]
     }

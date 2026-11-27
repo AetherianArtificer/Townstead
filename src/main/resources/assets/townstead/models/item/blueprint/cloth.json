@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "townstead:item/blueprint/cloth",
+    "layer1": "townstead:item/blueprint/lines"
+  }
+}

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "millstone_shoulders"
+    "dusty"
   ],
   "power": {
     "type": "pheno:scare_mob",

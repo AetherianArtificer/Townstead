@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.compat;
 
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 //? if neoforge {
 import net.neoforged.fml.ModList;
 //?} else if forge {
@@ -50,6 +51,15 @@ public final class ModCompat {
         // No mod loader, as in unit tests: nothing is installed, and nothing is cached.
         if (mods == null) return false;
         return LOADED_CACHE.computeIfAbsent(modId, mods::isLoaded);
+    }
+
+    /** The installed version of a mod, or of {@code minecraft}; null when absent. */
+    public static @Nullable String version(String modId) {
+        ModList mods = ModList.get();
+        if (mods == null) return null;
+        return mods.getModContainerById(modId)
+                .map(container -> container.getModInfo().getVersion().toString())
+                .orElse(null);
     }
 
     /** Whether any one of these mods is present. */

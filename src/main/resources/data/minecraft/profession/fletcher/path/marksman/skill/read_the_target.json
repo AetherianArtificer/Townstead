@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.marksman.read_the_target"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.fletcher.marksman.read_the_target.description"
+  },
+  "cost": 1,
+  "requires": [
+    "range_finder"
+  ]
+}

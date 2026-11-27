@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "worked_earth"
+    "wide_furrow"
   ],
   "power": {
     "type": "pheno:trigger",

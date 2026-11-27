@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "shock_absorber"
+    "short_fuse"
   ],
   "power": {
     "type": "pheno:damage_modifier",
@@ -18,7 +18,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:knack",
-      "min": 75
+      "min": 50
     }
   }
 }

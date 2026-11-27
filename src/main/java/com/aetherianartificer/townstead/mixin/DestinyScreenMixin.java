@@ -6,6 +6,7 @@ import net.minecraft.client.gui.screens.Screen;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -23,8 +24,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(DestinyScreen.class)
 public abstract class DestinyScreenMixin extends Screen {
 
+
     private DestinyScreenMixin() {
         super(null);
+    }
+
+    /** The surname row, directly under the name. Accept takes up the gap above it to stay on screen. */
+    @Inject(method = "setPage", remap = false, at = @At("RETURN"))
+    private void townstead$addNamingRow(String page, CallbackInfo ci) {
+        com.aetherianartificer.townstead.client.gui.naming.NamingRow.commitActive();
+        if (!"general".equals(page) || this.minecraft == null || this.minecraft.player == null) return;
+        if (!com.aetherianartificer.townstead.client.gui.naming.NamingRow.available()) return;
+        int nameY = height / 2;
+        for (net.minecraft.client.gui.components.events.GuiEventListener child : children()) {
+            if (child instanceof net.minecraft.client.gui.components.AbstractWidget widget && widget.getY() > nameY + 5) {
+                widget.setY(widget.getY() + (widget.getY() > nameY + 70 ? 10 : 22));
+            }
+        }
+        net.conczin.mca.client.gui.VillagerEditorScreen self = (net.conczin.mca.client.gui.VillagerEditorScreen) (Object) this;
+        com.aetherianartificer.townstead.client.gui.naming.NamingRow.add(this,
+                new com.aetherianartificer.townstead.client.gui.naming.NamingScreen.Target(this.minecraft.player.getId(),
+                        this.minecraft.player.getUUID(), () -> self.getName().getString(), true),
+                this.font, width / 2 - 175 / 2, nameY, nameY + 22, new java.util.ArrayList<>(children()), this::addRenderableWidget);
     }
 
     @Inject(method = "getPages", remap = false, at = @At("RETURN"), cancellable = true)

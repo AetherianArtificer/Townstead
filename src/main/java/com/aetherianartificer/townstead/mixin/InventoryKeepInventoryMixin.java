@@ -35,7 +35,7 @@ public abstract class InventoryKeepInventoryMixin {
         /*net.minecraft.world.entity.player.Player owner = this.f_35978_;
         *///?}
         if (owner == null || owner.level().isClientSide) return;
-        if (!ExpressedGenes.instancesOf(owner, KeepInventoryGeneType.Instance.class).isEmpty()) {
+        if (com.aetherianartificer.townstead.root.KeepInventory.keeps(owner)) {
             ci.cancel();
         }
     }

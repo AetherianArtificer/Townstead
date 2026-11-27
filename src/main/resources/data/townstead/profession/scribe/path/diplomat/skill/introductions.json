@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.introductions"
+  },
+  "icon": "minecraft:poppy",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.introductions.description"
+  },
+  "cost": 1,
+  "requires": [
+    "make_the_rounds"
+  ]
+}

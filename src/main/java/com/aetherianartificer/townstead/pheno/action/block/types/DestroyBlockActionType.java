@@ -37,7 +37,14 @@ public final class DestroyBlockActionType implements BlockActionType {
     public BlockAction parse(JsonObject json) {
         boolean drop = GsonHelper.getAsBoolean(json, "drop_item", true);
         boolean collect = drop && GsonHelper.getAsBoolean(json, "collect", false);
-        if (!collect) return ctx -> ctx.level().destroyBlock(ctx.pos(), drop, ctx.cause());
+        boolean griefing = GsonHelper.getAsBoolean(json, "griefing", false);
+        float maxHardness = GsonHelper.getAsFloat(json, "max_hardness", -1f);
+        if (!collect) return ctx -> {
+            if (griefing && !griefAllowed(ctx.level(), ctx.pos(), ctx.cause())) return;
+            float hardness = ctx.level().getBlockState(ctx.pos()).getDestroySpeed(ctx.level(), ctx.pos());
+            if (maxHardness >= 0f && (hardness < 0f || hardness > maxHardness)) return;
+            ctx.level().destroyBlock(ctx.pos(), drop, ctx.cause());
+        };
         return ctx -> {
             ServerLevel level = ctx.level();
             BlockPos pos = ctx.pos();
@@ -52,6 +59,23 @@ public final class DestroyBlockActionType implements BlockActionType {
                 if (!rest.isEmpty()) Block.popResource(level, pos, rest);
             }
         };
+    }
+
+    /**
+     * An ability breaking the world answers to the mobGriefing rule, and a player's answers to whatever
+     * guards their breaking too, so claim mods keep working.
+     */
+    private static boolean griefAllowed(ServerLevel level, BlockPos pos, Entity cause) {
+        if (!level.getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_MOBGRIEFING)) return false;
+        if (!(cause instanceof Player player)) return true;
+        //? if neoforge {
+        var event = new net.neoforged.neoforge.event.level.BlockEvent.BreakEvent(level, pos, level.getBlockState(pos), player);
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(event);
+        //?} else {
+        /*var event = new net.minecraftforge.event.level.BlockEvent.BreakEvent(level, pos, level.getBlockState(pos), player);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.post(event);
+        *///?}
+        return !event.isCanceled();
     }
 
     /** Puts {@code stack} into the entity's inventory; returns what did not fit. */

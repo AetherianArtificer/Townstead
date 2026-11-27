@@ -43,11 +43,11 @@ VAR chance = 0
 // "" for nothing. A hand-in has its own mark, and a talk left half-way waits to be picked up.
 === function calling() ===
 {
-- interrupted or quest_ready or quest_open:
+- interrupted or quest_ready:
     ~ return ""
 - met == 0:
     ~ return "Hello! Sorry, could I borrow you for a moment?"
-- met == 1 or (not done_all() and lesson_day != today):
+- met == 1 or scene_ready():
     {demeanor() == "stern" or demeanor() == "guarded":
         ~ return "When you've got a moment. No rush."
     }

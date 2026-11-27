@@ -5,11 +5,8 @@ import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.root.attachment.AttachmentDef;
 import com.google.gson.JsonParser;
-import net.conczin.mca.entity.VillagerEntityMCA;
-import net.conczin.mca.entity.ai.Chore;
 import net.minecraft.Util;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -144,28 +141,7 @@ public final class AttachmentPoses {
 
     /** Client resolution of a canonical pose-state name (shared with keyframe animation triggers). */
     public static boolean stateActive(LivingEntity entity, String state) {
-        return switch (state) {
-            case "sleeping" -> entity.isSleeping();
-            case "sitting" -> entity.isPassenger();
-            case "sprinting" -> entity.isSprinting();
-            case "sneaking" -> entity.isCrouching();
-            case "swimming" -> entity.isSwimming();
-            case "gliding" -> entity.isFallFlying();
-            case "parachuting" -> com.aetherianartificer.townstead.root.locomotion.ParachutePhysics.isOpen(entity);
-            case "flying" -> entity instanceof net.minecraft.world.entity.player.Player player && player.getAbilities().flying;
-            case "moving" -> entity.walkAnimation.speed() > 0.1f;
-            case "hurt" -> entity.hurtTime > 0;
-            case "attacking" -> entity.swinging || (entity instanceof Mob mob && mob.isAggressive());
-            case "panicking" -> entity instanceof VillagerEntityMCA villager
-                    && villager.getVillagerBrain().isPanicking();
-            case "working" -> entity instanceof VillagerEntityMCA villager
-                    && villager.getVillagerBrain().getCurrentJob() != Chore.NONE;
-            case "wearing_helmet", "wearing_chestplate", "wearing_leggings", "wearing_boots" -> {
-                var slot = AttachmentDef.equipmentSlot(state.substring("wearing_".length()));
-                yield slot != null && !entity.getItemBySlot(slot).isEmpty();
-            }
-            default -> false;
-        };
+        return com.aetherianartificer.townstead.root.attachment.BodyPoseRules.stateActive(entity, state);
     }
 
     // --- easing ---

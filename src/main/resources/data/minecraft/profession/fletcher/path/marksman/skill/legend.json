@@ -12,12 +12,10 @@
     "hawkeye"
   ],
   "power": {
-    "type": "pheno:action_over_time",
-    "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:draw",
-      "amount": 0
-    },
+    "type": "pheno:modifier",
+    "target": "projectile_damage",
+    "operation": "multiply",
+    "value": 1.25,
     "condition": {
       "type": "pheno:and",
       "conditions": [
@@ -25,14 +23,14 @@
           "type": "pheno:equipped_item",
           "slot": "mainhand",
           "item_condition": {
-            "type": "or",
+            "type": "pheno:or",
             "conditions": [
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "item": "minecraft:bow"
               },
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "item": "minecraft:crossbow"
               }
             ]
@@ -41,24 +39,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:draw",
-          "min": 75
-        }
-      ]
-    },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 30,
-          "amplifier": 0
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:speed",
-          "duration": 30,
-          "amplifier": 0
+          "min": 50
         }
       ]
     }

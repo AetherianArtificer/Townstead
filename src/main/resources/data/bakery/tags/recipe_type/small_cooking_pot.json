@@ -3,6 +3,14 @@
   "values": [
     {
       "id": "farm_and_charm:pot_cooking",
+      "required": false,
+      "mods": {
+        "mod": "bakery",
+        "version": "<2.1.8"
+      }
+    },
+    {
+      "id": "bakery:jam_cooking",
       "required": false
     }
   ]

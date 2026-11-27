@@ -1,0 +1,115 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.skirmisher.tumble"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.fletcher.skirmisher.tumble.description"
+  },
+  "cost": 2,
+  "requires": [
+    "wall_kick"
+  ],
+  "skill_group": "townstead:skirmisher_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:draw",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:set_fall_distance",
+          "fall_distance": 0
+        },
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:skirmisher_soft",
+          "duration": 60
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fletcher/skirmisher/slide"
+          },
+          "if_action": {
+            "type": "pheno:ward",
+            "id": "slide",
+            "amount": 1000,
+            "duration": 10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/skirmisher/harrier"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:draw",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:draw",
+                "amount": -10
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:speed",
+                "duration": 60,
+                "amplifier": 1
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:cloud",
+          "count": 8,
+          "spread": 0.3
+        },
+        {
+          "type": "pheno:dash",
+          "distance": 5,
+          "ticks": 6,
+          "max_hits": 0,
+          "stop_on_hit": false
+        }
+      ]
+    }
+  },
+  "companions": {
+    "soft": {
+      "type": "pheno:damage_modifier",
+      "modifier": 0.0,
+      "damage_tag": "minecraft:is_fall",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:skirmisher_soft"
+      }
+    }
+  }
+}

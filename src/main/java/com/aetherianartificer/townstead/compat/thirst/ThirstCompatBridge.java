@@ -3,6 +3,7 @@ package com.aetherianartificer.townstead.compat.thirst;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -31,6 +32,31 @@ public interface ThirstCompatBridge {
     default float thermalExhaustionPerTick(ThermalHydrationContext thermal) { return 0; }
     boolean extraHydrationToQuenched();
     PurityResult evaluatePurity(int purity, RandomSource random);
+
+    /**
+     * The lowest purity this mod counts as finished water: the purification line stops here and
+     * order counts start here. {@link #PURITY_PURIFIED} unless the mod's own heat stops lower.
+     */
+    default int finishedPurity() { return PURITY_PURIFIED; }
+
+    /**
+     * Applies the mod's own illness for drinking this water to a non-player drinker, by the mod's
+     * own rules. Returns true when it handled sickness, so the caller skips the generic nausea and
+     * poison from {@link #evaluatePurity}; false leaves that path in place.
+     */
+    default boolean applyWaterSickness(LivingEntity drinker, ItemStack stack, RandomSource random) {
+        return false;
+    }
+
+    /**
+     * The mod's reading of the water in a block, taken before a villager draws from it, or null.
+     * A mod that grades a drawn container after the interaction (on the player's hand, at the end
+     * of the tick) never reaches the stand-in's vessel, so the grade is carried over by hand.
+     */
+    default Object sampleBlockWater(net.minecraft.server.level.ServerLevel level, BlockPos pos) { return null; }
+
+    /** Grades {@code serving} with a {@link #sampleBlockWater} reading when the mod left it unstamped. */
+    default ItemStack gradeServing(ItemStack serving, Object sample) { return serving; }
     ResourceLocation iconTexture();
 
     boolean supportsPurification();

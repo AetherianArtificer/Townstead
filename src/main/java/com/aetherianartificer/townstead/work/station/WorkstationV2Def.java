@@ -46,6 +46,9 @@ public record WorkstationV2Def(
         List<RecipeSlotRole> recipeLayout,
         List<RecipeCorrection> recipeCorrections,
         List<String> recipeSupplies,
+        @Nullable ResourceLocation recipeContainer,
+        int recipeContainerCount,
+        List<OutputContainer> outputContainers,
         @Nullable String fluidSource,
         List<Vec3i> stands,
         boolean standsRelativeToFacing,
@@ -177,6 +180,23 @@ public record WorkstationV2Def(
             }
         }
 
+        int recipeContainerCount = 0;
+        if (json.has("recipe_container_count")) {
+            JsonElement value = json.get("recipe_container_count");
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isNumber()) return null;
+            recipeContainerCount = value.getAsInt();
+            if (recipeContainerCount < 1 || recipeContainerCount > 64) return null;
+        }
+        List<OutputContainer> outputContainers = parseOutputContainers(json.get("output_containers"));
+        if (outputContainers == null) return null;
+        ResourceLocation recipeContainer = null;
+        if (json.has("recipe_container")) {
+            JsonElement value = json.get("recipe_container");
+            if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) return null;
+            recipeContainer = ResourceLocation.tryParse(value.getAsString());
+            if (recipeContainer == null) return null;
+        }
+
         String fluidSource = null;
         if (json.has("fluid_source")) {
             JsonElement value = json.get("fluid_source");
@@ -285,15 +305,77 @@ public record WorkstationV2Def(
             if (shiftEnd == null) return null;
         }
 
-        return new WorkstationV2Def(id, Set.copyOf(blocks), List.copyOf(containers),
+        return new WorkstationV2Def(id, java.util.Collections.unmodifiableSet(new java.util.LinkedHashSet<>(blocks)), List.copyOf(containers),
                 List.copyOf(ingredients), List.copyOf(catalysts), List.copyOf(outputs),
                 List.copyOf(returns), List.copyOf(previews), List.copyOf(layout),
-                List.copyOf(corrections), List.copyOf(supplies), fluidSource, List.copyOf(stands),
+                List.copyOf(corrections), List.copyOf(supplies), recipeContainer, recipeContainerCount, List.copyOf(outputContainers), fluidSource, List.copyOf(stands),
                 standsRelativeToFacing,
                 requiresJson, requires, readyJson, ready, behavior, collect,
                 anchor, anchorSelector, targetLayout, structure, structureSelector,
                 capacity, capacityValue, capacityPositions, capacityPositionsValue,
                 capacityPerPosition, stackPerPosition, reservation, attendance, shiftEnd);
+    }
+
+    /** The vessel for one output, or for outputs in an item tag, when it differs from the recipe's. */
+    public record OutputContainer(String output, ResourceLocation container) {}
+
+    private static @Nullable List<OutputContainer> parseOutputContainers(@Nullable JsonElement element) {
+        if (element == null) return List.of();
+        if (!element.isJsonArray()) return null;
+        List<OutputContainer> parsed = new ArrayList<>();
+        for (JsonElement entry : element.getAsJsonArray()) {
+            if (!entry.isJsonObject()) return null;
+            JsonObject object = entry.getAsJsonObject();
+            if (!object.has("output") || !object.has("container")) return null;
+            if (!object.get("output").isJsonPrimitive() || !object.get("container").isJsonPrimitive()) return null;
+            String output = object.get("output").getAsString();
+            ResourceLocation container = ResourceLocation.tryParse(object.get("container").getAsString());
+            if (container == null || ResourceLocation.tryParse(
+                    output.startsWith("#") ? output.substring(1) : output) == null) return null;
+            if (object.has("mods")) {
+                Boolean met = ModGate.evaluate(object.get("mods"));
+                if (met == null) return null;
+                if (!met) continue;
+            }
+            parsed.add(new OutputContainer(output, container));
+        }
+        return parsed;
+    }
+
+    /** The vessel a recipe with this output needs, when the recipe does not name one itself. */
+    public @Nullable ResourceLocation containerFor(ResourceLocation output) {
+        ItemStack stack = new ItemStack(BuiltInRegistries.ITEM.get(output));
+        for (OutputContainer entry : outputContainers) {
+            if (actionSelectorMatches(entry.output(), stack)) return entry.container();
+        }
+        return recipeContainer;
+    }
+
+    /** Every vessel this block can fill. */
+    public List<ResourceLocation> recipeContainers() {
+        LinkedHashSet<ResourceLocation> containers = new LinkedHashSet<>();
+        if (recipeContainer != null) containers.add(recipeContainer);
+        for (OutputContainer entry : outputContainers) containers.add(entry.container());
+        return List.copyOf(containers);
+    }
+
+    /** Whether every condition on an action holds; each one is read at the block its wrappers reach. */
+    static boolean actionApplies(JsonObject action, net.minecraft.core.BlockPos anchor,
+                                 java.util.function.BiPredicate<JsonElement, net.minecraft.core.BlockPos> test) {
+        JsonObject node = action;
+        net.minecraft.core.BlockPos at = anchor;
+        while (true) {
+            // A selector picks its own blocks, so only running the action can tell.
+            if (node.has("on")) return true;
+            if (node.has("condition") && !test.test(node.get("condition"), at)) return false;
+            if (!node.has("block_action") || !node.get("block_action").isJsonObject()) return true;
+            at = at.offset(offsetOf(node, "x"), offsetOf(node, "y"), offsetOf(node, "z"));
+            node = node.getAsJsonObject("block_action");
+        }
+    }
+
+    private static int offsetOf(JsonObject node, String axis) {
+        return node.has(axis) && node.get(axis).isJsonPrimitive() ? node.get(axis).getAsInt() : 0;
     }
 
     private static @Nullable Attendance parseAttendance(@Nullable JsonElement element) {
@@ -522,7 +604,7 @@ public record WorkstationV2Def(
                 // already the author's statement that the block performs the recipe; requiring a
                 // second, manually maintained output-item tag would make the order catalogue a
                 // different (and inevitably stale) source of truth from the work engine.
-                WorkstationDef.Orderable.ALL, false, Set.of(), List.of(), shiftEnd);
+                WorkstationDef.Orderable.ALL, false, Set.of(), List.of(), shiftEnd, false);
     }
 
     public boolean behaviorUses(String role) {

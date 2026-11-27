@@ -1,0 +1,131 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.signpost"
+  },
+  "icon": "minecraft:oak_sign",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.signpost.description"
+  },
+  "cost": 2,
+  "requires": [
+    "wide_road"
+  ],
+  "skill_group": "townstead:roadwright_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:mortar",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:cloud",
+          "radius": 6.0,
+          "height": 24.0,
+          "duration": 12000,
+          "wait_time": 10,
+          "reapply_delay": 40,
+          "particle": "minecraft:end_rod",
+          "do": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:mason/roadwright/waystation"
+                      }
+                    },
+                    {
+                      "type": "pheno:not",
+                      "condition": {
+                        "type": "pheno:hostile"
+                      }
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:slowness"
+                    },
+                    {
+                      "type": "pheno:clear_effect",
+                      "effect": "minecraft:hunger"
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:mason/roadwright/kings_highway"
+                      }
+                    },
+                    {
+                      "type": "pheno:not",
+                      "condition": {
+                        "type": "pheno:hostile"
+                      }
+                    },
+                    {
+                      "type": "pheno:block",
+                      "y": -1,
+                      "block_condition": {
+                        "type": "in_tag",
+                        "tag": "townstead:roads"
+                      }
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 60,
+                  "amplifier": 1
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.wood.place",
+          "volume": 1.0,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:end_rod",
+          "count": 20,
+          "spread": 0.5
+        }
+      ]
+    }
+  }
+}

@@ -29,6 +29,7 @@ import java.util.UUID;
 public final class GossipTicker {
 
     private static final int STRIDE_TICKS = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(STRIDE_TICKS);
     private static final double PARTNER_RADIUS = 4.0;
     private static final float GOSSIP_CHANCE = 0.25f;
     private static final float ABSORB_CHANCE = 0.10f;
@@ -36,7 +37,7 @@ public final class GossipTicker {
     private GossipTicker() {}
 
     public static void tick(VillagerEntityMCA villager, long gameTime) {
-        if ((gameTime + villager.getId()) % STRIDE_TICKS != 0) return;
+        if (!STRIDE.due(villager, gameTime + villager.getId())) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
         if (ChronicleEventRegistry.isEmpty()) return;
         if (!KnownStoriesCache.ready(villager.getUUID())) return;

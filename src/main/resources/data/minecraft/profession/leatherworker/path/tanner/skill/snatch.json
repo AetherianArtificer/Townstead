@@ -1,0 +1,335 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.tanner.snatch"
+  },
+  "icon": "minecraft:tripwire_hook",
+  "description": {
+    "translate": "skill.townstead.leatherworker.tanner.snatch.description"
+  },
+  "cost": 2,
+  "requires": [
+    "let_go"
+  ],
+  "skill_group": "townstead:tanner_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:hide",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:leatherworker/tanner/cat_o_nine"
+          }
+        },
+        {
+          "type": "pheno:equipped_item",
+          "slot": "offhand",
+          "item_condition": {
+            "type": "pheno:empty"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/tanner/bullwhip"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:hide",
+                "min": 5
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:hide",
+                "amount": -5
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 8,
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  },
+                  "if_action": {
+                    "type": "pheno:disarm"
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  },
+                  "on": {
+                    "type": "pheno:ray",
+                    "distance": 8
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:leatherworker/tanner/whipcord"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:leatherworker/tanner/long_arm"
+            },
+            "if_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:block_in_radius",
+                "radius": 16,
+                "block_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:buttons"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:lever"
+                    }
+                  ]
+                }
+              },
+              "if_action": {
+                "type": "pheno:at",
+                "blocks": {
+                  "type": "pheno:ray",
+                  "distance": 16,
+                  "where": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:in_tag",
+                        "tag": "minecraft:buttons"
+                      },
+                      {
+                        "type": "pheno:block",
+                        "block": "minecraft:lever"
+                      }
+                    ]
+                  }
+                },
+                "do": {
+                  "type": "pheno:use_block"
+                }
+              },
+              "else_action": {
+                "type": "pheno:retrieve_item",
+                "range": 16,
+                "speed": 0.9,
+                "aim_radius": 0.6,
+                "color": "#8A5A2B"
+              }
+            },
+            "else_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:block_in_radius",
+                "radius": 10,
+                "block_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:buttons"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:lever"
+                    }
+                  ]
+                }
+              },
+              "if_action": {
+                "type": "pheno:at",
+                "blocks": {
+                  "type": "pheno:ray",
+                  "distance": 10,
+                  "where": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:in_tag",
+                        "tag": "minecraft:buttons"
+                      },
+                      {
+                        "type": "pheno:block",
+                        "block": "minecraft:lever"
+                      }
+                    ]
+                  }
+                },
+                "do": {
+                  "type": "pheno:use_block"
+                }
+              },
+              "else_action": {
+                "type": "pheno:retrieve_item",
+                "range": 10,
+                "speed": 0.9,
+                "aim_radius": 0.6,
+                "color": "#8A5A2B"
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:leatherworker/tanner/long_arm"
+            },
+            "if_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:block_in_radius",
+                "radius": 16,
+                "block_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:buttons"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:lever"
+                    }
+                  ]
+                }
+              },
+              "if_action": {
+                "type": "pheno:at",
+                "blocks": {
+                  "type": "pheno:ray",
+                  "distance": 16,
+                  "where": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:in_tag",
+                        "tag": "minecraft:buttons"
+                      },
+                      {
+                        "type": "pheno:block",
+                        "block": "minecraft:lever"
+                      }
+                    ]
+                  }
+                },
+                "do": {
+                  "type": "pheno:use_block"
+                }
+              },
+              "else_action": {
+                "type": "pheno:retrieve_item",
+                "range": 16,
+                "speed": 0.9,
+                "aim_radius": 0.6,
+                "color": "#8A5A2B"
+              }
+            },
+            "else_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:block_in_radius",
+                "radius": 8,
+                "block_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:buttons"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:lever"
+                    }
+                  ]
+                }
+              },
+              "if_action": {
+                "type": "pheno:at",
+                "blocks": {
+                  "type": "pheno:ray",
+                  "distance": 8,
+                  "where": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:in_tag",
+                        "tag": "minecraft:buttons"
+                      },
+                      {
+                        "type": "pheno:block",
+                        "block": "minecraft:lever"
+                      }
+                    ]
+                  }
+                },
+                "do": {
+                  "type": "pheno:use_block"
+                }
+              },
+              "else_action": {
+                "type": "pheno:retrieve_item",
+                "range": 8,
+                "speed": 0.9,
+                "aim_radius": 0.6,
+                "color": "#8A5A2B"
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.player.attack.knockback",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

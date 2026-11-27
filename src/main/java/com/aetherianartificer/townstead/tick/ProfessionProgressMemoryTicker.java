@@ -10,10 +10,11 @@ import net.minecraft.world.entity.npc.VillagerProfession;
 
 public final class ProfessionProgressMemoryTicker {
     private static final int CHECK_INTERVAL_TICKS = 20;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(CHECK_INTERVAL_TICKS);
     private ProfessionProgressMemoryTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        if ((villager.level().getGameTime() + villager.getId()) % CHECK_INTERVAL_TICKS != 0) return;
+        if (!STRIDE.due(villager, villager.level().getGameTime() + villager.getId())) return;
         TownsteadVillager.ProfessionMemory memory = TownsteadVillagers.get(villager).professionMemory();
         String currentKey = professionKey(villager.getVillagerData().getProfession());
         if (currentKey == null) return;

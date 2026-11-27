@@ -16,7 +16,8 @@ public final class TemperatureBridgeResolver {
     private static final List<AmbientTemperatureBridge> MODDED = List.of(
             LsoTemperatureBridge.INSTANCE,
             ColdSweatTemperatureBridge.INSTANCE,
-            ToughAsNailsTemperatureBridge.INSTANCE);
+            ToughAsNailsTemperatureBridge.INSTANCE,
+            HomeostaticTemperatureBridge.INSTANCE);
 
     private static volatile String resolvedPreference;
     private static volatile AmbientTemperatureBridge cachedBridge = BuiltinTemperatureBridge.INSTANCE;
@@ -28,7 +29,8 @@ public final class TemperatureBridgeResolver {
     public static boolean anyTemperatureModLoaded() {
         return ModCompat.isLoaded("legendarysurvivaloverhaul")
                 || ModCompat.isLoaded("cold_sweat")
-                || ModCompat.isLoaded("toughasnails");
+                || ModCompat.isLoaded("toughasnails")
+                || ModCompat.isLoaded("homeostatic");
     }
 
     /** The backend that drives the ambient reading. */

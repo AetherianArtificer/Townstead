@@ -35,13 +35,24 @@ public interface JobSiteProvider {
      * preserves vanilla's one-workstation, one-worker rule.
      */
     record JobBlock(Set<ResourceLocation> blocks, @Nullable ResourceLocation via,
-                    int sitesPerWorker) implements JobSiteProvider {
+                    int sitesPerWorker,
+                    /** A block condition a site must meet to count, such as a bed beside it; null for none. */
+                    @Nullable com.aetherianartificer.townstead.pheno.condition.block.BlockCondition requires)
+            implements JobSiteProvider {
         public JobBlock {
             blocks = Set.copyOf(blocks);
             sitesPerWorker = Math.max(1, sitesPerWorker);
         }
+        public JobBlock(Set<ResourceLocation> blocks, @Nullable ResourceLocation via, int sitesPerWorker) {
+            this(blocks, via, sitesPerWorker, null);
+        }
         public JobBlock(Set<ResourceLocation> blocks, @Nullable ResourceLocation via) {
             this(blocks, via, 1);
+        }
+
+        /** Whether the block at {@code pos} counts as one of these sites. */
+        public boolean counts(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos) {
+            return requires == null || requires.test(level, pos);
         }
         public JobBlock(Set<ResourceLocation> blocks) { this(blocks, null, 1); }
         public static final String KEY = "townstead:job_block";

@@ -145,9 +145,26 @@ public final class ItemConditions {
                 boolean value = GsonHelper.getAsBoolean(json, "value", true);
                 return (level, stack) -> value;
             }
-            default:
-                return null;
+            default: {
+                ItemCondition custom = extension(type, json);
+                return custom != null ? custom : com.aetherianartificer.townstead.compat.pheno.ForeignTypes.itemCondition(type, json);
+            }
         }
+    }
+
+    private static final java.util.Map<String, java.util.function.Function<JsonObject, ItemCondition>> EXTENSIONS =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Adds an item-condition kind a host mod owns. {@code type} has no namespace. */
+    public static void register(String type, java.util.function.Function<JsonObject, ItemCondition> parser) {
+        EXTENSIONS.put(type, parser);
+    }
+
+    /** This copy's own added kind, never the other copy's. The bridge asks only this, so a lookup never loops. */
+    @Nullable
+    public static ItemCondition extension(String type, JsonObject json) {
+        java.util.function.Function<JsonObject, ItemCondition> custom = EXTENSIONS.get(type);
+        return custom == null ? null : custom.apply(json);
     }
 
     private static int enchantmentLevel(net.minecraft.world.item.ItemStack stack, ResourceLocation id) {

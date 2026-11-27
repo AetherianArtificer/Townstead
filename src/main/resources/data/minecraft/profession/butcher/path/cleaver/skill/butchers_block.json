@@ -7,15 +7,15 @@
   "description": {
     "translate": "skill.townstead.butcher.cleaver.butchers_block.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "cleave"
+    "deep_cuts"
   ],
-  "skill_group": "townstead:cleaver_blade",
+  "skill_group": "townstead:cleaver_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:cut",
@@ -28,68 +28,210 @@
           "type": "pheno:and",
           "actions": [
             {
-              "type": "pheno:damage",
-              "amount": 8,
-              "source": "other"
-            },
-            {
-              "type": "pheno:and",
-              "actions": [
-                {
-                  "type": "pheno:delay",
-                  "ticks": 20,
-                  "action": {
-                    "type": "pheno:damage",
-                    "amount": 1,
-                    "source": "other"
-                  }
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:butcher/cleaver/hemorrhage"
+                }
+              },
+              "if_action": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:flag",
+                  "flag": "townstead:cleaver_three"
                 },
-                {
-                  "type": "pheno:delay",
-                  "ticks": 40,
-                  "action": {
-                    "type": "pheno:damage",
-                    "amount": 1,
-                    "source": "other"
-                  }
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 9,
+                  "source": "other"
                 },
-                {
-                  "type": "pheno:delay",
-                  "ticks": 60,
-                  "action": {
+                "else_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:flag",
+                    "flag": "townstead:cleaver_two"
+                  },
+                  "if_action": {
                     "type": "pheno:damage",
-                    "amount": 1,
+                    "amount": 7,
                     "source": "other"
-                  }
-                },
-                {
-                  "type": "pheno:delay",
-                  "ticks": 80,
-                  "action": {
-                    "type": "pheno:damage",
-                    "amount": 1,
-                    "source": "other"
-                  }
-                },
-                {
-                  "type": "pheno:delay",
-                  "ticks": 100,
-                  "action": {
-                    "type": "pheno:damage",
-                    "amount": 1,
-                    "source": "other"
-                  }
-                },
-                {
-                  "type": "pheno:delay",
-                  "ticks": 120,
-                  "action": {
-                    "type": "pheno:damage",
-                    "amount": 1,
-                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:bleeding"
+                    },
+                    "if_action": {
+                      "type": "pheno:damage",
+                      "amount": 5,
+                      "source": "other"
+                    },
+                    "else_action": {
+                      "type": "pheno:damage",
+                      "amount": 3,
+                      "source": "other"
+                    }
                   }
                 }
-              ]
+              },
+              "else_action": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:flag",
+                  "flag": "townstead:cleaver_three"
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 12,
+                  "source": "other"
+                },
+                "else_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:flag",
+                    "flag": "townstead:cleaver_two"
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": 10,
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:bleeding"
+                    },
+                    "if_action": {
+                      "type": "pheno:damage",
+                      "amount": 8,
+                      "source": "other"
+                    },
+                    "else_action": {
+                      "type": "pheno:damage",
+                      "amount": 6,
+                      "source": "other"
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "type": "pheno:set_flag",
+              "flag": "townstead:cleaver_two",
+              "duration": 0
+            },
+            {
+              "type": "pheno:set_flag",
+              "flag": "townstead:cleaver_three",
+              "duration": 0
+            },
+            {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:and",
+                "conditions": [
+                  {
+                    "type": "pheno:health",
+                    "max": 0
+                  },
+                  {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:butcher/cleaver/carve_up"
+                    }
+                  }
+                ]
+              },
+              "if_action": {
+                "type": "pheno:area_of_effect",
+                "radius": 3,
+                "include_self": false,
+                "target": "all",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:bleeding",
+                      "duration": 70
+                    },
+                    {
+                      "type": "pheno:delay",
+                      "ticks": 20,
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 1,
+                            "source": "other"
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:falling_dripstone_lava",
+                            "count": 3,
+                            "spread": 0.2
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:delay",
+                      "ticks": 40,
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 1,
+                            "source": "other"
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:falling_dripstone_lava",
+                            "count": 3,
+                            "spread": 0.2
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "type": "pheno:delay",
+                      "ticks": 60,
+                      "action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 1,
+                            "source": "other"
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:falling_dripstone_lava",
+                            "count": 3,
+                            "spread": 0.2
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:damage_indicator",
+              "count": 8,
+              "spread": 0.4
             }
           ],
           "on": {
@@ -102,6 +244,15 @@
           "sound": "minecraft:entity.player.attack.strong",
           "volume": 1.0,
           "pitch": 0.8
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.wood.hit",
+          "volume": 1.0,
+          "pitch": 0.5
+        },
+        {
+          "type": "pheno:swing_hand"
         }
       ]
     }

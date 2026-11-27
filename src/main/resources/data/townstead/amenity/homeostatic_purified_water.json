@@ -1,0 +1,8 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": ["homeostatic"],
+  "blocks": ["#townstead:clean_water"],
+  "requires": { "type": "pheno:block_state", "property": "level", "value": "0" },
+  "vessel": "homeostatic:leather_flask",
+  "behavior": { "type": "pheno:use_item", "item": "vessel" }
+}

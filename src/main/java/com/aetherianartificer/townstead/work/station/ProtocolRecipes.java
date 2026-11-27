@@ -285,7 +285,10 @@ public final class ProtocolRecipes {
                         if (option.isEmpty()) continue;
                         ids.add(BuiltInRegistries.ITEM.getKey(option.getItem()));
                     }
-                    if (!ids.isEmpty()) inputs.add(new RecipeIngredient(List.copyOf(ids), 1));
+                    // an ingredient that stands for one exact product (a particular brew, a dried herb) keeps it,
+                    // so the worker fetches that one and not any stack of the same item
+                    if (!ids.isEmpty()) inputs.add(new RecipeIngredient(List.copyOf(ids), 1, null,
+                            com.aetherianartificer.townstead.work.recipe.WorkRecipeRegistry.exactProductOf(ingredient)));
                 }
                 // Single-input recipes (stonecutting) may also decline to enumerate; their own
                 // matches() answers instead. Self-selecting: never runs when getIngredients works.

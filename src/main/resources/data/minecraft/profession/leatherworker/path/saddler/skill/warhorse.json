@@ -27,7 +27,7 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:hide",
-          "min": 75
+          "min": 50
         }
       ]
     },
@@ -38,21 +38,16 @@
         "actions": [
           {
             "type": "pheno:apply_effect",
-            "effect": "minecraft:resistance",
-            "duration": 30,
-            "amplifier": 1
-          },
-          {
-            "type": "pheno:apply_effect",
             "effect": "minecraft:speed",
             "duration": 30,
             "amplifier": 1
           },
           {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:jump_boost",
-            "duration": 30,
-            "amplifier": 0
+            "type": "pheno:ward",
+            "id": "warhorse",
+            "amount": 1000,
+            "fraction": 0.4,
+            "duration": 30
           }
         ]
       }

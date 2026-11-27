@@ -7,51 +7,43 @@
   "description": {
     "translate": "skill.townstead.hunter.slayer.no_quarter.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "harry"
+    "trophy"
   ],
-  "skill_group": "townstead:hunter_slayer_b",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 300,
-    "slot": 2,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:vigil",
-      "amount": 40
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "condition": {
+      "type": "pheno:flag",
+      "flag": "townstead:slayer_vow"
     },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:area_of_effect",
-          "radius": 4,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
-              },
-              {
-                "type": "pheno:add_velocity",
-                "away_from_other": 1.0,
-                "y": 0.3
-              }
-            ]
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:slayer_quarry"
+      }
+    }
+  },
+  "companions": {
+    "rest": {
+      "type": "pheno:attack_modifier",
+      "modifier": 0.5,
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:slayer_vow"
+      },
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:slayer_quarry"
           }
-        },
-        {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:entity.player.attack.sweep",
-          "volume": 1.0,
-          "pitch": 0.7
         }
-      ]
+      }
     }
   }
 }

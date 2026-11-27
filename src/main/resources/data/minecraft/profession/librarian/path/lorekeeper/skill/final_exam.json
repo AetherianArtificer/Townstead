@@ -7,58 +7,26 @@
   "description": {
     "translate": "skill.townstead.librarian.lorekeeper.final_exam.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "lecture"
+    "footnote"
   ],
-  "skill_group": "townstead:lore_weakness",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 1200,
-    "slot": 1,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:insight",
-      "amount": 60
+    "type": "pheno:damage_modifier",
+    "modifier": 1.25,
+    "condition": {
+      "type": "pheno:flag",
+      "flag": "townstead:lorekeeper_exam"
     },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:area_of_effect",
-          "radius": 12,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:damage",
-                "amount": 6,
-                "source": "other"
-              },
-              {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:weakness",
-                "duration": 300,
-                "amplifier": 1
-              }
-            ]
-          }
-        },
-        {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:item.book.page_turn",
-          "volume": 1.0,
-          "pitch": 1.0
-        },
-        {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:block.bell.use",
-          "volume": 1.0,
-          "pitch": 1.2
+    "damage_condition": {
+      "type": "pheno:attacker",
+      "condition": {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:lorekeeper_exposed"
         }
-      ]
+      }
     }
   }
 }

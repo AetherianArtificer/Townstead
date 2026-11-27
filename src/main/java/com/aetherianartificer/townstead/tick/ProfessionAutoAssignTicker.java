@@ -11,6 +11,7 @@ import java.util.Comparator;
 /** Runs the task-based auto-assignment policies that Townstead owns. */
 public final class ProfessionAutoAssignTicker {
     private static final int ASSIGN_INTERVAL_TICKS = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(ASSIGN_INTERVAL_TICKS);
     private static final ResourceLocation COOK = ResourceLocation.tryParse("townstead:cook");
     private static final ResourceLocation BEVERAGE_ARTISAN =
             ResourceLocation.tryParse("townstead:beverage_artisan");
@@ -18,7 +19,7 @@ public final class ProfessionAutoAssignTicker {
     private ProfessionAutoAssignTicker() {}
 
     public static void tick(VillagerEntityMCA villager) {
-        if (villager == null || villager.tickCount % ASSIGN_INTERVAL_TICKS != 0) return;
+        if (villager == null || !STRIDE.due(villager, villager.tickCount)) return;
         for (ProfessionDef def : ProfessionDefs.all().values().stream()
                 .filter(ProfessionAutoAssign::managesDefinition)
                 .sorted(Comparator.comparingInt(ProfessionAutoAssignTicker::priority)

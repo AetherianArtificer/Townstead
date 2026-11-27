@@ -6,7 +6,7 @@
   "fields": {
     "input_fluid": {"aliases": ["getFluid", "fluid"], "operation": "raw", "required": true},
     "fluid_amount": {"default": 250, "operation": "integer"},
-    "container": {"aliases": ["getInBowl", "inBowl"], "operation": "raw", "required": true},
+    "container": {"aliases": ["getInBowl", "inBowl"], "operation": "raw"},
     "output": {"aliases": ["getBowl", "bowl"], "operation": "item_id", "required": true},
     "readiness": {"default": true, "operation": "boolean"}
   }

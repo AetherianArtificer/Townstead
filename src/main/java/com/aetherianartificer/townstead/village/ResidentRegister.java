@@ -50,6 +50,7 @@ public final class ResidentRegister extends SavedData {
 
     /** Per-villager refresh stride while loaded. */
     private static final long REFRESH_STRIDE_TICKS = 600L;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site REFRESH_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site((int) REFRESH_STRIDE_TICKS);
     /** Entries unseen for this many days are dropped. */
     private static final long PRUNE_AFTER_DAYS = 120L;
     /** Home village of a record saved before homes were kept. */
@@ -79,7 +80,7 @@ public final class ResidentRegister extends SavedData {
     /** Called from the villager tick; refreshes on a per-villager stride. */
     public static void onVillagerTick(VillagerEntityMCA villager, long gameTime) {
         if (villager == null || villager.level() == null || villager.level().isClientSide()) return;
-        if (Math.floorMod(gameTime + villager.getUUID().hashCode(), REFRESH_STRIDE_TICKS) != 0L) return;
+        if (!REFRESH_STRIDE.due(villager, gameTime + villager.getUUID().hashCode())) return;
         MinecraftServer server = villager.level().getServer();
         if (server != null) get(server).update(villager);
     }

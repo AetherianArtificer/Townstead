@@ -7,69 +7,638 @@
   "description": {
     "translate": "skill.townstead.fletcher.skirmisher.covering_fire.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "distraction"
+    "parting_shot"
   ],
-  "skill_group": "townstead:skirmisher_harry",
+  "skill_group": "townstead:skirmisher_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 500,
+    "cooldown": 400,
     "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:draw",
-      "amount": 40
+      "amount": 30
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 10,
-          "include_self": true,
-          "target": "non_hostile",
-          "action": {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:speed",
-            "duration": 300,
-            "amplifier": 1
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fletcher/skirmisher/whirlwind_archer"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:draw",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:draw",
+                "amount": -10
+              },
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 0,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 5,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 10,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 15,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 20,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 25,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 30,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 35,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 40,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 45,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 50,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:delay",
+                    "ticks": 55,
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:fire_projectile",
+                              "entity": "minecraft:arrow",
+                              "speed": 2.5,
+                              "inaccuracy": 6.0
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:play_sound",
+                          "sound": "minecraft:entity.arrow.shoot",
+                          "volume": 1.0,
+                          "pitch": 1.0
+                        }
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:delay",
+                "ticks": 0,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 7,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 15,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 22,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 30,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 37,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 45,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:delay",
+                "ticks": 52,
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:fire_projectile",
+                          "entity": "minecraft:arrow",
+                          "speed": 2.5,
+                          "inaccuracy": 6.0
+                        }
+                      ]
+                    },
+                    {
+                      "type": "pheno:play_sound",
+                      "sound": "minecraft:entity.arrow.shoot",
+                      "volume": 1.0,
+                      "pitch": 1.0
+                    }
+                  ]
+                }
+              }
+            ]
           }
         },
         {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:fire_projectile",
-              "entity": "minecraft:arrow",
-              "speed": 2.5,
-              "inaccuracy": 6.0
-            },
-            {
-              "type": "pheno:fire_projectile",
-              "entity": "minecraft:arrow",
-              "speed": 2.5,
-              "inaccuracy": 6.0
-            },
-            {
-              "type": "pheno:fire_projectile",
-              "entity": "minecraft:arrow",
-              "speed": 2.5,
-              "inaccuracy": 6.0
-            },
-            {
-              "type": "pheno:fire_projectile",
-              "entity": "minecraft:arrow",
-              "speed": 2.5,
-              "inaccuracy": 6.0
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:entity_in_radius",
+            "radius": 32,
+            "condition": {
+              "type": "pheno:hostile"
             }
-          ]
-        },
-        {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:entity.arrow.shoot",
-          "volume": 1.0,
-          "pitch": 1.0
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:fletcher/skirmisher/suppress"
+            },
+            "if_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:area_of_effect",
+                "radius": 6,
+                "include_self": true,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 60,
+                      "amplifier": 1
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:weakness",
+                      "duration": 60,
+                      "amplifier": 0
+                    }
+                  ]
+                }
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              },
+              "on": {
+                "type": "pheno:ray",
+                "distance": 32
+              }
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
         }
       ]
     }

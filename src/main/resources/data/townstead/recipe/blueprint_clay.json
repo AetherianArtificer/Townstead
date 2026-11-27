@@ -1,0 +1,17 @@
+{
+  "type": "townstead:blueprint",
+  "group": "townstead:blueprint",
+  "category": "misc",
+  "surface": "townstead:clay",
+  "pattern": [
+    "SSS",
+    "SIS"
+  ],
+  "key": {
+    "S": { "tag": "townstead:blueprint_surface/clay" },
+    "I": { "tag": "townstead:blueprint_ink" }
+  },
+  "result": {
+    "id": "mca:blueprint"
+  }
+}

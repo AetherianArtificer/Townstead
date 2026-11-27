@@ -1,0 +1,36 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.stake_ready"
+  },
+  "icon": "minecraft:stick",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.stake_ready.description"
+  },
+  "cost": 1,
+  "requires": [
+    "second_wind"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_attack",
+    "target": "other",
+    "action": {
+      "type": "pheno:if_else",
+      "condition": {
+        "type": "pheno:health",
+        "max": 0.2,
+        "relative": true
+      },
+      "if_action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:slowness",
+        "duration": 60,
+        "amplifier": 1
+      },
+      "else_action": {
+        "type": "pheno:nothing"
+      }
+    }
+  }
+}

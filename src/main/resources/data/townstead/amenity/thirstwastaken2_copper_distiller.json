@@ -1,0 +1,15 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": ["thirstwastaken2"],
+  "blocks": ["thirstwastaken2:copper_distiller"],
+  "anchor": { "type": "pheno:block_state", "property": "part", "value": "boiler" },
+  "requires": {
+    "type": "pheno:and",
+    "conditions": [
+      { "type": "pheno:block_state", "property": "piped", "value": "true" },
+      { "type": "pheno:block_entity", "property": "basinServings", "value": 0, "inverted": true }
+    ]
+  },
+  "vessel": "minecraft:glass_bottle",
+  "behavior": { "type": "pheno:use_block", "item": "vessel" }
+}

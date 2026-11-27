@@ -1,0 +1,17 @@
+{
+  "schema": "townstead:amenity/v1",
+  "mods": ["thirstwastaken2"],
+  "blocks": ["minecraft:water_cauldron"],
+  "requires": {
+    "type": "pheno:or",
+    "conditions": [
+      { "type": "pheno:block_state", "property": "purity", "value": "0" },
+      { "type": "pheno:block_state", "property": "purity", "value": "1" },
+      { "type": "pheno:block_state", "property": "purity", "value": "2" },
+      { "type": "pheno:block_state", "property": "purity", "value": "3" },
+      { "type": "pheno:block_state", "property": "purity", "value": "4" }
+    ]
+  },
+  "vessel": "minecraft:glass_bottle",
+  "behavior": { "type": "pheno:use_block", "item": "vessel" }
+}

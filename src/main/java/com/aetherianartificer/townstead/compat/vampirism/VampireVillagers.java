@@ -22,6 +22,7 @@ import net.minecraft.resources.ResourceKey;
  * Vampirism-typed value here goes through reflection and nothing loads without the mod.
  */
 public final class VampireVillagers {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site NIGHT_SHIFT_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(100);
     public static final ResourceLocation STATE = ResourceLocation.tryParse("townstead_state:vampire");
     public static final ResourceLocation BLOOD = ResourceLocation.tryParse("townstead_state:vampire_blood");
     /** Where a cure in progress used to be kept; read once to move it onto {@link #CURE}. */
@@ -38,6 +39,7 @@ public final class VampireVillagers {
     /** A villager at fledgling or above: a vampire to Vampirism and to everyone else. */
     public static boolean isVampire(LivingEntity entity) {
         if (!(entity instanceof VillagerEntityMCA) || entity.level().isClientSide) return false;
+        if (EntityStates.definition(STATE) == null) return false;
         long now = entity.level().getGameTime();
         synchronized (VAMPIRE_CACHE) {
             Long cached = VAMPIRE_CACHE.get(entity);
@@ -198,7 +200,7 @@ public final class VampireVillagers {
     public static void tick(VillagerEntityMCA villager) {
         if (EntityStates.definition(STATE) != null) VampireChronicles.observeRank(villager);
         if (EntityStates.definition(STATE) != null) VampireGarlic.tick(villager);
-        if (villager.tickCount % 100 == 0) nightShift(villager);
+        if (NIGHT_SHIFT_STRIDE.due(villager, villager.tickCount)) nightShift(villager);
         DhampirAging.tick(villager);
         // A cure begun before cures became a state carries on as one, for the time it had left.
         var data = villager.getPersistentData();
@@ -224,13 +226,17 @@ public final class VampireVillagers {
         if (vampire == data.getBoolean(GAVE_NIGHT_SHIFT)) return;
         var schedule = com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).schedule();
         if (vampire) {
+            if (schedule.hasNonDefaultCustomShifts()) {
+                data.putBoolean(GAVE_NIGHT_SHIFT, true);
+                return;
+            }
+            // Unmarked while the template is missing, so a later check can still give it.
+            var shift = com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry
+                    .resolve(villager.level().getServer(), NIGHT_SHIFT).orElse(null);
+            if (shift == null) return;
             data.putBoolean(GAVE_NIGHT_SHIFT, true);
-            if (schedule.hasNonDefaultCustomShifts()) return;
-            com.aetherianartificer.townstead.shift.template.ShiftTemplateRegistry.resolve(villager.level().getServer(), NIGHT_SHIFT)
-                    .ifPresent(shift -> {
-                        schedule.setShifts(shift.copyShifts());
-                        schedule.setTemplateId(NIGHT_SHIFT.toString());
-                    });
+            schedule.setShifts(shift.copyShifts());
+            schedule.setTemplateId(NIGHT_SHIFT.toString());
         } else {
             data.remove(GAVE_NIGHT_SHIFT);
             if (!NIGHT_SHIFT.toString().equals(schedule.templateId())) return;

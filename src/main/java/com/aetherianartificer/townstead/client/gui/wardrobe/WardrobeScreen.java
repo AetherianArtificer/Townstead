@@ -24,6 +24,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.PacketDistributor;
 //?}
 import net.minecraft.world.entity.LivingEntity;
+import net.conczin.mca.entity.ai.relationship.Gender;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -84,7 +85,7 @@ public class WardrobeScreen extends Screen {
     private final Set<UUID> selected = new LinkedHashSet<>();
     private Button backButton, householdButton, worksiteButton, pasteButton, cancelButton;
 
-    private enum MenuItem { FILL, COPY, PASTE, PASTE_MANY, CLEAR }
+    private enum MenuItem { FILL, COPY, PASTE, PASTE_MANY, CLEAR, BATHING }
 
     public WardrobeScreen(Screen returnScreen) {
         super(Component.translatable("townstead.wardrobe.title"));
@@ -470,6 +471,9 @@ public class WardrobeScreen extends Screen {
     // ---------------------------------------------------------------- Row tools
 
     private List<MenuItem> menuItems() {
+        if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) {
+            return List.of(MenuItem.FILL, MenuItem.COPY, MenuItem.PASTE, MenuItem.PASTE_MANY, MenuItem.CLEAR, MenuItem.BATHING);
+        }
         return List.of(MenuItem.FILL, MenuItem.COPY, MenuItem.PASTE, MenuItem.PASTE_MANY, MenuItem.CLEAR);
     }
 
@@ -529,6 +533,15 @@ public class WardrobeScreen extends Screen {
                 selected.add(row);
             }
             case CLEAR -> send(WardrobeAssignPayload.paste(List.of(row), List.of()));
+            case BATHING -> {
+                WardrobeSyncPayload.Resident resident = WardrobeClientStore.resident(row);
+                LivingEntity subject = resident == null ? null : WardrobePreview.subject(row, resident.gender());
+                if (subject == null) return true;
+                Gender[] genders = Gender.values();
+                Gender gender = resident.gender() >= 0 && resident.gender() < genders.length ? genders[resident.gender()] : Gender.NEUTRAL;
+                String tab = gender == Gender.FEMALE ? "feminine" : gender == Gender.MALE ? "masculine" : "neutral";
+                com.aetherianartificer.townstead.compat.mess.MessClientLink.pickBathingWear(subject, tab, picked -> send(WardrobeAssignPayload.bathing(row, picked)), this);
+            }
         }
         return true;
     }

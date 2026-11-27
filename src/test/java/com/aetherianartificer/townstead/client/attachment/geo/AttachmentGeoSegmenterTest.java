@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.client.attachment.geo;
 
+import com.aetherianartificer.townstead.root.attachment.AttachmentGeoSegmenter;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;

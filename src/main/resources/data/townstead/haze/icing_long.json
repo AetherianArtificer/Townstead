@@ -1,0 +1,14 @@
+{
+  "duration": 2400,
+  "inside": {
+    "interval": 4,
+    "action": {
+      "type": "pheno:add_velocity",
+      "relative": true,
+      "z": 0.18
+    }
+  },
+  "shape": "layer",
+  "color": "#FFFFFF",
+  "texture": "townstead:haze/layer"
+}

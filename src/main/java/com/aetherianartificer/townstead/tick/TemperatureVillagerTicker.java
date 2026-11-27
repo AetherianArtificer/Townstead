@@ -31,7 +31,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 //?}
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Drifts each villager's body temperature toward a target set by the ambient at its own position,
@@ -52,37 +51,37 @@ public final class TemperatureVillagerTicker {
     *///?}
 
     private static final long PROFILE_TTL_TICKS = 200L;
-    private static final Map<Integer, TickState> STATE = new ConcurrentHashMap<>();
+    private static final Map<VillagerEntityMCA, TickState> STATE = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
 
     private TemperatureVillagerTicker() {}
 
     public static void clear() { STATE.clear(); }
 
-    public static void forget(int entityId) {
-        STATE.remove(entityId);
+    public static void forget(VillagerEntityMCA villager) {
+        STATE.remove(villager);
     }
 
     public static boolean thermalBreakReady(VillagerEntityMCA villager, TemperatureData.Tier core) {
-        var state = STATE.get(villager.getId());
+        var state = STATE.get(villager);
         return core.isCrisis() || state != null && state.breakGrace.allowsBreak(core);
     }
 
     public static void invalidateEquipment(VillagerEntityMCA villager) {
-        var state = STATE.get(villager.getId());
+        var state = STATE.get(villager);
         if (state != null) state.nextClothingSampleTick = 0;
     }
 
     public static void tick(VillagerEntityMCA self) {
         if (!(self.level() instanceof ServerLevel level)) return;
         if (!TownsteadConfig.isVillagerTemperatureEnabled()) {
-            TickState previous = STATE.remove(self.getId());
+            TickState previous = STATE.remove(self);
             if (previous != null) restoreWaterCost(self, previous);
             TownsteadVillagers.get(self).needs().setSeekingRelief(false);
             removeSpeedModifier(self);
             return;
         }
 
-        TickState state = STATE.computeIfAbsent(self.getId(), id -> new TickState());
+        TickState state = STATE.computeIfAbsent(self, id -> new TickState());
         TownsteadVillager.Needs needs = TownsteadVillagers.get(self).needs();
         long gameTime = level.getGameTime();
         com.aetherianartificer.townstead.temperature.ThermalCare.owner(self);
@@ -148,7 +147,8 @@ public final class TemperatureVillagerTicker {
         state.exertion = ThermalComfort.exertion(state.exertion,
                 com.aetherianartificer.townstead.temperature.ThermalExposure.activity(self), seconds);
         ThermalProtection protection = state.clothing.plus(com.aetherianartificer.townstead.compat.temperature.LsoEntityCompat.effects(self).protection())
-                .plus(com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.protection(self));
+                .plus(com.aetherianartificer.townstead.compat.temperature.ColdSweatEntityCompat.protection(self))
+                .plus(com.aetherianartificer.townstead.compat.thirst.HomeostaticEntityCompat.protection(self));
         float ambientCelsius = com.aetherianartificer.townstead.temperature.ThermalConsumables.internalAmbient(self, TemperatureData.celsius(needs.ambientTenths()));
         boolean immersed = self.isInWater();
         if (immersed && !Float.isFinite(state.water)) state.water = com.aetherianartificer.townstead.temperature.ThermalAir.water(level, self.blockPosition());
@@ -200,8 +200,6 @@ public final class TemperatureVillagerTicker {
         if (!self.isBaby()) updateSpeedModifier(self, coreTier.speedPenalty(), state);
 
         syncIfChanged(self, needs, state, changed);
-
-        if (!self.isAlive() || self.isRemoved()) STATE.remove(self.getId());
     }
 
     /**
@@ -344,7 +342,7 @@ public final class TemperatureVillagerTicker {
         //?} else {
         /*if (speedAttr.getModifier(TOWNSTEAD_SPEED_PENALTY_UUID) != null) speedAttr.removeModifier(TOWNSTEAD_SPEED_PENALTY_UUID);
         *///?}
-        TickState state = STATE.get(self.getId());
+        TickState state = STATE.get(self);
         if (state != null) state.lastPenalty = 0.0;
     }
 

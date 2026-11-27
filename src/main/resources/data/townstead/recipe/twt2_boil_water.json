@@ -1,0 +1,16 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "thirstwastaken2"
+    }
+  ],
+  "type": "townstead:twt2_water_purification",
+  "ingredient": { "item": "minecraft:potion" },
+  "result": {
+    "id": "minecraft:potion",
+    "count": 1
+  },
+  "experience": 0,
+  "cookingtime": 100
+}

@@ -29,7 +29,7 @@ import java.util.Set;
  *   frame (brass)         is this skill mine?
  *   frame (deep brass)    can I buy this one now?
  *   frame (cold, dimmed)  does this exist, and is it out of reach?
- *   frame outline shape   what kind is it: plain skill, gateway, Combo Skill?
+ *   frame outline shape   what kind is it: plain skill, tool, keystone, gateway, Combo Skill?
  *   wax seal              is this the one I am using?
  *   item icon             what is it?
  *   link                  what must I own before it?

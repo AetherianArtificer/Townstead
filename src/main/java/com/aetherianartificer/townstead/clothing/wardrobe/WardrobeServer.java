@@ -11,9 +11,12 @@ import com.aetherianartificer.townstead.tick.WardrobeVillagerTicker;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.resources.ClothingList;
+import net.conczin.mca.resources.SkinSelection;
+import net.conczin.mca.resources.data.skin.Clothing;
 import net.conczin.mca.server.world.data.Building;
 import net.conczin.mca.server.world.data.CustomClothingManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -37,6 +40,9 @@ public final class WardrobeServer {
 
     /** The residents each player's screen last asked about, so an edit can answer with the same rows. */
     private static final Map<UUID, List<UUID>> WATCHED = new ConcurrentHashMap<>();
+
+    private static final String LIBRARY_PREFIX = "immersive_library:";
+    private static final int MAX_TITLE = 64;
 
     private WardrobeServer() {}
 
@@ -120,10 +126,31 @@ public final class WardrobeServer {
                     if (!cell.isEmpty() && !skinExists(cell) && templateOf(cell) == null) return;
                 }
                 for (UUID target : payload.targets()) {
+                    VillagerEntityMCA entity = find(server, target);
                     for (int d = 0; d < days; d++) {
-                        assignments.setVillager(target, d, d < row.size() ? row.get(d) : "");
+                        String cell = d < row.size() ? row.get(d) : "";
+                        // A copied outfit that does not fit this villager is left to their own choice.
+                        if (entity != null && !cell.isEmpty() && templateOf(cell) == null && !fits(entity, cell)) cell = "";
+                        assignments.setVillager(target, d, cell);
                     }
                 }
+            }
+            case BATHING -> {
+                VillagerEntityMCA entity = villager == null ? null : find(server, villager);
+                int bar = value.lastIndexOf('|');
+                if (entity == null || bar <= 0) return;
+                int color;
+                try {
+                    color = Integer.parseInt(value.substring(bar + 1));
+                } catch (NumberFormatException e) {
+                    return;
+                }
+                com.aetherianartificer.townstead.compat.mess.MessBridge.setBathingWear(entity, value.substring(0, bar), color);
+            }
+            case TITLE -> {
+                String title = payload.row().isEmpty() ? "" : payload.row().get(0).trim();
+                if (!value.startsWith(LIBRARY_PREFIX) || !skinExists(value) || title.isEmpty()) return;
+                assignments.setTitle(value, title.length() > MAX_TITLE ? title.substring(0, MAX_TITLE) : title);
             }
             default -> {
             }
@@ -137,9 +164,21 @@ public final class WardrobeServer {
         return villager == null || SkinPicker.fitsBody(villager, skin);
     }
 
+    /** Whether a skin suits the villager's gender and body. Skins MCA has no entry for are allowed. */
+    private static boolean fits(VillagerEntityMCA villager, String skin) {
+        if (!SkinPicker.fitsBody(villager, skin)) return false;
+        ClothingList list = ClothingList.getInstance();
+        Clothing clothing = list == null || list.clothing == null ? null : list.clothing.get(skin);
+        if (clothing == null) clothing = CustomClothingManager.getClothing().getEntries().get(skin);
+        return clothing == null || SkinSelection.matchesGender(clothing, villager.getGenetics().getGender());
+    }
+
     /** Whether MCA knows this clothing skin, including skins added through its Skin Library. */
     public static boolean skinExists(@Nullable String skin) {
         if (skin == null || skin.isEmpty()) return false;
+        // Skin Library picks are drawn from MCA's client cache by content id; the server never lists them.
+        if (skin.startsWith(LIBRARY_PREFIX)) return skin.length() > LIBRARY_PREFIX.length()
+                && skin.substring(LIBRARY_PREFIX.length()).chars().allMatch(Character::isDigit);
         ClothingList list = ClothingList.getInstance();
         if (list != null && list.clothing.containsKey(skin)) return true;
         return CustomClothingManager.getClothing().getEntries().containsKey(skin);
@@ -174,13 +213,34 @@ public final class WardrobeServer {
         return key == null ? "" : key.toString();
     }
 
+    private static final String LOCK_REVIEWED = "townstead:wardrobe_lock_reviewed";
+
+    /**
+     * Clears an MCA clothing lock that an outfit pick in the Wardrobe set by mistake. Its outfit
+     * grid ran through MCA's own tile click, which locks the clothing and sends that to the
+     * server. A locked row cannot be edited, so a locked villager with a day or Work outfit got
+     * the lock from that click. Each villager is looked at once; a lock added later is kept.
+     */
+    public static void releaseWardrobeLock(MinecraftServer server, VillagerEntityMCA villager) {
+        CompoundTag data = villager.getPersistentData();
+        if (data.getBoolean(LOCK_REVIEWED)) return;
+        data.putBoolean(LOCK_REVIEWED, true);
+        if (!villager.isClothingLocked()) return;
+        WardrobeAssignments.Entry entry = WardrobeAssignments.get(server).entry(villager.getUUID());
+        if (entry == null || (entry.days.isEmpty() && entry.work.isEmpty())) return;
+        villager.setClothingLocked(false);
+    }
+
     public static WardrobeSyncPayload snapshot(MinecraftServer server, List<UUID> residents) {
         int days = daysPerWeek(server);
         WardrobeAssignments assignments = WardrobeAssignments.get(server);
         Map<UUID, WardrobeSyncPayload.Resident> out = new LinkedHashMap<>();
         for (UUID uuid : residents) {
             VillagerEntityMCA villager = find(server, uuid);
-            if (villager != null) workSkin(server, villager);
+            if (villager != null) {
+                releaseWardrobeLock(server, villager);
+                workSkin(server, villager);
+            }
             WardrobeAssignments.Entry entry = assignments.entry(uuid);
             out.put(uuid, new WardrobeSyncPayload.Resident(
                     assignments.row(uuid, days),
@@ -196,7 +256,8 @@ public final class WardrobeServer {
                     villager == null ? "" : worksite(villager),
                     villager == null ? "" : villager.getClothes()));
         }
-        return new WardrobeSyncPayload(WardrobeTemplate.all(), assignments.villageWarm(), assignments.villageLight(), out);
+        return new WardrobeSyncPayload(WardrobeTemplate.all(), assignments.villageWarm(), assignments.villageLight(), out,
+                new LinkedHashMap<>(assignments.titles()));
     }
 
     private static @Nullable VillagerEntityMCA find(MinecraftServer server, UUID uuid) {

@@ -1,0 +1,26 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.tan_lines"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.sandy_merchant.tan_lines.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sunscreen"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "condition": {
+      "type": "pheno:environment",
+      "exposure": "sun"
+    },
+    "action": {
+      "type": "pheno:energize",
+      "amount": 1
+    }
+  }
+}

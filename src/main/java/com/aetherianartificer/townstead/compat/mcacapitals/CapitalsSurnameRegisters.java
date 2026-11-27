@@ -90,7 +90,7 @@ public final class CapitalsSurnameRegisters extends SimpleJsonResourceReloadList
      * the given names Capitals ships go into MCA's own namespace, where {@code mca:<bucket>} already
      * finds them and nothing can tell them from MCA's.
      */
-    private static @Nullable FamilyNames listFor(String bucket) {
+    static @Nullable FamilyNames listFor(String bucket) {
         return bucket == null ? null : byBucket.get(bucket.toLowerCase(Locale.ROOT));
     }
 

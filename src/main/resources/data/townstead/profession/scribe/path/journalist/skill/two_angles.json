@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.two_angles"
+  },
+  "icon": "minecraft:ender_eye",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.two_angles.description"
+  },
+  "cost": 1,
+  "requires": [
+    "watch_post"
+  ]
+}

@@ -7,11 +7,11 @@
   "description": {
     "translate": "skill.townstead.mason.stonewarden.bolt_the_door.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:stonewarden_ward",
+  "cost": 2,
+  "skill_group": "townstead:stonewarden_utility",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 400,
+    "cooldown": 300,
     "slot": 1,
     "ai_trigger": "when_threatened",
     "resource_cost": {
@@ -19,22 +19,244 @@
       "amount": 20
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 8,
-      "include_self": true,
-      "target": "non_hostile",
-      "action": {
-        "type": "pheno:if_else",
-        "condition": {
-          "type": "pheno:building"
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/stonewarden/unbroken_walls"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:mortar",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:mortar",
+                "amount": -10
+              },
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:at",
+                    "blocks": {
+                      "radius": 16,
+                      "where": {
+                        "type": "and",
+                        "conditions": [
+                          {
+                            "type": "in_tag",
+                            "tag": "minecraft:doors"
+                          },
+                          {
+                            "type": "block_state",
+                            "property": "open",
+                            "value": "true"
+                          }
+                        ]
+                      }
+                    },
+                    "do": {
+                      "type": "pheno:modify_block_state",
+                      "property": "open",
+                      "value": "false"
+                    },
+                    "optional": true
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:mason/stonewarden/bar_the_windows"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:at",
+                          "blocks": {
+                            "radius": 16,
+                            "where": {
+                              "type": "and",
+                              "conditions": [
+                                {
+                                  "type": "in_tag",
+                                  "tag": "minecraft:fence_gates"
+                                },
+                                {
+                                  "type": "block_state",
+                                  "property": "open",
+                                  "value": "true"
+                                }
+                              ]
+                            }
+                          },
+                          "do": {
+                            "type": "pheno:modify_block_state",
+                            "property": "open",
+                            "value": "false"
+                          },
+                          "optional": true
+                        },
+                        {
+                          "type": "pheno:at",
+                          "blocks": {
+                            "radius": 16,
+                            "where": {
+                              "type": "and",
+                              "conditions": [
+                                {
+                                  "type": "in_tag",
+                                  "tag": "minecraft:trapdoors"
+                                },
+                                {
+                                  "type": "block_state",
+                                  "property": "open",
+                                  "value": "true"
+                                }
+                              ]
+                            }
+                          },
+                          "do": {
+                            "type": "pheno:modify_block_state",
+                            "property": "open",
+                            "value": "false"
+                          },
+                          "optional": true
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:at",
+                "blocks": {
+                  "radius": 8,
+                  "where": {
+                    "type": "and",
+                    "conditions": [
+                      {
+                        "type": "in_tag",
+                        "tag": "minecraft:doors"
+                      },
+                      {
+                        "type": "block_state",
+                        "property": "open",
+                        "value": "true"
+                      }
+                    ]
+                  }
+                },
+                "do": {
+                  "type": "pheno:modify_block_state",
+                  "property": "open",
+                  "value": "false"
+                },
+                "optional": true
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:mason/stonewarden/bar_the_windows"
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:at",
+                      "blocks": {
+                        "radius": 8,
+                        "where": {
+                          "type": "and",
+                          "conditions": [
+                            {
+                              "type": "in_tag",
+                              "tag": "minecraft:fence_gates"
+                            },
+                            {
+                              "type": "block_state",
+                              "property": "open",
+                              "value": "true"
+                            }
+                          ]
+                        }
+                      },
+                      "do": {
+                        "type": "pheno:modify_block_state",
+                        "property": "open",
+                        "value": "false"
+                      },
+                      "optional": true
+                    },
+                    {
+                      "type": "pheno:at",
+                      "blocks": {
+                        "radius": 8,
+                        "where": {
+                          "type": "and",
+                          "conditions": [
+                            {
+                              "type": "in_tag",
+                              "tag": "minecraft:trapdoors"
+                            },
+                            {
+                              "type": "block_state",
+                              "property": "open",
+                              "value": "true"
+                            }
+                          ]
+                        }
+                      },
+                      "do": {
+                        "type": "pheno:modify_block_state",
+                        "property": "open",
+                        "value": "false"
+                      },
+                      "optional": true
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          }
         },
-        "if_action": {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 300,
-          "amplifier": 1
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.iron_door.close",
+          "volume": 1.0,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.iron_trapdoor.close",
+          "volume": 0.8,
+          "pitch": 0.6
         }
-      }
+      ]
     }
   }
 }

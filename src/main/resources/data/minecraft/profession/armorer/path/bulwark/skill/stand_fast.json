@@ -1,0 +1,159 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.stand_fast"
+  },
+  "icon": "minecraft:iron_boots",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.stand_fast.description"
+  },
+  "cost": 2,
+  "requires": [
+    "blast_plate"
+  ],
+  "skill_group": "townstead:bulwark_utility",
+  "power": {
+    "type": "pheno:ability",
+    "ability": "ignore_water",
+    "mode": "toggle",
+    "slot": 1
+  },
+  "companions": {
+    "drain": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:temper",
+        "amount": 2
+      },
+      "condition": {
+        "type": "pheno:toggled",
+        "gene": "minecraft:armorer/bulwark/stand_fast"
+      },
+      "action": {
+        "type": "pheno:if_else",
+        "condition": {
+          "type": "pheno:skill",
+          "skill": "minecraft:armorer/bulwark/rally_point"
+        },
+        "if_action": {
+          "type": "pheno:area_of_effect",
+          "radius": 3,
+          "include_self": false,
+          "target": "non_hostile",
+          "action": {
+            "type": "pheno:clear_effect",
+            "effect": "minecraft:slowness"
+          }
+        },
+        "else_action": {
+          "type": "pheno:nothing"
+        }
+      }
+    },
+    "rooted": {
+      "type": "pheno:attribute",
+      "attribute": "minecraft:generic.knockback_resistance",
+      "amount": 1.0,
+      "condition": {
+        "type": "pheno:toggled",
+        "gene": "minecraft:armorer/bulwark/stand_fast"
+      }
+    },
+    "block": {
+      "type": "pheno:action_over_time",
+      "interval": 5,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:armorer/bulwark/stand_fast"
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 2,
+            "condition": {
+              "type": "pheno:hostile"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:area_of_effect",
+            "radius": 2,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:add_velocity",
+              "away_from_other": 0.5,
+              "y": 0.1
+            }
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:poof",
+            "count": 2,
+            "spread": 0.4
+          }
+        ]
+      }
+    },
+    "beacon": {
+      "type": "pheno:glow",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:armorer/bulwark/stand_fast"
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "minecraft:armorer/bulwark/rally_point"
+          }
+        ]
+      }
+    },
+    "release": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:armorer/bulwark/stand_fast"
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:resource",
+              "resource": "townstead:temper",
+              "min": 2
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:set_toggle",
+            "power": "minecraft:armorer/bulwark/stand_fast",
+            "enabled": false
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.stone.break",
+            "volume": 0.8,
+            "pitch": 0.6
+          }
+        ]
+      }
+    }
+  }
+}

@@ -7,33 +7,121 @@
   "description": {
     "translate": "skill.townstead.armorer.heavyweight.plate_stance.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:heavy_plate",
+  "cost": 2,
+  "requires": [
+    "trample"
+  ],
+  "skill_group": "townstead:heavy_mass",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 400,
-    "slot": 1,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 20
+    "type": "pheno:toggle",
+    "slot": 2,
+    "ai_trigger": "when_threatened"
+  },
+  "companions": {
+    "plates": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:temper",
+        "amount": 4
+      },
+      "condition": {
+        "type": "pheno:toggled",
+        "gene": "minecraft:armorer/heavyweight/plate_stance"
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:resistance",
+            "duration": 30,
+            "amplifier": 2
+          },
+          {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 30,
+            "amplifier": 1
+          },
+          {
+            "type": "pheno:set_flag",
+            "flag": "townstead:plate_held",
+            "duration": 40
+          }
+        ]
+      }
     },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 400,
-          "amplifier": 1
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:slowness",
-          "duration": 400,
-          "amplifier": 0
-        }
-      ]
+    "shove": {
+      "type": "pheno:trigger",
+      "trigger": "when_hurt",
+      "target": "other",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:armorer/heavyweight/plate_stance"
+          },
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:plate_held"
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:add_velocity",
+            "away_from_other": 1.0,
+            "y": 0.25
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:item.shield.block",
+            "volume": 0.8,
+            "pitch": 0.7
+          }
+        ]
+      }
+    },
+    "release": {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:toggled",
+            "gene": "minecraft:armorer/heavyweight/plate_stance"
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:resource",
+              "resource": "townstead:temper",
+              "min": 4
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:set_toggle",
+            "power": "minecraft:armorer/heavyweight/plate_stance",
+            "enabled": false
+          },
+          {
+            "type": "pheno:play_sound",
+            "sound": "minecraft:block.iron_door.open",
+            "volume": 0.8,
+            "pitch": 0.7
+          }
+        ]
+      }
     }
   }
 }

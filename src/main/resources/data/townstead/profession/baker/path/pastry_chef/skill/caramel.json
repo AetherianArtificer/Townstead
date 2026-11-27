@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.caramel"
+  },
+  "icon": "minecraft:honeycomb",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.caramel.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sugar_glass"
+  ]
+}

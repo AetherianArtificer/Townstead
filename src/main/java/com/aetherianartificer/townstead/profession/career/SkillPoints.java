@@ -16,12 +16,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.ToIntFunction;
 
 /**
- * Insight is one shared, derived budget. Working any registered career earns it at the
- * checkpoints its XP passes (see {@link com.aetherianartificer.townstead.profession.def.InsightSchedule});
+ * Insight is one shared, derived budget. Working a career earns it at the checkpoints its XP
+ * passes; for a player, only their primary vocation pays (see {@link com.aetherianartificer.townstead.profession.def.InsightSchedule});
  * learning a skill in any registered career spends it. Because both sides are rebuilt from career progress
  * and learned skills, the balance cannot drift from the save and needs no separate ledger.
  */
@@ -35,11 +36,36 @@ public final class SkillPoints {
         return def.insightAt(ProfessionProgress.getXp(store, def.id()));
     }
 
-    /** Insight earned across every career in which the character has actual standing. */
+    /**
+     * Insight earned across every career in which the character has actual standing. A player
+     * earns it only in their primary vocation, plus what earlier vocations paid while primary.
+     */
     public static int earned(LivingEntity entity) {
         ProfessionXpStore store = CareerTreeRows.storeOf(entity);
         CareerProfile profile = CareerProfiles.of(entity);
-        return store == null || profile == null ? 0 : earned(profile, store);
+        if (store == null || profile == null) return 0;
+        return entity instanceof net.minecraft.world.entity.player.Player
+                ? earnedAsPlayer(profile, store) : earned(profile, store);
+    }
+
+    static int earnedAsPlayer(CareerProfile profile, ProfessionXpStore store) {
+        Map<ResourceLocation, Integer> paid = new java.util.HashMap<>(profile.keptInsight());
+        ResourceLocation primary = ProfessionDefs.canonicalId(profile.primaryVocation());
+        ProfessionDef def = primary == null ? null : ProfessionDefs.byId(primary);
+        if (def != null) {
+            paid.merge(def.id(), Math.max(0, def.insightAt(ProfessionProgress.getXp(store, def.id()))), Math::max);
+        }
+        int total = 0;
+        for (int value : paid.values()) total += Math.max(0, value);
+        return total;
+    }
+
+    /** Whether work in this career pays Insight: for a player, only their primary vocation does. */
+    public static boolean paysInsight(LivingEntity entity, ResourceLocation career) {
+        if (!(entity instanceof net.minecraft.world.entity.player.Player)) return true;
+        CareerProfile profile = CareerProfiles.of(entity);
+        return profile != null && career != null
+                && career.equals(ProfessionDefs.canonicalId(profile.primaryVocation()));
     }
 
     static int earned(CareerProfile profile, ProfessionXpStore store) {

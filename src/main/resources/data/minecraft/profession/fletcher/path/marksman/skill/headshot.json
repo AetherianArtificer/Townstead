@@ -7,30 +7,295 @@
   "description": {
     "translate": "skill.townstead.fletcher.marksman.headshot.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "called_shot"
+    "spread"
   ],
-  "skill_group": "townstead:marksman_aimed",
+  "skill_group": "townstead:marksman_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 500,
+    "cooldown": 400,
     "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:draw",
       "amount": 40
     },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:ingredient",
+            "item": "minecraft:bow"
+          },
+          {
+            "type": "pheno:ingredient",
+            "item": "minecraft:crossbow"
+          }
+        ]
+      }
+    },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:damage",
-          "amount": 10,
-          "source": "other",
-          "on": {
-            "type": "pheno:ray",
-            "distance": 32
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:fletcher/marksman/deadeye"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:fletcher/marksman/through_and_through"
+            },
+            "if_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:if_bientity",
+                "condition": {
+                  "type": "pheno:distance",
+                  "max": 8
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:status_effect",
+                        "effect": "minecraft:glowing"
+                      },
+                      "if_action": {
+                        "type": "pheno:damage",
+                        "amount": 5,
+                        "source": "other"
+                      },
+                      "else_action": {
+                        "type": "pheno:damage",
+                        "amount": 4,
+                        "source": "other"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:crit",
+                      "count": 8,
+                      "spread": 0.3
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:status_effect",
+                        "effect": "minecraft:glowing"
+                      },
+                      "if_action": {
+                        "type": "pheno:damage",
+                        "amount": 15,
+                        "source": "other"
+                      },
+                      "else_action": {
+                        "type": "pheno:damage",
+                        "amount": 12,
+                        "source": "other"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:crit",
+                      "count": 8,
+                      "spread": 0.3
+                    }
+                  ]
+                }
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              },
+              "on": {
+                "type": "pheno:ray",
+                "distance": 48,
+                "pierce": true
+              }
+            },
+            "else_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:if_bientity",
+                "condition": {
+                  "type": "pheno:distance",
+                  "max": 8
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:status_effect",
+                        "effect": "minecraft:glowing"
+                      },
+                      "if_action": {
+                        "type": "pheno:damage",
+                        "amount": 5,
+                        "source": "other"
+                      },
+                      "else_action": {
+                        "type": "pheno:damage",
+                        "amount": 4,
+                        "source": "other"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:crit",
+                      "count": 8,
+                      "spread": 0.3
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:status_effect",
+                        "effect": "minecraft:glowing"
+                      },
+                      "if_action": {
+                        "type": "pheno:damage",
+                        "amount": 15,
+                        "source": "other"
+                      },
+                      "else_action": {
+                        "type": "pheno:damage",
+                        "amount": 12,
+                        "source": "other"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:crit",
+                      "count": 8,
+                      "spread": 0.3
+                    }
+                  ]
+                }
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              },
+              "on": {
+                "type": "pheno:ray",
+                "distance": 48
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:fletcher/marksman/through_and_through"
+            },
+            "if_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:status_effect",
+                      "effect": "minecraft:glowing"
+                    },
+                    "if_action": {
+                      "type": "pheno:damage",
+                      "amount": 15,
+                      "source": "other"
+                    },
+                    "else_action": {
+                      "type": "pheno:damage",
+                      "amount": 10,
+                      "source": "other"
+                    }
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:crit",
+                    "count": 8,
+                    "spread": 0.3
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              },
+              "on": {
+                "type": "pheno:ray",
+                "distance": 32,
+                "pierce": true
+              }
+            },
+            "else_action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:hostile"
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:status_effect",
+                      "effect": "minecraft:glowing"
+                    },
+                    "if_action": {
+                      "type": "pheno:damage",
+                      "amount": 15,
+                      "source": "other"
+                    },
+                    "else_action": {
+                      "type": "pheno:damage",
+                      "amount": 10,
+                      "source": "other"
+                    }
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:crit",
+                    "count": 8,
+                    "spread": 0.3
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              },
+              "on": {
+                "type": "pheno:ray",
+                "distance": 32
+              }
+            }
           }
         },
         {
@@ -38,6 +303,12 @@
           "sound": "minecraft:entity.arrow.shoot",
           "volume": 1.0,
           "pitch": 1.0
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.arrow.hit_player",
+          "volume": 0.8,
+          "pitch": 0.6
         }
       ]
     }

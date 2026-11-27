@@ -56,7 +56,8 @@ public final class AreaOfEffectActionType implements ActionType {
             LivingEntity self = ctx.entity();
             java.util.List<LivingEntity> hits = new java.util.ArrayList<>();
             for (LivingEntity target : self.level().getEntitiesOfClass(LivingEntity.class,
-                    self.getBoundingBox().inflate(radius))) {
+                    (ctx.at() != null ? new net.minecraft.world.phys.AABB(ctx.at(), ctx.at()) : self.getBoundingBox())
+                            .inflate(radius))) {
                 if (target == self && !includeSelf) continue;
                 if (!targetMode.equals("all")) {
                     boolean hostile = com.aetherianartificer.townstead.root.disposition.Hostility.toward(self, target);

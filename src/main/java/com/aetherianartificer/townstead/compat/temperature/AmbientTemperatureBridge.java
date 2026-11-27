@@ -41,6 +41,11 @@ public interface AmbientTemperatureBridge {
         return false;
     }
 
+    /** Celsius the backend's reading already adds for depth here, for a backend without a full depth model. */
+    default float ownDepthCelsius(net.minecraft.server.level.ServerLevel level, net.minecraft.core.BlockPos pos) {
+        return 0f;
+    }
+
     /**
      * The insulation the backend attributes to a worn item, in Celsius, or {@code NaN} when the
      * backend has no opinion.

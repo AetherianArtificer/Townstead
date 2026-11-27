@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.nightward.last_light"
+  },
+  "icon": "minecraft:glowstone",
+  "description": {
+    "translate": "skill.townstead.hunter.nightward.last_light.description"
+  },
+  "cost": 2,
+  "requires": [
+    "false_dawn"
+  ]
+}

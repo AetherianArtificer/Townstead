@@ -1,7 +1,35 @@
 {
   "schema": "townstead:diet/v1",
   "mods": "vampirism",
+  "eats_sapients": true,
+  "kin_flesh": "townstead:flesh/vampire",
   "foods": [
+    {
+      "items": [
+        "vampirism:human_heart"
+      ],
+      "players_use_item": true,
+      "nutrition": 20,
+      "saturation": 0.6,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 10
+      }
+    },
+    {
+      "items": [
+        "vampirism:weak_human_heart"
+      ],
+      "players_use_item": true,
+      "nutrition": 10,
+      "saturation": 0.4,
+      "effects": {
+        "type": "pheno:add_state",
+        "state": "townstead_state:vampire_blood",
+        "amount": 5
+      }
+    },
     {
       "fluid": "vampirism:blood",
       "players_use_item": true,

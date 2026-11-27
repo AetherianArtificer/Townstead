@@ -6,12 +6,15 @@ import com.aetherianartificer.townstead.root.locomotion.FlightStyle;
 import com.aetherianartificer.townstead.root.locomotion.FallStyle;
 import com.aetherianartificer.townstead.root.locomotion.SwimStyle;
 import com.aetherianartificer.townstead.pheno.condition.Condition;
+import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
+import com.aetherianartificer.townstead.root.attachment.BodyParts;
 import com.aetherianartificer.townstead.root.gene.GeneDisplay;
 import com.aetherianartificer.townstead.root.gene.GeneInstance;
 import com.aetherianartificer.townstead.root.gene.GeneType;
 import com.google.gson.JsonObject;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.entity.LivingEntity;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,14 +54,23 @@ public final class AbilityGeneType implements GeneType {
      */
     public record Instance(Ability ability, @Nullable Condition condition, Mode mode, int slot,
                            boolean defaultOn, @Nullable FlightStyle style, float cruiseHeight,
-                           @Nullable SwimStyle swimStyle, @Nullable FallStyle fallStyle)
+                           @Nullable SwimStyle swimStyle, @Nullable FallStyle fallStyle, String needsPart)
             implements GeneInstance {
         @Override public String typeKey() { return KEY; }
+
+        /** Whether this body can use the ability now. A toggle's own state is separate. */
+        public boolean usable(LivingEntity entity) {
+            if (!needsPart.isEmpty() && BodyParts.anyLost(entity, needsPart)) return false;
+            return condition == null || condition.test(new ConditionContext(entity));
+        }
+
         @Override public GeneDisplay display() {
             // The style rides along so the client can predict a drifting player's float.
             String styleKey = style != null ? style.key() : swimStyle != null ? swimStyle.key()
                     : fallStyle != null ? fallStyle.key() : null;
             String key = styleKey == null ? ability.key() : ability.key() + ";" + styleKey;
+            // So does the part: the bearer's client predicts its own flight.
+            if (!needsPart.isEmpty()) key = (styleKey == null ? key + ";" : key) + ";" + needsPart;
             return GeneDisplay.ability(key, mode.ordinal(), slot);
         }
     }
@@ -98,6 +110,7 @@ public final class AbilityGeneType implements GeneType {
         float cruiseHeight = json.has("cruise_height")
                 ? Math.max(0.25f, Math.min(64f, GsonHelper.getAsFloat(json, "cruise_height", 0f)))
                 : Float.NaN;
-        return new Instance(ability, condition, mode, slot, defaultOn, style, cruiseHeight, swimStyle, fallStyle);
+        return new Instance(ability, condition, mode, slot, defaultOn, style, cruiseHeight, swimStyle, fallStyle,
+                GsonHelper.getAsString(json, "needs_part", ""));
     }
 }

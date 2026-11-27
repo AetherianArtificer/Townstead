@@ -57,6 +57,14 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onGatherTooltipComponents);
             NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent e) ->
                     com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.item.BlueprintStyle.tooltip(e.getItemStack(), e.getToolTip()));
+            com.aetherianartificer.townstead.root.attachment.WornAttachments.setClientSource(
+                    com.aetherianartificer.townstead.client.attachment.AttachmentRenderLayer::worn);
+            com.aetherianartificer.townstead.root.attachment.BodyPose.setClient(
+                    new com.aetherianartificer.townstead.client.attachment.BodyPoseClient());
+            com.aetherianartificer.townstead.root.attachment.HitShapes.setClientMeasured(
+                    com.aetherianartificer.townstead.client.attachment.LiveBoxes::measured);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onClientTick);
             NeoForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
             NeoForge.EVENT_BUS.addListener(net.neoforged.bus.api.EventPriority.HIGHEST,
@@ -76,6 +84,8 @@ public final class TownsteadClient {
             NeoForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.building.EnclosureGapRenderer::onRenderLevel);
+            NeoForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.attachment.BodyBoxesRenderer::onRenderLevel);
             NeoForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
             NeoForge.EVENT_BUS.addListener(
@@ -104,6 +114,12 @@ public final class TownsteadClient {
                             new ConfigInfoScreen(parent)));
         }
         if (!hooksRegistered) {
+            com.aetherianartificer.townstead.root.attachment.WornAttachments.setClientSource(
+                    com.aetherianartificer.townstead.client.attachment.AttachmentRenderLayer::worn);
+            com.aetherianartificer.townstead.root.attachment.BodyPose.setClient(
+                    new com.aetherianartificer.townstead.client.attachment.BodyPoseClient());
+            com.aetherianartificer.townstead.root.attachment.HitShapes.setClientMeasured(
+                    com.aetherianartificer.townstead.client.attachment.LiveBoxes::measured);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onPlaySound);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientConnect);
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onClientDisconnect);
@@ -111,6 +127,8 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(TownsteadClient::onRenderNameTag);
             MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent e) ->
                     com.aetherianartificer.townstead.ritual.Blessings.tooltip(e.getItemStack(), e.getToolTip()));
+            MinecraftForge.EVENT_BUS.addListener((net.minecraftforge.event.entity.player.ItemTooltipEvent e) ->
+                    com.aetherianartificer.townstead.item.BlueprintStyle.tooltip(e.getItemStack(), e.getToolTip()));
             MinecraftForge.EVENT_BUS.addListener(net.minecraftforge.eventbus.api.EventPriority.HIGHEST,
                     com.aetherianartificer.townstead.client.render.WildCostumeRender::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(com.aetherianartificer.townstead.client.render.WildCostumeRender::onEntityLeave);
@@ -128,6 +146,8 @@ public final class TownsteadClient {
             MinecraftForge.EVENT_BUS.addListener(FishermanLineRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.building.EnclosureGapRenderer::onRenderLevel);
+            MinecraftForge.EVENT_BUS.addListener(
+                    com.aetherianartificer.townstead.client.attachment.BodyBoxesRenderer::onRenderLevel);
             MinecraftForge.EVENT_BUS.addListener(
                     com.aetherianartificer.townstead.client.species.ClimbRender::onRenderLivingPre);
             MinecraftForge.EVENT_BUS.addListener(
@@ -243,6 +263,8 @@ public final class TownsteadClient {
         clearClientStore("com.aetherianartificer.townstead.hunger.HungerClientStore");
         clearClientStore("com.aetherianartificer.townstead.client.story.StoryCallMarks");
         clearClientStore("com.aetherianartificer.townstead.client.state.StateFormClient");
+        clearClientStore("com.aetherianartificer.townstead.root.attachment.BodyValues");
+        clearClientStore("com.aetherianartificer.townstead.client.attachment.BodyPartsClient");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.CharacterNameClient");
         clearClientStore("com.aetherianartificer.townstead.client.rebirth.RebirthDestinyClient");
         clearClientStore("com.aetherianartificer.townstead.hunger.FishermanHookLinkStore");
@@ -351,7 +373,9 @@ public final class TownsteadClient {
     //? if neoforge {
     private static void onClientTick(net.neoforged.neoforge.client.event.ClientTickEvent.Post event) {
         TownsteadKeybinds.onClientTick();
+        com.aetherianartificer.townstead.client.attachment.BodyPartsClient.tick();
         FishermanLineRenderer.onClientTick();
+        com.aetherianartificer.townstead.client.attachment.FallingPieces.tick();
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();
@@ -366,7 +390,9 @@ public final class TownsteadClient {
     /*private static void onClientTick(net.minecraftforge.event.TickEvent.ClientTickEvent event) {
         if (event.phase != net.minecraftforge.event.TickEvent.Phase.END) return;
         TownsteadKeybinds.onClientTick();
+        com.aetherianartificer.townstead.client.attachment.BodyPartsClient.tick();
         FishermanLineRenderer.onClientTick();
+        com.aetherianartificer.townstead.client.attachment.FallingPieces.tick();
         tryWarmSpiritIndex();
         com.aetherianartificer.townstead.client.species.ClimbState.tick();
         com.aetherianartificer.townstead.client.species.InvisFade.tick();

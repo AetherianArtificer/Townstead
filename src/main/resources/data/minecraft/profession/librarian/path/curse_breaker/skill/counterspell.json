@@ -7,43 +7,157 @@
   "description": {
     "translate": "skill.townstead.librarian.curse_breaker.counterspell.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
     "silence"
   ],
-  "skill_group": "townstead:curse_counter",
+  "skill_group": "townstead:curse_breaker_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
     "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:insight",
+      "resource": "townstead:focus",
       "amount": 30
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:clear_effect"
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:clear_effect"
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:curse_breaker_countered",
+                "duration": 200
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:glowing",
+                "duration": 200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/curse_breaker/sanctum_arcana"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:change_resource",
+                  "resource": "townstead:focus",
+                  "amount": 10,
+                  "on": "origin"
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
         },
         {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:weakness",
+          "type": "pheno:ward",
+          "id": "counterspell",
+          "amount": 1000,
+          "fraction": 0,
           "duration": 200,
-          "amplifier": 1
+          "on_absorb": {
+            "type": "pheno:target_action",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:flag",
+                "flag": "townstead:curse_breaker_countered"
+              },
+              "if_action": {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:damage",
+                    "amount": {
+                      "type": "pheno:event_damage"
+                    }
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:enchanted_hit",
+                    "count": 8,
+                    "spread": 0.4
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            }
+          }
         },
         {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:slowness",
-          "duration": 200,
-          "amplifier": 1
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:librarian/curse_breaker/ward"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:ward",
+                "id": "ward",
+                "amount": 8,
+                "duration": 200,
+                "damage_condition": {
+                  "type": "pheno:magic"
+                }
+              },
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 6,
+                "include_self": false,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:ward",
+                  "id": "ward",
+                  "amount": 8,
+                  "duration": 200,
+                  "damage_condition": {
+                    "type": "pheno:magic"
+                  }
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.enchantment_table.use",
+          "volume": 1.0,
+          "pitch": 0.7
         }
-      ],
-      "on": {
-        "type": "pheno:ray",
-        "distance": 16
-      }
+      ]
     }
   }
 }

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.brewer.hangover"
+  },
+  "icon": "minecraft:fermented_spider_eye",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.brewer.hangover.description"
+  },
+  "cost": 1,
+  "requires": [
+    "sour_mash"
+  ]
+}

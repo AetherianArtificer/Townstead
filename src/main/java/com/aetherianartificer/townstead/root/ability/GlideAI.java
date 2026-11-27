@@ -99,7 +99,7 @@ public final class GlideAI {
     };
 
     public static void tick(VillagerEntityMCA villager) {
-        if (villager.level().isClientSide) return;
+        if (villager.level().isClientSide || villager.isNoAi()) return;
         if (Locomotion.pilot(villager) != null) {
             FALL_PEAK.remove(villager);
             return;
@@ -488,7 +488,7 @@ public final class GlideAI {
     private static Power glidePower(VillagerEntityMCA villager) {
         for (Power gene : com.aetherianartificer.townstead.pheno.power.Powers.active(villager)) {
             if (gene.component() instanceof AbilityGeneType.Instance ability
-                    && ability.ability() == Ability.ELYTRA_FLIGHT
+                    && ability.ability() == Ability.ELYTRA_FLIGHT && ability.usable(villager)
                     && (ability.mode() == AbilityGeneType.Mode.TOGGLE || ability.mode() == AbilityGeneType.Mode.PASSIVE)) {
                 return gene;
             }

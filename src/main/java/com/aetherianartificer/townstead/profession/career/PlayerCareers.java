@@ -23,8 +23,38 @@ public final class PlayerCareers {
 
     /** Read-only use. Mutations must go through {@link #mutate} or they will not persist. */
     public static CareerProfile get(Player player) {
-        return CACHE.computeIfAbsent(player.getUUID(),
-                uuid -> CareerProfile.fromTag(root(player).getCompound(KEY)));
+        CareerProfile cached = CACHE.get(player.getUUID());
+        if (cached != null) {
+            if (cached.respecPending()) tellRespec(player, cached);
+            return cached;
+        }
+        CareerProfile profile = CareerProfile.fromTag(root(player).getCompound(KEY));
+        if (!profile.insightGated() && !player.level().isClientSide()) {
+            profile.grandfatherInsight();
+            CompoundTag root = root(player);
+            root.put(KEY, profile.toTag());
+            store(player, root);
+        }
+        if (!player.level().isClientSide() && profile.respec()) {
+            CompoundTag root = root(player);
+            root.put(KEY, profile.toTag());
+            store(player, root);
+        }
+        CareerProfile raced = CACHE.putIfAbsent(player.getUUID(), profile);
+        return raced != null ? raced : profile;
+    }
+
+    /** Tells a player once that their skills were reset, as soon as they have a connection to hear it. */
+    private static void tellRespec(Player player, CareerProfile profile) {
+        if (!(player instanceof net.minecraft.server.level.ServerPlayer online) || online.connection == null) return;
+        if (!profile.takeRespecPending()) return;
+        CompoundTag root = root(player);
+        root.put(KEY, profile.toTag());
+        store(player, root);
+        online.displayClientMessage(net.minecraft.network.chat.Component.translatableWithFallback(
+                "townstead.career.respec",
+                "Career skills changed in this update. Your skills were reset and all your Insight is free to spend again."),
+                false);
     }
 
     public static void mutate(Player player, Consumer<CareerProfile> mutation) {

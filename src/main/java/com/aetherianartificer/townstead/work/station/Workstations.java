@@ -27,6 +27,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiPredicate;
+import java.util.function.Supplier;
 
 /**
  * Registry of data-declared workstations, replaced each datapack reload. Consulted from the
@@ -65,14 +67,67 @@ public final class Workstations {
 
     public static @Nullable WorkstationV2Def v2ByState(BlockState state) {
         ResourceLocation block = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        if (usedAlongside(state, block) != null) return null;
         for (WorkstationV2Def def : V2_DEFS) if (def.blocks().contains(block)) return def;
         return null;
     }
 
     public static @Nullable WorkstationV2Def v2ByBlockId(@Nullable ResourceLocation block) {
         if (block == null) return null;
+        if (USED_BY.get() != null
+                && usedAlongside(BuiltInRegistries.BLOCK.get(block).defaultBlockState(), block) != null) return null;
         for (WorkstationV2Def def : V2_DEFS) if (def.blocks().contains(block)) return def;
         return null;
+    }
+
+    // --- several uses of one block ---
+
+    /** Which definitions the worker being run right now uses: asked of a definition and the block in question. */
+    private static final ThreadLocal<BiPredicate<WorkstationDef, ResourceLocation>> USED_BY = new ThreadLocal<>();
+
+    /**
+     * Runs {@code work} as a worker that uses the definitions {@code uses} accepts. While it runs, a block with an
+     * {@code alongside} definition this worker uses answers as that definition, wherever it is asked about.
+     */
+    public static <T> T usedBy(BiPredicate<WorkstationDef, ResourceLocation> uses, Supplier<T> work) {
+        BiPredicate<WorkstationDef, ResourceLocation> before = USED_BY.get();
+        USED_BY.set(uses);
+        try {
+            return work.get();
+        } finally {
+            USED_BY.set(before);
+        }
+    }
+
+    public static void usedBy(BiPredicate<WorkstationDef, ResourceLocation> uses, Runnable work) {
+        usedBy(uses, () -> {
+            work.run();
+            return null;
+        });
+    }
+
+    /** The {@code alongside} definition of this block that the current worker uses, or null. */
+    private static @Nullable WorkstationDef usedAlongside(BlockState state, @Nullable ResourceLocation id) {
+        BiPredicate<WorkstationDef, ResourceLocation> uses = USED_BY.get();
+        if (uses == null || id == null) return null;
+        // whether the worker uses a definition is answered by looking blocks up too, as anyone would
+        USED_BY.set(null);
+        try {
+            for (WorkstationDef def : DEFS) {
+                if (def.alongside() && matches(def, state, id) && uses.test(def, id)) return def;
+            }
+            return null;
+        } finally {
+            USED_BY.set(uses);
+        }
+    }
+
+    private static boolean matches(WorkstationDef def, BlockState state, ResourceLocation id) {
+        if (def.blocks().contains(id)) return true;
+        for (ResourceLocation tag : def.blockTags()) {
+            if (state.is(TagKey.create(Registries.BLOCK, tag))) return true;
+        }
+        return false;
     }
 
     /** Rebuilds the V1 task-state compatibility views after either V2 defs or attachments reload. */
@@ -80,7 +135,7 @@ public final class Workstations {
         List<WorkstationDef> retained = new ArrayList<>();
         for (WorkstationDef def : DEFS) {
             boolean shadowed = false;
-            for (ResourceLocation block : def.blocks()) {
+            for (ResourceLocation block : def.alongside() ? Set.<ResourceLocation>of() : def.blocks()) {
                 if (v2ByBlockId(block) != null) { shadowed = true; break; }
             }
             if (!shadowed) retained.add(def);
@@ -97,26 +152,42 @@ public final class Workstations {
         List<WorkstationDef> defs = DEFS;
         if (defs.isEmpty()) return null;
         ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
+        WorkstationDef used = usedAlongside(state, id);
+        if (used != null) return used;
+        WorkstationDef other = null;
         for (WorkstationDef def : defs) {
+            if (def.alongside()) {
+                if (other == null && matches(def, state, id)) other = def;
+                continue;
+            }
             if (def.blocks().contains(id)) return def;
             for (ResourceLocation tag : def.blockTags()) {
                 if (state.is(TagKey.create(Registries.BLOCK, tag))) return def;
             }
         }
-        return null;
+        // a block with no station of its own, only another use of it
+        return other;
     }
 
     public static @Nullable WorkstationDef byBlockId(@Nullable ResourceLocation blockId) {
         List<WorkstationDef> defs = DEFS;
         if (blockId == null || defs.isEmpty()) return null;
+        if (USED_BY.get() != null) {
+            WorkstationDef used = usedAlongside(BuiltInRegistries.BLOCK.get(blockId).defaultBlockState(), blockId);
+            if (used != null) return used;
+        }
         for (WorkstationDef def : defs) {
-            if (def.blocks().contains(blockId)) return def;
+            if (!def.alongside() && def.blocks().contains(blockId)) return def;
         }
         Block block = BuiltInRegistries.BLOCK.get(blockId);
         for (WorkstationDef def : defs) {
+            if (def.alongside()) continue;
             for (ResourceLocation tag : def.blockTags()) {
                 if (block.defaultBlockState().is(TagKey.create(Registries.BLOCK, tag))) return def;
             }
+        }
+        for (WorkstationDef def : defs) {
+            if (def.alongside() && matches(def, block.defaultBlockState(), blockId)) return def;
         }
         return null;
     }

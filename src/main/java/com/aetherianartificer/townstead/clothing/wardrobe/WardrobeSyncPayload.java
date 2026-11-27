@@ -14,13 +14,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/** Server -> Client: outfit template names, the village weather layers, and each asked-for resident's wardrobe. */
+/** Server -> Client: outfit template names, the village weather layers, each asked-for resident's wardrobe, and Skin Library outfit titles. */
 //? if neoforge {
 public record WardrobeSyncPayload(List<WardrobeTemplate> templates, boolean villageWarm, boolean villageLight,
-                                  Map<UUID, Resident> residents) implements CustomPacketPayload {
+                                  Map<UUID, Resident> residents, Map<String, String> titles) implements CustomPacketPayload {
 //?} else {
 /*public record WardrobeSyncPayload(List<WardrobeTemplate> templates, boolean villageWarm, boolean villageLight,
-                                  Map<UUID, Resident> residents) {
+                                  Map<UUID, Resident> residents, Map<String, String> titles) {
 *///?}
 
     /**
@@ -102,6 +102,11 @@ public record WardrobeSyncPayload(List<WardrobeTemplate> templates, boolean vill
             buf.writeUUID(e.getKey());
             e.getValue().write(buf);
         }
+        buf.writeVarInt(titles.size());
+        for (Map.Entry<String, String> e : titles.entrySet()) {
+            buf.writeUtf(e.getKey());
+            buf.writeUtf(e.getValue());
+        }
     }
 
     private static void writeStrings(FriendlyByteBuf buf, List<String> values) {
@@ -128,6 +133,9 @@ public record WardrobeSyncPayload(List<WardrobeTemplate> templates, boolean vill
             UUID uuid = buf.readUUID();
             residents.put(uuid, Resident.read(buf));
         }
-        return new WardrobeSyncPayload(templates, warm, light, residents);
+        int t = buf.readVarInt();
+        Map<String, String> titles = new LinkedHashMap<>();
+        for (int i = 0; i < t; i++) titles.put(buf.readUtf(), buf.readUtf());
+        return new WardrobeSyncPayload(templates, warm, light, residents, titles);
     }
 }

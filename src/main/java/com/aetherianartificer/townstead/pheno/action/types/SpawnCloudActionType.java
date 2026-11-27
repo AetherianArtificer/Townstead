@@ -53,10 +53,12 @@ public final class SpawnCloudActionType implements ActionType {
         int duration = GsonHelper.getAsInt(json, "duration", 600);
         int reapplyDelay = GsonHelper.getAsInt(json, "reapply_delay", 20);
         double height = GsonHelper.getAsDouble(json, "height", 0.0);
-        ParticleOptions particle = resolveParticle(GsonHelper.getAsString(json, "particle", ""));
+        String particleId = GsonHelper.getAsString(json, "particle", "");
         return ctx -> {
             if (!(ctx.level() instanceof ServerLevel level)) return;
-            CloudManager.spawn(new Cloud(level, ctx.entity().position(), ctx.origin(), action, where,
+            // Looked up when it fires: a pack's own particles load after its genes.
+            ParticleOptions particle = resolveParticle(particleId);
+            CloudManager.spawn(new Cloud(level, ctx.place(), ctx.origin(), action, where,
                     particle, radius, growPerTick, shrinkOnUse, waitTime, duration, reapplyDelay, height)
                     .withClimateOffset(climateOffset));
         };

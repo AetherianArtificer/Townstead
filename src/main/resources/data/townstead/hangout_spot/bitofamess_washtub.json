@@ -1,0 +1,10 @@
+{
+  "schema": "townstead:hangout_spot/v1",
+  "mods": "bitofamess",
+  "blocks": [
+    "bitofamess:washtub"
+  ],
+  "posture": "townstead:sit",
+  "adapter": "bitofamess:washtub",
+  "capacity": 1
+}

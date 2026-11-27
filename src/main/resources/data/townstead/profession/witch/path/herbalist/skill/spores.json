@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.herbalist.spores"
+  },
+  "icon": "minecraft:brown_mushroom",
+  "description": {
+    "translate": "skill.townstead.witch.herbalist.spores.description"
+  },
+  "cost": 1,
+  "requires": [
+    "toxic_cloud"
+  ]
+}

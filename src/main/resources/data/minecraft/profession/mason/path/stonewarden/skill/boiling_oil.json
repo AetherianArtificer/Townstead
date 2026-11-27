@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.boiling_oil"
+  },
+  "icon": "minecraft:lava_bucket",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.boiling_oil.description"
+  },
+  "cost": 1,
+  "requires": [
+    "murder_hole"
+  ]
+}

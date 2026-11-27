@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.passing_step"
+  },
+  "icon": "minecraft:rabbit_foot",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.passing_step.description"
+  },
+  "cost": 1,
+  "requires": [
+    "footwork"
+  ]
+}

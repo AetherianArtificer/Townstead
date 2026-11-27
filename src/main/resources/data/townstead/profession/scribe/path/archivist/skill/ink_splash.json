@@ -1,0 +1,246 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.ink_splash"
+  },
+  "icon": "minecraft:ink_sac",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.ink_splash.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:archivist_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.squid.squirt",
+          "volume": 1.0,
+          "pitch": 1.0
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:scribe/archivist/red_tape"
+          },
+          "if_action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:slowness",
+            "duration": 40,
+            "amplifier": 2
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:origin",
+              "condition": {
+                "type": "pheno:skill",
+                "skill": "townstead:scribe/archivist/red_tape"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:blindness",
+                      "duration": 100,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:flee",
+                      "duration": 80,
+                      "speed": 0
+                    },
+                    {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:archivist_stained",
+                      "duration": 6000
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:squid_ink",
+                      "count": 12,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:scribe/archivist/blot"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:area_of_effect",
+                    "radius": 3,
+                    "include_self": false,
+                    "target": "all",
+                    "action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:hostile"
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:blindness",
+                            "duration": 100,
+                            "amplifier": 0
+                          },
+                          {
+                            "type": "pheno:flee",
+                            "duration": 80,
+                            "speed": 0
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:archivist_stained",
+                            "duration": 6000
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:squid_ink",
+                            "count": 12,
+                            "spread": 0.4
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:blindness",
+                      "duration": 100,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:flee",
+                      "duration": 40,
+                      "speed": 0
+                    },
+                    {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:archivist_stained",
+                      "duration": 6000
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:squid_ink",
+                      "count": 12,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:scribe/archivist/blot"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:area_of_effect",
+                    "radius": 3,
+                    "include_self": false,
+                    "target": "all",
+                    "action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:hostile"
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:blindness",
+                            "duration": 100,
+                            "amplifier": 0
+                          },
+                          {
+                            "type": "pheno:flee",
+                            "duration": 40,
+                            "speed": 0
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:archivist_stained",
+                            "duration": 6000
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:squid_ink",
+                            "count": 12,
+                            "spread": 0.4
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 12
+          }
+        }
+      ]
+    }
+  }
+}

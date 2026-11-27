@@ -24,7 +24,7 @@ public record FlightProfile(Power power, Ability ability, FlightStyle style, dou
     public static FlightProfile of(LivingEntity entity) {
         Power hover = null;
         for (Power power : Powers.active(entity)) {
-            if (!(power.component() instanceof AbilityGeneType.Instance ability)) continue;
+            if (!(power.component() instanceof AbilityGeneType.Instance ability) || !ability.usable(entity)) continue;
             if (ability.ability() == Ability.ELYTRA_FLIGHT) return resolve(entity, power, ability);
             if (ability.ability() == Ability.HOVER && hover == null) hover = power;
         }

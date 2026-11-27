@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.pizzaiolo.pala"
+  },
+  "icon": "minecraft:iron_shovel",
+  "description": {
+    "translate": "skill.townstead.cook.pizzaiolo.pala.description"
+  },
+  "cost": 2,
+  "requires": [
+    "long_handle"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.attack_speed",
+    "amount": -0.2,
+    "operation": "multiply_total"
+  }
+}

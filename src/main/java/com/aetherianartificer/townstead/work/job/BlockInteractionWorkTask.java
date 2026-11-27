@@ -69,6 +69,9 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     private @Nullable Worksite claimedOrderSite;
     private @Nullable ResourceLocation claimedOutput;
     private int claimedAmount;
+    private @Nullable java.util.UUID claimedLease;
+    /** Renewed every tick while working, so a worker who vanished frees the line this soon after. */
+    private static final long CLAIM_LEASE_TICKS = 600L;
     private List<RequirementSession> requirements = List.of();
     private int requirementIndex;
     private Phase phase = Phase.PREPARE;
@@ -235,6 +238,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (claimedOrder != null) claimedOrder.renew(claimedLease, gameTime + CLAIM_LEASE_TICKS);
         if (phase == Phase.DELIVER) {
             tickDelivery(level, villager, gameTime);
             return;
@@ -363,6 +367,8 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
                                 && !hasReadyInteraction(level, pos, target))
                                 || (requireInput && !hasAvailableInteractionInput(
                                 level, villager, pos, extent, target))) continue;
+                        if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess
+                                .mayAccess(level, villager, pos)) continue;
                         taskCandidates.add(new Candidate(job, target, task, pos.immutable(), extent));
                     }
                 }
@@ -859,14 +865,14 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         // The authored count is planning information, not an item grant: the real block use still
         // decides what physically appears, and completion credits that observed count.
         claimedAmount = Math.max(1, choice.candidate().expectedCount());
-        claimedOrder.claim(claimedAmount);
+        claimedLease = claimedOrder.claim(claimedAmount, level.getGameTime() + CLAIM_LEASE_TICKS);
         site.bumpOrdersRevision();
     }
 
     /** The block use succeeded; release the reservation and credit what physically appeared. */
     private void finishOrderClaim(int produced) {
         if (claimedOrder == null) return;
-        claimedOrder.finish(claimedAmount, Math.max(0, produced));
+        claimedOrder.finish(claimedLease, Math.max(0, produced));
         if (claimedOrderSite != null) claimedOrderSite.bumpOrdersRevision();
         clearOrderClaim();
     }
@@ -874,7 +880,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
     /** A path, requirement or action failed before production; put the line back untouched. */
     private void releaseOrderClaim() {
         if (claimedOrder != null) {
-            claimedOrder.abandon(claimedAmount);
+            claimedOrder.abandon(claimedLease);
             if (claimedOrderSite != null) claimedOrderSite.bumpOrdersRevision();
         }
         clearOrderClaim();
@@ -885,6 +891,7 @@ public final class BlockInteractionWorkTask extends Behavior<VillagerEntityMCA> 
         claimedOrderSite = null;
         claimedOutput = null;
         claimedAmount = 0;
+        claimedLease = null;
     }
 
     private static boolean hasMatching(ServerLevel level, BlockPos pos,

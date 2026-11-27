@@ -1,0 +1,151 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.core_sample"
+  },
+  "icon": "minecraft:iron_pickaxe",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.core_sample.description"
+  },
+  "cost": 2,
+  "requires": [
+    "echo_sound"
+  ],
+  "skill_group": "townstead:prospector_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:bearing",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cartographer/prospector/eureka"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:bearing",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:report_blocks",
+                "blocks": {
+                  "radius": [
+                    1,
+                    32,
+                    1
+                  ],
+                  "around": {
+                    "offset": [
+                      0,
+                      -33,
+                      0
+                    ]
+                  },
+                  "where": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:in_tag",
+                        "tag": "c:ores"
+                      },
+                      {
+                        "type": "pheno:in_tag",
+                        "tag": "forge:ores"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:bearing",
+                "amount": -10
+              },
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 24,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:set_attack_target"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:report_blocks",
+            "blocks": {
+              "type": "pheno:column",
+              "direction": "down",
+              "distance": 64,
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "c:ores"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "forge:ores"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:cartographer/prospector/stake_a_claim"
+          },
+          "if_action": {
+            "type": "pheno:cloud",
+            "radius": 1.0,
+            "height": 24.0,
+            "duration": 6000,
+            "wait_time": 10,
+            "reapply_delay": 200,
+            "particle": "minecraft:end_rod",
+            "do": {
+              "type": "pheno:nothing"
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.stone.break",
+          "volume": 1.0,
+          "pitch": 0.6
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.amethyst_block.chime",
+          "volume": 1.0,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

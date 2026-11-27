@@ -19,6 +19,7 @@ import java.lang.reflect.Method;
 public final class VampireGarlic {
     private static final ResourceLocation GARLIC = ResourceLocation.tryParse("vampirism:garlic");
     private static final int INTERVAL = 20;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(INTERVAL);
     private static final int EFFECT_TICKS = 100;
     private static volatile boolean resolved;
     private static volatile Method strengthAt;
@@ -30,7 +31,7 @@ public final class VampireGarlic {
     private static final int CONTACT_TICKS = 400;
 
     public static void tick(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % INTERVAL != 0 || !VampireVillagers.isVampire(villager)) return;
+        if (!STRIDE.due(villager, villager.tickCount + villager.getId()) || !VampireVillagers.isVampire(villager)) return;
         if (inRipeGarlic(villager)) garlic(villager, CONTACT_TICKS, 0);
         int strength = strength(villager);
         if (strength <= 0) return;

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.tiller.seed_drill"
+  },
+  "icon": "minecraft:wheat_seeds",
+  "description": {
+    "translate": "skill.townstead.farmer.tiller.seed_drill.description"
+  },
+  "cost": 1,
+  "requires": [
+    "plow_ahead"
+  ]
+}

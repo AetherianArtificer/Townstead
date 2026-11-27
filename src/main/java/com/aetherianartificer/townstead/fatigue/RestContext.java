@@ -13,7 +13,8 @@ public record RestContext(
         boolean hasHome,
         boolean hasValidSleepingBed,
         boolean guardRole,
-        boolean restOverrideActive
+        boolean restOverrideActive,
+        boolean bedRest
 ) {
     public boolean isScheduledRest() {
         return scheduleActivity == Activity.REST;
@@ -34,6 +35,7 @@ public record RestContext(
      * During normal scheduled rest, just checks drowsy threshold.
      */
     public boolean needsMoreRest() {
+        if (bedRest) return true;
         if (!fatigueEnabled) return false;
         if (restOverrideActive) return fatigue > 0;
         return fatigue >= FatigueData.DROWSY_THRESHOLD;

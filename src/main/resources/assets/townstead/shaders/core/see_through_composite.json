@@ -1,0 +1,14 @@
+{
+    "vertex": "townstead:see_through_composite",
+    "fragment": "townstead:see_through_composite",
+    "blend": { "func": "add", "srcrgb": "1", "dstrgb": "1-srcalpha", "srcalpha": "1", "dstalpha": "1-srcalpha" },
+    "attributes": [ "Position" ],
+    "samplers": [
+        { "name": "PartsSampler" },
+        { "name": "PartsDepthSampler" },
+        { "name": "SceneDepthSampler" }
+    ],
+    "uniforms": [
+        { "name": "Under", "type": "float", "count": 1, "values": [ 1.0 ] }
+    ]
+}

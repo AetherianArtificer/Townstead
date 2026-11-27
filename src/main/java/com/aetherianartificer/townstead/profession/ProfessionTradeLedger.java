@@ -38,6 +38,18 @@ public final class ProfessionTradeLedger {
         if (encoded != null) memory.putTradeOffers(key, encoded);
     }
 
+    /**
+     * Change profession through MCA, keeping trades: the old profession's offers are saved and the
+     * new one's are restored. A bare {@code setProfession} lets vanilla drop every offer.
+     */
+    public static void change(VillagerEntityMCA villager, VillagerProfession next) {
+        VillagerProfession current = villager.getVillagerData().getProfession();
+        if (current == next) return;
+        rememberCurrent(villager, current);
+        villager.setProfession(next);
+        if (next != VillagerProfession.NONE) activate(villager, next);
+    }
+
     /** Repair an already-empty ledger without changing profession or POI. */
     public static void ensureCurrent(VillagerEntityMCA villager) {
         if (!villager.getOffers().isEmpty()) return;

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.netter.weighted_net"
+  },
+  "icon": "minecraft:iron_nugget",
+  "description": {
+    "translate": "skill.townstead.fisherman.netter.weighted_net.description"
+  },
+  "cost": 1,
+  "requires": [
+    "toss_net"
+  ]
+}

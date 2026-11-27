@@ -72,6 +72,8 @@ public final class RigClips {
                 state.blend = state.previous < 0 ? 1f : 0f;
             }
         }
+        // A looping clip runs on the world's clock, so it's at the same place for everyone, server included.
+        float world = entity.level().getGameTime() + ageInTicks - (float) Math.floor(ageInTicks);
         float dt = state.lastAge < 0f ? 0f : Math.max(0f, ageInTicks - state.lastAge);
         state.lastAge = ageInTicks;
         int timing = state.current >= 0 ? state.current : state.previous;
@@ -79,10 +81,10 @@ public final class RigClips {
         state.blend = transition <= 0f ? 1f : Math.min(1f, state.blend + dt / transition);
 
         if (state.previous >= 0 && state.previous < rules.size() && state.blend < 1f) {
-            play(root, clips, rules.get(state.previous), ageInTicks - state.previousStart, 1f - state.blend);
+            play(root, clips, rules.get(state.previous), ageInTicks - state.previousStart, 1f - state.blend, world);
         }
         if (state.current >= 0 && state.current < rules.size()) {
-            play(root, clips, rules.get(state.current), ageInTicks - state.currentStart, state.blend);
+            play(root, clips, rules.get(state.current), ageInTicks - state.currentStart, state.blend, world);
         }
     }
 
@@ -152,7 +154,7 @@ public final class RigClips {
     }
 
     private static void play(ModelPart root, Map<String, AttachmentAnimation.Clip> clips,
-                             RigDefinition.AnimationRule rule, float elapsed, float weight) {
+                             RigDefinition.AnimationRule rule, float elapsed, float weight, float world) {
         if (weight <= 0f) return;
         String name = rule.clip();
         int separator = name.indexOf('#');
@@ -162,8 +164,8 @@ public final class RigClips {
         }
         AttachmentAnimation.Clip clip = RigAssets.clip(clips, name);
         if (clip == null) return;
-        float time = elapsed * rule.speed();
-        time = clip.loop == AttachmentAnimation.Loop.LOOP ? time % clip.lengthTicks : Math.min(time, clip.lengthTicks);
+        float time = clip.loop == AttachmentAnimation.Loop.LOOP ? world * rule.speed() % clip.lengthTicks
+                : Math.min(elapsed * rule.speed(), clip.lengthTicks);
         for (Map.Entry<String, AttachmentAnimation.BoneTrack> entry : clip.bones.entrySet()) {
             ModelPart[] path = RigModels.bonePath(root, entry.getKey());
             if (path == null) continue;

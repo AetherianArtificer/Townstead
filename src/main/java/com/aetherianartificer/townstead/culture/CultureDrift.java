@@ -186,6 +186,8 @@ public final class CultureDrift {
                 if (parent instanceof VillagerEntityMCA person) {
                     Map<String, Float> blend = TownsteadVillagers.get(person).life().cultureBlend();
                     if (!blend.isEmpty()) out.add(blend);
+                } else {
+                    playerBlend(parent).ifPresent(out::add);
                 }
             });
         } catch (Throwable ignored) {
@@ -193,9 +195,16 @@ public final class CultureDrift {
         return out;
     }
 
+    /** A player holds the one culture they picked, and it pulls on family and friends the same way. */
+    private static Optional<Map<String, Float>> playerBlend(Entity entity) {
+        if (!(entity instanceof net.minecraft.world.entity.player.Player player)) return Optional.empty();
+        String culture = com.aetherianartificer.townstead.root.PlayerRoot.getCulture(player);
+        return culture.isEmpty() ? Optional.empty() : Optional.of(Map.of(culture, 1.0F));
+    }
+
     private static Optional<Map<String, Float>> blendOf(ServerLevel level, UUID id) {
         Entity entity = level.getEntity(id);
-        if (!(entity instanceof VillagerEntityMCA person)) return Optional.empty();
+        if (!(entity instanceof VillagerEntityMCA person)) return playerBlend(entity);
         Map<String, Float> blend = TownsteadVillagers.get(person).life().cultureBlend();
         return blend.isEmpty() ? Optional.empty() : Optional.of(blend);
     }

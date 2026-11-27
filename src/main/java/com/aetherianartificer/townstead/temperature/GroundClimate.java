@@ -35,18 +35,20 @@ public final class GroundClimate {
     private GroundClimate() {}
 
     /** Terrain cover above a position, the rock heat there, and the cave biome's own offset. */
-    public record Probe(int depth, float geothermal, float lava, float cave) {}
+    public record Probe(int depth, float geothermal, float lava, float cave, boolean caveOverBackend) {}
 
     public static void clearCache() { PROBES.clear(); }
 
     public static Probe probe(ServerLevel level, BlockPos pos) {
         return PROBES.get(level, pos.asLong(), level.getGameTime(), () -> {
             int depth = depth(level, pos);
-            if (depth <= 0) return new Probe(0, 0f, 0f, 0f);
+            if (depth <= 0) return new Probe(0, 0f, 0f, 0f, false);
             TemperatureSettings s = TemperatureSettings.get();
+            var profile = ClimateZones.profile(level.getBiome(pos));
             return new Probe(depth, geothermal(pos.getY(), s.geothermalStartY(), s.geothermalPerBlock(),
                     s.geothermalDeepY(), s.geothermalDeepPerBlock()), lavaHeat(level, pos, s),
-                    ClimateZones.profile(level.getBiome(pos)).map(BiomeProfile::undergroundOffset).orElse(0f));
+                    profile.map(BiomeProfile::undergroundOffset).orElse(0f),
+                    profile.map(BiomeProfile::undergroundOverBackend).orElse(false));
         });
     }
 
@@ -119,9 +121,19 @@ public final class GroundClimate {
                 shift += w * (ClimateModel.applySnow(level, pos, seasoned) - seasoned);
             }
         }
-        // A backend with its own depth model (Cold Sweat) also has its own cave biome temperatures.
-        if (w < 1f) shift += (1 - w) * (probe.lava() + (backend.modelsGeothermal() ? 0f : probe.geothermal() + probe.cave()));
+        if (w < 1f) shift += (1 - w) * (probe.lava() + depthShift(backend.modelsGeothermal(), backend.ownDepthCelsius(level, pos),
+                probe.geothermal(), probe.cave(), probe.caveOverBackend()));
         return shift + ClimateModel.localOffset(level, pos);
+    }
+
+    /**
+     * Rock heat and the cave biome's offset for a backend reading. A backend with its own depth model
+     * (Cold Sweat) keeps its own cave biome temperatures unless the biome's profile says otherwise. Rock
+     * heat replaces any smaller depth step the backend adds, so depth is not counted twice.
+     */
+    static float depthShift(boolean modelsGeothermal, float ownDepth, float geothermal, float cave, boolean caveOverBackend) {
+        if (modelsGeothermal) return caveOverBackend ? cave : 0f;
+        return Math.max(0f, geothermal - ownDepth) + cave;
     }
 
     private static float builtinGround(ServerLevel level, BlockPos pos, Probe probe) {

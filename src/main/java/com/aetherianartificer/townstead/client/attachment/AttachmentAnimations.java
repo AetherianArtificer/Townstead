@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.pheno.condition.ConditionContext;
 import com.aetherianartificer.townstead.pheno.condition.Conditions;
 import com.aetherianartificer.townstead.root.attachment.AttachmentAnimation;
 import com.aetherianartificer.townstead.root.attachment.AttachmentDef;
+import com.aetherianartificer.townstead.root.attachment.BodyPoseRules;
 import com.google.gson.JsonParser;
 import net.minecraft.Util;
 import net.minecraft.world.entity.LivingEntity;
@@ -16,13 +17,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Client-side keyframe playback for attachments. Trigger entries mirror poses —
  * a named state or pheno condition starts its clip on activation and fades it out on
  * deactivation — plus a {@code random_idle} pool that fires a weighted one-shot when
- * nothing else is animating (ear flicks, tail flourishes). Clips run on the entity's
+ * nothing else is animating (ear flicks, tail flourishes), picked from the entity and the
+ * world's clock so everyone, server included, sees the same flick at the same moment. Clips run on the entity's
  * age clock; a clip's own {@code loop} flag decides whether it repeats, holds its
  * last frame, or ends.
  *
@@ -61,7 +62,7 @@ public final class AttachmentAnimations {
         entityState.lastTouchMs = Util.getMillis();
         if (STATES.size() > 256) evictStale();
         DefAnimState state = entityState.defs.computeIfAbsent(def.id(),
-                k -> new DefAnimState(def.animations().size(), ageInTicks));
+                k -> new DefAnimState(def.animations().size()));
 
         int tick = (int) ageInTicks;
         if (state.lastEvalTick != tick) {
@@ -90,7 +91,8 @@ public final class AttachmentAnimations {
             if (clip == null) continue;
             float time = ageInTicks - playback.startAge;
             if (clip.loop == AttachmentAnimation.Loop.LOOP && !entries.get(i).idle()) {
-                time %= clip.lengthTicks;
+                // On the world's clock, so a looping clip is at the same place for everyone, server included.
+                time = (entity.level().getGameTime() + ageInTicks - (float) Math.floor(ageInTicks)) % clip.lengthTicks;
             } else {
                 time = Math.min(time, clip.lengthTicks);
             }
@@ -129,7 +131,7 @@ public final class AttachmentAnimations {
         for (int i = 0; i < 3; i++) slot[i] *= 1f + (value[i] - 1f) * fade;
     }
 
-    /** Once per tick: start/stop trigger entries, roll the idle pool when everything is quiet. */
+    /** Once per tick: start/stop trigger entries, then see what the idle schedule has for now. */
     private static void retrigger(LivingEntity entity, AttachmentDef def, DefAnimState state, float age) {
         List<Condition> conditions = CONDITIONS.computeIfAbsent(def.id(), k -> parseConditions(def));
         ConditionContext ctx = new ConditionContext(entity);
@@ -137,64 +139,45 @@ public final class AttachmentAnimations {
         boolean anyActive = false;
         for (int i = 0; i < entries.size(); i++) {
             AttachmentDef.AnimationEntry entry = entries.get(i);
+            if (entry.idle()) continue;
             Playback playback = state.playbacks[i];
-            if (entry.idle()) {
-                // An idle one-shot ends at its clip length (a looping idle would never yield).
-                if (playback.playing && pastEnd(entry, playback, age, false)) {
-                    playback.playing = false;
-                    playback.cooldownUntil = age + entry.cooldownTicks();
+            boolean should = entry.state().isEmpty()
+                    ? conditions.get(i) != null && conditions.get(i).test(ctx)
+                    : AttachmentPoses.stateActive(entity, entry.state());
+            if (should && !playback.wasActive) {
+                playback.playing = true;
+                playback.startAge = age;
+            } else if (!should) {
+                playback.playing = false;
+            } else if (playback.playing && pastEnd(entry, playback, age)) {
+                playback.playing = false;   // ONCE clip finished; re-arms on the next activation
+            }
+            playback.wasActive = should;
+            anyActive |= playback.playing;
+        }
+        long world = entity.level().getGameTime();
+        BodyPoseRules.IdlePick pick = anyActive ? null : BodyPoseRules.idlePick(BodyPoseRules.idleSeed(entity, def), entries,
+                AttachmentClient::animationClip, world);
+        for (int i = 0; i < entries.size(); i++) {
+            if (!entries.get(i).idle()) continue;
+            Playback playback = state.playbacks[i];
+            if (pick != null && pick.entry() == i) {
+                if (!playback.playing || playback.idleStart != pick.start()) {
+                    playback.playing = true;
+                    playback.idleStart = pick.start();
+                    playback.startAge = age - (world - pick.start());
                 }
             } else {
-                boolean should = entry.state().isEmpty()
-                        ? conditions.get(i) != null && conditions.get(i).test(ctx)
-                        : AttachmentPoses.stateActive(entity, entry.state());
-                if (should && !playback.wasActive) {
-                    playback.playing = true;
-                    playback.startAge = age;
-                } else if (!should) {
-                    playback.playing = false;
-                } else if (playback.playing && pastEnd(entry, playback, age, true)) {
-                    playback.playing = false;   // ONCE clip finished; re-arms on the next activation
-                }
-                playback.wasActive = should;
+                playback.playing = false;
             }
-            anyActive |= playback.playing || playback.fade >= FADE_EPSILON;
         }
-        if (anyActive || age < state.nextIdleRoll) return;
-        rollIdle(entries, state, age);
     }
 
-    /** Whether a playing clip has run past its end (loop/hold clips never do while active). */
-    private static boolean pastEnd(AttachmentDef.AnimationEntry entry, Playback playback,
-                                   float age, boolean respectLoop) {
+    /** Whether a one-shot has run past its end (loop and hold clips never do while active). */
+    private static boolean pastEnd(AttachmentDef.AnimationEntry entry, Playback playback, float age) {
         AttachmentAnimation.Clip clip = AttachmentClient.animationClip(entry.animSha(), entry.clip());
-        if (clip == null) return false;
-        if (respectLoop && clip.loop != AttachmentAnimation.Loop.ONCE) return false;
+        if (clip == null || clip.loop != AttachmentAnimation.Loop.ONCE) return false;
         return age - playback.startAge > clip.lengthTicks;
-    }
-
-    private static void rollIdle(List<AttachmentDef.AnimationEntry> entries, DefAnimState state, float age) {
-        ThreadLocalRandom random = ThreadLocalRandom.current();
-        state.nextIdleRoll = age + 40f + random.nextFloat() * 80f;
-        float totalWeight = 0f;
-        for (int i = 0; i < entries.size(); i++) {
-            AttachmentDef.AnimationEntry entry = entries.get(i);
-            if (entry.idle() && age >= state.playbacks[i].cooldownUntil) {
-                totalWeight += Math.max(0f, entry.weight());
-            }
-        }
-        if (totalWeight <= 0f) return;
-        float pick = random.nextFloat() * totalWeight;
-        for (int i = 0; i < entries.size(); i++) {
-            AttachmentDef.AnimationEntry entry = entries.get(i);
-            if (!entry.idle() || age < state.playbacks[i].cooldownUntil) continue;
-            pick -= Math.max(0f, entry.weight());
-            if (pick <= 0f) {
-                state.playbacks[i].playing = true;
-                state.playbacks[i].startAge = age;
-                return;
-            }
-        }
     }
 
     private static List<Condition> parseConditions(AttachmentDef def) {
@@ -226,13 +209,10 @@ public final class AttachmentAnimations {
         final Playback[] playbacks;
         int lastEvalTick = Integer.MIN_VALUE;
         float lastAge = -1f;
-        float nextIdleRoll;
 
-        DefAnimState(int entryCount, float age) {
+        DefAnimState(int entryCount) {
             playbacks = new Playback[entryCount];
             for (int i = 0; i < entryCount; i++) playbacks[i] = new Playback();
-            // First idle fires a little after the entity appears, never instantly.
-            nextIdleRoll = age + 40f + ThreadLocalRandom.current().nextFloat() * 80f;
         }
     }
 
@@ -241,6 +221,6 @@ public final class AttachmentAnimations {
         boolean wasActive;
         float startAge;
         float fade;
-        float cooldownUntil;
+        long idleStart;
     }
 }

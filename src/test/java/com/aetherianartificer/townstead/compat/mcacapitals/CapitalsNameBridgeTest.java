@@ -5,6 +5,19 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CapitalsNameBridgeTest {
+
+    @org.junit.jupiter.api.Test void aHouseNameBelongsToCapitalsWhileItIsTheSurname() {
+        net.minecraft.nbt.CompoundTag tag = new net.minecraft.nbt.CompoundTag();
+        tag.putString("CurrentSurname", "Stark");
+        tag.putString("SurnameSource", "BIRTH");
+        tag.putString("HouseName", "Stark");
+        org.junit.jupiter.api.Assertions.assertTrue(CapitalsNameBridge.externalOwns(tag));
+        CapitalsNameBridge.apply(tag, "Jones");
+        org.junit.jupiter.api.Assertions.assertEquals("Stark", tag.getString("CurrentSurname"));
+
+        tag.remove("HouseName");
+        org.junit.jupiter.api.Assertions.assertFalse(CapitalsNameBridge.externalOwns(tag));
+    }
     private CompoundTag identity(String surname, String source) {
         CompoundTag tag = new CompoundTag();
         tag.putString("CurrentSurname", surname);

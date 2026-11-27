@@ -55,6 +55,8 @@ public final class PersonaService {
     private PersonaService() {}
 
     public static void tick(MinecraftServer server) {
+        // Before anyone can set off: a leaver restored on load goes within the first second.
+        PersonaMoves.listen();
         int now = server.getTickCount();
         if (now % WALK_TICKS == 0 && !WALKING.isEmpty()) walk(server);
         if (now % ARRIVAL_TICKS != 0 || !Systems.on(Systems.PERSONAS) || Personas.all().isEmpty()) return;
@@ -469,12 +471,14 @@ public final class PersonaService {
             ServerPlayer player = server.getPlayerList().getPlayer(entry.player());
             if (player == null || player.level() != level) continue;
             Village village = net.conczin.mca.server.world.data.VillageManager.get(level).getOrEmpty(entry.village()).orElse(null);
-            instances.removePending(entry);
-            if (village != null && instances.in(persona.id(), entry.dimension(), village.getId()) == null
-                    && !instances.isDismissed(persona.id(), entry.dimension(), village.getId())
-                    && !(persona.worldUnique() && !instances.of(persona.id()).isEmpty())) {
-                spawn(persona, player, village, false);
+            if (village == null || instances.in(persona.id(), entry.dimension(), village.getId()) != null
+                    || instances.isDismissed(persona.id(), entry.dimension(), village.getId())
+                    || persona.worldUnique() && !instances.of(persona.id()).isEmpty()) {
+                instances.removePending(entry);
+                continue;
             }
+            // Kept on a failed spawn, so the introduction is tried again.
+            if (spawn(persona, player, village, false) != null) instances.removePending(entry);
         }
     }
 
@@ -510,6 +514,10 @@ public final class PersonaService {
         WALKING.put(villager.getUUID(), new WalkIn(player.getUUID(), villager.level().getGameTime() + WALK_LIMIT));
     }
 
+    public static boolean isWalking(UUID villager) {
+        return WALKING.containsKey(villager);
+    }
+
     /** Keeps walking-in Personas heading for their player until they are close or it takes too long. */
     private static void walk(MinecraftServer server) {
         Iterator<Map.Entry<UUID, WalkIn>> it = WALKING.entrySet().iterator();
@@ -522,6 +530,8 @@ public final class PersonaService {
                 it.remove();
                 continue;
             }
+            if (!com.aetherianartificer.townstead.villager.VillagerControl.mayMove(villager,
+                    com.aetherianartificer.townstead.villager.VillagerControl.Owner.PERSONA_WALK)) continue;
             if (villager.distanceToSqr(player) < 16) {
                 villager.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
                 villager.getLookControl().setLookAt(player);

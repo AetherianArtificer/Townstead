@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.gleaner"
+  },
+  "icon": "minecraft:wheat",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.gleaner.description"
+  },
+  "cost": 1,
+  "requires": [
+    "reap_row"
+  ]
+}

@@ -7,51 +7,23 @@
   "description": {
     "translate": "skill.townstead.armorer.bulwark.aegis.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "iron_wall"
+    "last_bastion"
   ],
-  "skill_group": "townstead:bulwark_cover",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 1200,
-    "slot": 2,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:temper",
-      "amount": 60
-    },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
+    "type": "pheno:attack_modifier",
+    "modifier": 0.0,
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 14,
-          "include_self": true,
-          "target": "non_hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:resistance",
-                "duration": 300,
-                "amplifier": 2
-              },
-              {
-                "type": "pheno:apply_effect",
-                "effect": "minecraft:fire_resistance",
-                "duration": 300,
-                "amplifier": 0
-              }
-            ]
-          }
+          "type": "pheno:toggled",
+          "gene": "minecraft:armorer/bulwark/iron_wall"
         },
         {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:block.bell.use",
-          "volume": 1.0,
-          "pitch": 1.2
+          "type": "pheno:flag",
+          "flag": "townstead:bulwark_guarding"
         }
       ]
     }

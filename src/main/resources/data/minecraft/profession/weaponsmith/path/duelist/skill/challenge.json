@@ -1,0 +1,143 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.challenge"
+  },
+  "icon": "minecraft:iron_sword",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.challenge.description"
+  },
+  "cost": 2,
+  "requires": [
+    "passing_step"
+  ],
+  "skill_group": "townstead:duelist_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:edge",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:duelist_challenged",
+                "duration": 200
+              },
+              {
+                "type": "pheno:set_attack_target"
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:glowing",
+                "duration": 200,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:spawn_particles",
+                "particle": "minecraft:crit",
+                "count": 24,
+                "shape": "ring",
+                "radius": 1.2
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:duelist_duel",
+          "duration": 200
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.goat_horn.sound.2",
+          "volume": 0.7,
+          "pitch": 1.4
+        }
+      ]
+    }
+  },
+  "companions": {
+    "mine": {
+      "type": "pheno:attack_modifier",
+      "modifier": 1.25,
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:duelist_challenged"
+        }
+      }
+    },
+    "theirs": {
+      "type": "pheno:damage_modifier",
+      "modifier": 1.25,
+      "damage_condition": {
+        "type": "pheno:attacker",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:duelist_challenged"
+        }
+      }
+    },
+    "honor": {
+      "type": "pheno:mobs_ignore",
+      "mob_condition": {
+        "type": "pheno:not",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:duelist_challenged"
+        }
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:duelist_duel"
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "minecraft:weaponsmith/duelist/honor_guard"
+          }
+        ]
+      }
+    },
+    "won": {
+      "type": "pheno:trigger",
+      "trigger": "when_kill",
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:duelist_challenged"
+        }
+      },
+      "action": {
+        "type": "pheno:set_flag",
+        "flag": "townstead:duelist_duel",
+        "duration": 0
+      }
+    }
+  }
+}

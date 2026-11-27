@@ -1,0 +1,78 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.camouflage"
+  },
+  "icon": "minecraft:oak_leaves",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.camouflage.description"
+  },
+  "cost": 1,
+  "requires": [
+    "patience"
+  ],
+  "power": {
+    "type": "pheno:mobs_ignore",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:draw",
+          "min": 25
+        },
+        {
+          "type": "pheno:movement",
+          "movement": "sneaking"
+        },
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:block",
+              "y": 0,
+              "block_condition": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:crops"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "pheno:block",
+              "y": 1,
+              "block_condition": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:leaves"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:replaceable_by_trees"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:crops"
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

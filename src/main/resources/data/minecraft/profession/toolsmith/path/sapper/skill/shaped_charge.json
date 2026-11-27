@@ -7,42 +7,150 @@
   "description": {
     "translate": "skill.townstead.toolsmith.sapper.shaped_charge.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "firecracker"
+    "chain_reaction"
   ],
-  "skill_group": "townstead:sapper_charge",
+  "skill_group": "townstead:sapper_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:stamina",
+      "resource": "townstead:knack",
       "amount": 30
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:delay",
-          "ticks": 40,
-          "action": {
-            "type": "pheno:explode",
-            "power": 2.0,
-            "fire": false,
-            "destroy": false
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:toolsmith/sapper/minefield"
           },
-          "on": {
-            "type": "pheno:ray",
-            "distance": 16
+          "if_action": {
+            "type": "pheno:cloud",
+            "radius": 2.0,
+            "duration": 600,
+            "wait_time": 20,
+            "reapply_delay": 10,
+            "shrink_on_use": 2.0,
+            "particle": "minecraft:small_flame",
+            "where": {
+              "type": "pheno:target_condition",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            },
+            "do": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:explode",
+                  "power": 1.0,
+                  "fire": false,
+                  "destroy": false,
+                  "credit": "origin"
+                },
+                {
+                  "type": "pheno:play_sound",
+                  "sound": "minecraft:entity.generic.explode",
+                  "volume": 1.0,
+                  "pitch": 1.2
+                }
+              ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:flag",
+                    "flag": "townstead:sapper_short"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:delay",
+                  "ticks": 20,
+                  "action": {
+                    "type": "pheno:explode",
+                    "power": 1.0,
+                    "fire": false,
+                    "destroy": false,
+                    "credit": "origin"
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:delay",
+                  "ticks": 40,
+                  "action": {
+                    "type": "pheno:explode",
+                    "power": 1.0,
+                    "fire": false,
+                    "destroy": false,
+                    "credit": "origin"
+                  }
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:toolsmith/sapper/sticky"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:glowing",
+                      "duration": 40,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 40,
+                      "amplifier": 1
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 16
+            }
           }
         },
         {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:entity.tnt.primed",
-          "volume": 1.0,
-          "pitch": 1.0
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.tnt.primed",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:smoke",
+              "count": 8,
+              "spread": 0.2
+            }
+          ]
         }
       ]
     }

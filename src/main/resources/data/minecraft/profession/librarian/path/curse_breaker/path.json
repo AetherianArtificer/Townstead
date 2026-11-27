@@ -12,46 +12,34 @@
       "type": "pheno:action_over_time",
       "interval": 20,
       "resource_cost": {
-        "resource": "townstead:insight",
+        "resource": "townstead:focus",
         "amount": 0
       },
       "condition": {
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:librarian/curse_breaker/arcane_study"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:librarian/curse_breaker/mass_uncursing"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:librarian/curse_breaker/counterspell"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:librarian",
+            "at_least": 80
           },
           {
             "type": "pheno:block_in_radius",
-            "radius": 6,
+            "radius": 4,
             "block_condition": {
               "type": "pheno:or",
               "conditions": [
                 {
-                  "type": "pheno:block",
-                  "block": "minecraft:enchanting_table"
-                },
-                {
-                  "type": "pheno:block",
-                  "block": "minecraft:bookshelf"
+                  "type": "pheno:in_tag",
+                  "tag": "minecraft:enchantment_power_provider"
                 },
                 {
                   "type": "pheno:block",
                   "block": "minecraft:lectern"
+                },
+                {
+                  "type": "pheno:block",
+                  "block": "minecraft:enchanting_table"
                 }
               ]
             }
@@ -60,8 +48,100 @@
       },
       "action": {
         "type": "pheno:change_resource",
-        "resource": "townstead:insight",
-        "amount": 1
+        "resource": "townstead:focus",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:focus",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:librarian",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:block_in_radius",
+                  "radius": 4,
+                  "block_condition": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:in_tag",
+                        "tag": "minecraft:enchantment_power_provider"
+                      },
+                      {
+                        "type": "pheno:block",
+                        "block": "minecraft:lectern"
+                      },
+                      {
+                        "type": "pheno:block",
+                        "block": "minecraft:enchanting_table"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 8,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:focus",
+        "amount": 2
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:curse_breaker_field"
+      },
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:clear_effect"
+            }
+          },
+          {
+            "type": "pheno:clear_effect",
+            "category": "beneficial"
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:enchant",
+            "count": 16,
+            "shape": "ring",
+            "radius": 8
+          }
+        ]
       }
     }
   ],
@@ -72,18 +152,18 @@
       "nullify"
     ],
     [
-      "unfading",
-      "break_vanishing",
+      "bookish",
+      "mass_uncursing",
       "silence"
     ],
     [
-      "arcane_study",
-      "mass_uncursing",
+      "unfading",
+      "dispel_field",
       "counterspell"
     ],
     [
       "warded",
-      "dispel",
+      "exemption",
       "ward"
     ],
     [

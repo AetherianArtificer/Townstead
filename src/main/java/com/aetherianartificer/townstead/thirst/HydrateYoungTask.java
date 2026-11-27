@@ -12,6 +12,7 @@ import com.aetherianartificer.townstead.hunger.ConsumableTargetClaims;
 import com.aetherianartificer.townstead.hunger.NearbyItemSources;
 import com.aetherianartificer.townstead.hunger.VillagerConsumptionManager;
 import com.aetherianartificer.townstead.hunger.VillagerSearchCadence;
+import com.aetherianartificer.townstead.hunger.YoungVillagerIndex;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import com.google.common.collect.ImmutableMap;
@@ -286,12 +287,16 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
 
     private Optional<VillagerEntityMCA> findNearestThirstyYoung(ServerLevel level, VillagerEntityMCA caregiver) {
         AABB box = caregiver.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
-        List<VillagerEntityMCA> candidates = level.getEntitiesOfClass(VillagerEntityMCA.class, box,
-                v -> v.isAlive() && v != caregiver && isYoungThirsty(v));
-
-        return candidates.stream()
-                .filter(child -> mayCareFor(caregiver, child))
-                .min(Comparator.comparingDouble(caregiver::distanceToSqr));
+        VillagerEntityMCA nearest = null;
+        double nearestSq = Double.MAX_VALUE;
+        for (VillagerEntityMCA child : YoungVillagerIndex.thirsty(level)) {
+            if (child == caregiver || !child.isAlive() || !child.getBoundingBox().intersects(box)) continue;
+            double distanceSq = caregiver.distanceToSqr(child);
+            if (distanceSq >= nearestSq || !isYoungThirsty(child) || !mayCareFor(caregiver, child)) continue;
+            nearest = child;
+            nearestSq = distanceSq;
+        }
+        return Optional.ofNullable(nearest);
     }
 
     private boolean mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
@@ -321,11 +326,8 @@ public class HydrateYoungTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean isYoungThirsty(VillagerEntityMCA villager) {
-        AgeState ageState = AgeState.byCurrentAge(villager.getAge());
-        if (!(ageState == AgeState.BABY || ageState == AgeState.TODDLER || ageState == AgeState.CHILD)) {
-            return false;
-        }
-        return TownsteadVillagers.get(villager).needs().thirst() < ThirstData.ADEQUATE_THRESHOLD;
+        return YoungVillagerIndex.isYoung(villager)
+                && TownsteadVillagers.get(villager).needs().thirst() < ThirstData.ADEQUATE_THRESHOLD;
     }
 
     private boolean hasDrink(VillagerEntityMCA villager, ThirstCompatBridge bridge) {

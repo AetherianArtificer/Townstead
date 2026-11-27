@@ -57,11 +57,21 @@ public final class HangoutEmbodiment {
 
     private HangoutEmbodiment() {}
 
-    public static synchronized void bootstrap() {
+    private static volatile boolean bootstrapped;
+
+    /** Asked on every villager's tick. */
+    public static void bootstrap() {
+        if (!bootstrapped) registerBuiltIns();
+    }
+
+    private static synchronized void registerBuiltIns() {
         POSTURES.putIfAbsent(VANILLA, new VanillaPostureAdapter());
         POSTURES.putIfAbsent(ReclinePostureAdapter.ID, new ReclinePostureAdapter());
+        POSTURES.putIfAbsent(com.aetherianartificer.townstead.compat.mess.MessTubAdapter.ID,
+                new com.aetherianartificer.townstead.compat.mess.MessTubAdapter());
         POSTURES.putIfAbsent(com.aetherianartificer.townstead.compat.beachparty.BeachpartyChairAdapter.ID,
                 new com.aetherianartificer.townstead.compat.beachparty.BeachpartyChairAdapter());
+        bootstrapped = true;
     }
 
     public static synchronized void register(PostureAdapter adapter) {

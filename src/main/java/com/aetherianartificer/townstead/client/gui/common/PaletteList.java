@@ -115,6 +115,12 @@ public class PaletteList extends ObjectSelectionList<PaletteList.ToolEntry> {
         public boolean dim;
         /** Shown while the cursor rests on this row, or null. The screen draws it, not the list. */
         @Nullable public String tooltip;
+        /**
+         * Small marks under the label: the ways this thing comes (dried, charred; splash, lingering), drawn half size.
+         * A mark whose {@link #marksDim} entry is true is greyed: a way it comes, but not one offered here.
+         */
+        public java.util.List<ItemStack> marks = java.util.List.of();
+        public boolean[] marksDim = new boolean[0];
 
         /** Constructor for tool entries with an item icon. */
         public ToolEntry(String toolId, String label, ItemStack icon, String categoryKey) {
@@ -252,9 +258,29 @@ public class PaletteList extends ObjectSelectionList<PaletteList.ToolEntry> {
                 displayLabel += "..";
             }
             int labelX = left + indent + 20;
-            g.drawString(mc.font, displayLabel, labelX, top + 6, textColor, false);
+            int labelY = marks.isEmpty() ? top + 6 : top + 2;
+            g.drawString(mc.font, displayLabel, labelX, labelY, textColor, false);
             if (count > 0) {
-                g.drawString(mc.font, countStr, labelX + mc.font.width(displayLabel), top + 6, 0xFF88AA66, false);
+                g.drawString(mc.font, countStr, labelX + mc.font.width(displayLabel), labelY, 0xFF88AA66, false);
+            }
+            drawMarks(g, labelX, top + 12);
+        }
+
+        /** The marks under the label, half size, a dimmed one under a grey wash. */
+        private void drawMarks(GuiGraphics g, int x, int y) {
+            for (int i = 0; i < marks.size(); i++) {
+                int mx = x + i * 10;
+                g.pose().pushPose();
+                g.pose().translate(mx, y, 0);
+                g.pose().scale(0.5f, 0.5f, 1f);
+                g.renderItem(marks.get(i), 0, 0);
+                g.pose().popPose();
+                if (i < marksDim.length && marksDim[i]) {
+                    g.pose().pushPose();
+                    g.pose().translate(0, 0, 200);
+                    g.fill(mx, y, mx + 8, y + 8, 0xA0101010);
+                    g.pose().popPose();
+                }
             }
         }
 

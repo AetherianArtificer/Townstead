@@ -43,10 +43,12 @@ final class SettingControls {
     private static final Map<String, List<Choice>> CHOICES = Map.of(
             "needs.thirst.preferredBackend", List.of(new Choice("auto", null),
                     new Choice("legendary_survival_overhaul", "legendarysurvivaloverhaul"),
-                    new Choice("thirst", "thirst"), new Choice("tough_as_nails", "toughasnails")),
+                    new Choice("thirst", "thirst"), new Choice("thirstwastaken2", "thirstwastaken2"),
+                    new Choice("homeostatic", "homeostatic"), new Choice("tough_as_nails", "toughasnails")),
             "needs.temperature.preferredBackend", List.of(new Choice("auto", null),
                     new Choice("legendary_survival_overhaul", "legendarysurvivaloverhaul"),
                     new Choice("cold_sweat", "cold_sweat"), new Choice("tough_as_nails", "toughasnails"),
+                    new Choice("homeostatic", "homeostatic"),
                     new Choice("builtin", null)),
             "needs.temperature.climateAuthority", List.of(new Choice("townstead", null), new Choice("backend", null)),
             "calendar.profile", List.of(new Choice("auto", null), new Choice("townstead_calendar:default", null),

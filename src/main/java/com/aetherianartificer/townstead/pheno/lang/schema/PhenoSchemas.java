@@ -105,7 +105,10 @@ public final class PhenoSchemas {
                                 + "swimming alone; float for slow_fall."))
                 .field(of("cruise_height", PhenoType.FLOAT)
                         .doc("Flight abilities only. Blocks above the terrain while travelling; the float height for drift."))
-                .field(of("condition", PhenoType.CONDITION)).build());
+                .field(of("needs_part", PhenoType.STRING)
+                        .doc("An attachment. The ability stops while any piece of it is lost, on the server and on the bearer's client."))
+                .field(of("condition", PhenoType.CONDITION)
+                        .doc("The ability works only while this is true. Checked on the server.")).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:attribute", NodeDomain.GENE)
                 .doc("Adds a vanilla attribute modifier, optionally gated by a condition.")
@@ -139,6 +142,24 @@ public final class PhenoSchemas {
                 .field(of("damage_tag", PhenoType.TAG_OR_ID))
                 .field(of("damage_type", PhenoType.ID))
                 .field(of("condition", PhenoType.CONDITION)).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:spray_liquid", NodeDomain.ACTION)
+                .doc("Throws a liquid from the body, the way the actor is facing.")
+                .field(required("liquid", PhenoType.ID))
+                .field(of("amount", PhenoType.FLOAT).doc("Force of the throw, as points of damage are for a hit.")).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:bleeds", NodeDomain.GENE)
+                .doc("What this body bleeds. Gore Traces land as this Trace instead; leave it empty to bleed nothing.")
+                .field(of("trace", PhenoType.STRING).doc("Gore lands as this Trace. Empty means it bleeds nothing. Omit it to keep the usual Traces."))
+                .field(of("liquid", PhenoType.ID).doc("The material it bleeds, from data/<ns>/liquid/."))
+                .field(of("color", PhenoType.STRING).doc("Fresh color as #RRGGBB, any color. Marks, drops and stains all use it."))
+                .field(of("dry_color", PhenoType.STRING).doc("Dry color as #RRGGBB. Omitted: a darker shade of color.")).build());
+
+        NodeSchemas.register(NodeSchema.of("pheno:overfeed", NodeDomain.GENE)
+                .doc("Bearer can eat past full. Food eaten when full fills a resource, and listed items always do.")
+                .field(required("resource", PhenoType.ID))
+                .field(of("per_nutrition", PhenoType.INT).doc("Meter gained per point of nutrition eaten when full."))
+                .field(of("items", PhenoType.OBJECT).doc("Item id to the amount it always gives.")).build());
 
         NodeSchemas.register(NodeSchema.of("pheno:attack_modifier", NodeDomain.GENE)
                 .doc("Scales damage the bearer deals; the attacker-side twin of damage_modifier. "

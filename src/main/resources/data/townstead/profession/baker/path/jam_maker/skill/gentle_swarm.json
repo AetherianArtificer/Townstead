@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.jam_maker.gentle_swarm"
+  },
+  "icon": "minecraft:bee_nest",
+  "description": {
+    "translate": "skill.townstead.baker.jam_maker.gentle_swarm.description"
+  },
+  "cost": 1,
+  "requires": [
+    "beeline"
+  ]
+}

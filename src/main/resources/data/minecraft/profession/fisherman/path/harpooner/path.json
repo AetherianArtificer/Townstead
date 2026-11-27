@@ -19,21 +19,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fisherman/harpooner/taut_line"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fisherman/harpooner/gaff"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:fisherman/harpooner/tether"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:fisherman",
+            "at_least": 80
           },
           {
             "type": "pheno:and",
@@ -42,14 +30,14 @@
                 "type": "pheno:equipped_item",
                 "slot": "mainhand",
                 "item_condition": {
-                  "type": "or",
+                  "type": "pheno:or",
                   "conditions": [
                     {
-                      "type": "ingredient",
+                      "type": "pheno:ingredient",
                       "item": "minecraft:fishing_rod"
                     },
                     {
-                      "type": "ingredient",
+                      "type": "pheno:ingredient",
                       "tag": "starcatcher:rods"
                     }
                   ]
@@ -69,6 +57,69 @@
       "action": {
         "type": "pheno:change_resource",
         "resource": "townstead:tide",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:tide",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:fisherman",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:ingredient",
+                      "item": "minecraft:fishing_rod"
+                    },
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "starcatcher:rods"
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 8,
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                }
+              },
+              {
+                "type": "pheno:block_in_radius",
+                "radius": 4,
+                "block_condition": {
+                  "type": "pheno:fluid",
+                  "fluid": "water"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:tide",
         "amount": 1
       }
     }
@@ -76,28 +127,28 @@
   "skills": [
     [
       "barbed_hook",
-      "get_over_here",
-      "cast_off"
-    ],
-    [
-      "hauling_arms",
-      "snag",
-      "lifeline"
-    ],
-    [
-      "taut_line",
       "gaff",
-      "tether"
+      "get_over_here"
     ],
     [
       "set_the_hook",
-      "trawl",
-      "man_overboard"
+      "long_gaff",
+      "snag"
+    ],
+    [
+      "taut_line",
+      "cast_off",
+      "trawl"
+    ],
+    [
+      "sea_dog",
+      "boarding",
+      "keelhaul"
     ],
     [
       "old_salt",
-      "leviathans_line",
-      "hook_line_and_sinker"
+      "hook_line_and_sinker",
+      "leviathans_line"
     ]
   ]
 }

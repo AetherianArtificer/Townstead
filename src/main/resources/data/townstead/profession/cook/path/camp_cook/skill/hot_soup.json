@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.hot_soup"
+  },
+  "icon": "minecraft:mushroom_stew",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.hot_soup.description"
+  },
+  "cost": 1,
+  "requires": [
+    "ladle"
+  ]
+}

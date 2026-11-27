@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "knot_work"
+    "mended_nets"
   ],
   "power": {
     "type": "pheno:trigger",

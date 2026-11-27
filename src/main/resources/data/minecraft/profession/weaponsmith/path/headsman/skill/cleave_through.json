@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.weaponsmith.headsman.cleave_through.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:headsman_axe",
+  "cost": 2,
+  "skill_group": "townstead:headsman_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,30 +22,314 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:damage",
-              "amount": 3,
-              "source": "other"
-            },
-            {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:weaponsmith/headsman/final_verdict"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 5,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
               "type": "pheno:if_else",
               "condition": {
-                "type": "pheno:health",
-                "max": 0.3,
-                "relative": true
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:health",
+                    "max": 0.3,
+                    "relative": true
+                  },
+                  {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:and",
+                        "conditions": [
+                          {
+                            "type": "pheno:flag",
+                            "flag": "townstead:headsman_judged"
+                          },
+                          {
+                            "type": "pheno:health",
+                            "max": 0.4,
+                            "relative": true
+                          }
+                        ]
+                      },
+                      {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:weaponsmith/headsman/sentence"
+                        }
+                      }
+                    ]
+                  }
+                ]
               },
               "if_action": {
-                "type": "pheno:damage",
-                "amount": 8,
-                "source": "other"
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:health",
+                          "max": 0.3,
+                          "relative": true
+                        },
+                        {
+                          "type": "pheno:and",
+                          "conditions": [
+                            {
+                              "type": "pheno:and",
+                              "conditions": [
+                                {
+                                  "type": "pheno:flag",
+                                  "flag": "townstead:headsman_judged"
+                                },
+                                {
+                                  "type": "pheno:health",
+                                  "max": 0.4,
+                                  "relative": true
+                                }
+                              ]
+                            },
+                            {
+                              "type": "pheno:origin",
+                              "condition": {
+                                "type": "pheno:skill",
+                                "skill": "minecraft:weaponsmith/headsman/sentence"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "if_action": {
+                      "type": "pheno:damage",
+                      "amount": 9,
+                      "source": "other"
+                    },
+                    "else_action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:not",
+                        "condition": {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:weaponsmith/headsman/final_verdict"
+                          }
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:damage",
+                        "amount": 3,
+                        "source": "other"
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:sweep_attack",
+                    "count": 2,
+                    "spread": 0.3
+                  }
+                ]
+              },
+              "else_action": {
+                "type": "pheno:nothing"
               }
             }
-          ],
-          "on": {
-            "type": "pheno:ray",
-            "distance": 4
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:or",
+                      "conditions": [
+                        {
+                          "type": "pheno:health",
+                          "max": 0.3,
+                          "relative": true
+                        },
+                        {
+                          "type": "pheno:and",
+                          "conditions": [
+                            {
+                              "type": "pheno:and",
+                              "conditions": [
+                                {
+                                  "type": "pheno:flag",
+                                  "flag": "townstead:headsman_judged"
+                                },
+                                {
+                                  "type": "pheno:health",
+                                  "max": 0.4,
+                                  "relative": true
+                                }
+                              ]
+                            },
+                            {
+                              "type": "pheno:origin",
+                              "condition": {
+                                "type": "pheno:skill",
+                                "skill": "minecraft:weaponsmith/headsman/sentence"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "if_action": {
+                      "type": "pheno:damage",
+                      "amount": 9,
+                      "source": "other"
+                    },
+                    "else_action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:not",
+                        "condition": {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:weaponsmith/headsman/final_verdict"
+                          }
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:damage",
+                        "amount": 3,
+                        "source": "other"
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  },
+                  {
+                    "type": "pheno:spawn_particles",
+                    "particle": "minecraft:sweep_attack",
+                    "count": 2,
+                    "spread": 0.3
+                  }
+                ]
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:weaponsmith/headsman/headsmans_swing"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 2.5,
+                  "include_self": false,
+                  "target": "hostile",
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:or",
+                          "conditions": [
+                            {
+                              "type": "pheno:health",
+                              "max": 0.3,
+                              "relative": true
+                            },
+                            {
+                              "type": "pheno:and",
+                              "conditions": [
+                                {
+                                  "type": "pheno:and",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:flag",
+                                      "flag": "townstead:headsman_judged"
+                                    },
+                                    {
+                                      "type": "pheno:health",
+                                      "max": 0.4,
+                                      "relative": true
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "pheno:origin",
+                                  "condition": {
+                                    "type": "pheno:skill",
+                                    "skill": "minecraft:weaponsmith/headsman/sentence"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "if_action": {
+                          "type": "pheno:damage",
+                          "amount": 9,
+                          "source": "other"
+                        },
+                        "else_action": {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:not",
+                            "condition": {
+                              "type": "pheno:origin",
+                              "condition": {
+                                "type": "pheno:skill",
+                                "skill": "minecraft:weaponsmith/headsman/final_verdict"
+                              }
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:damage",
+                            "amount": 3,
+                            "source": "other"
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:sweep_attack",
+                        "count": 2,
+                        "spread": 0.3
+                      }
+                    ]
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 4
+            }
           }
         },
         {
@@ -64,6 +348,9 @@
               "spread": 1.2
             }
           ]
+        },
+        {
+          "type": "pheno:swing_hand"
         }
       ]
     }

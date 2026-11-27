@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.broomrider.side_saddle"
+  },
+  "icon": "minecraft:saddle",
+  "description": {
+    "translate": "skill.townstead.witch.broomrider.side_saddle.description"
+  },
+  "cost": 1,
+  "requires": [
+    "take_off"
+  ]
+}

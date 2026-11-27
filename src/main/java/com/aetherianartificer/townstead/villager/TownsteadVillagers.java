@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.villager;
 
+import com.aetherianartificer.townstead.tick.EntityLocalCache;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.nbt.CompoundTag;
@@ -12,15 +13,28 @@ import java.util.UUID;
  */
 public final class TownsteadVillagers {
     private static final Object2ObjectOpenHashMap<UUID, TownsteadVillager> STATES = new Object2ObjectOpenHashMap<>();
+    // Bumped whenever STATES drops an entry, so a villager's own copy of its entry re-reads the table.
+    private static long removals;
 
     private TownsteadVillagers() {}
 
     public static TownsteadVillager get(VillagerEntityMCA villager) {
-        TownsteadVillager state = STATES.get(villager.getUUID());
+        UUID uuid = villager.getUUID();
+        EntityLocalCache local = EntityLocalCache.of(villager);
+        TownsteadVillager state = local != null && local.villagerStateEpoch == removals
+                && local.villagerStateOwner == uuid ? (TownsteadVillager) local.villagerState : null;
         if (state == null) {
-            state = new TownsteadVillager(villager.getUUID());
-            TownsteadVillagerState.loadInto(villager, state);
-            STATES.put(villager.getUUID(), state);
+            state = STATES.get(uuid);
+            if (state == null) {
+                state = new TownsteadVillager(uuid);
+                TownsteadVillagerState.loadInto(villager, state);
+                STATES.put(uuid, state);
+            }
+            if (local != null) {
+                local.villagerState = state;
+                local.villagerStateEpoch = removals;
+                local.villagerStateOwner = uuid;
+            }
         }
         if (villager.level() != null) state.touch(villager.level().getGameTime());
         return state;
@@ -29,6 +43,7 @@ public final class TownsteadVillagers {
     /** Drops what is held in memory for this villager and reads their state from the entity again. */
     public static TownsteadVillager reload(VillagerEntityMCA villager) {
         STATES.remove(villager.getUUID());
+        removals++;
         return get(villager);
     }
 
@@ -70,12 +85,21 @@ public final class TownsteadVillagers {
         }
     }
 
+    /** Forgets a villager who will not tick again; the snapshot on the entity stays the record. */
+    public static void release(VillagerEntityMCA villager) {
+        STATES.remove(villager.getUUID());
+        removals++;
+    }
+
     public static void purgeExpired(long gameTime, long maxIdleTicks) {
-        STATES.object2ObjectEntrySet().removeIf(entry ->
-                !entry.getValue().isDirty() && gameTime - entry.getValue().lastSeenGameTime() > maxIdleTicks);
+        if (STATES.object2ObjectEntrySet().removeIf(entry ->
+                !entry.getValue().isDirty() && gameTime - entry.getValue().lastSeenGameTime() > maxIdleTicks)) {
+            removals++;
+        }
     }
 
     public static void clearAll() {
         STATES.clear();
+        removals++;
     }
 }

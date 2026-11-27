@@ -1,0 +1,22 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.diplomat.ceasefire"
+  },
+  "icon": "minecraft:white_banner",
+  "description": {
+    "translate": "skill.townstead.scribe.diplomat.ceasefire.description"
+  },
+  "cost": 2,
+  "requires": [
+    "open_door"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 0.0,
+    "condition": {
+      "type": "pheno:flag",
+      "flag": "townstead:diplomat_truce"
+    }
+  }
+}

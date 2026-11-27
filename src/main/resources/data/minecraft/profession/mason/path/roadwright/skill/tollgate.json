@@ -7,11 +7,8 @@
   "description": {
     "translate": "skill.townstead.mason.roadwright.tollgate.description"
   },
-  "cost": 1,
-  "requires": [
-    "road_crew"
-  ],
-  "skill_group": "townstead:road_crew",
+  "cost": 2,
+  "skill_group": "townstead:roadwright_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 360,
@@ -22,16 +19,174 @@
       "amount": 30
     },
     "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 8,
-      "include_self": false,
-      "target": "hostile",
-      "action": {
-        "type": "pheno:apply_effect",
-        "effect": "minecraft:slowness",
-        "duration": 160,
-        "amplifier": 1
-      }
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:mason/roadwright/toll"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:mason/roadwright/road_patrol"
+                },
+                {
+                  "type": "pheno:block",
+                  "y": -1,
+                  "block_condition": {
+                    "type": "in_tag",
+                    "tag": "townstead:roads"
+                  }
+                }
+              ]
+            },
+            "if_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:tollgate_toll_road",
+              "blocks": {
+                "radius": [
+                  2,
+                  0,
+                  2
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                }
+              }
+            },
+            "else_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:tollgate_toll",
+              "blocks": {
+                "radius": [
+                  2,
+                  0,
+                  2
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                }
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:mason/roadwright/road_patrol"
+                },
+                {
+                  "type": "pheno:block",
+                  "y": -1,
+                  "block_condition": {
+                    "type": "in_tag",
+                    "tag": "townstead:roads"
+                  }
+                }
+              ]
+            },
+            "if_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:tollgate_road",
+              "blocks": {
+                "radius": [
+                  2,
+                  0,
+                  2
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                }
+              }
+            },
+            "else_action": {
+              "type": "pheno:haze",
+              "kind": "townstead:tollgate",
+              "blocks": {
+                "radius": [
+                  2,
+                  0,
+                  2
+                ],
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:mason/roadwright/road_patrol"
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:block",
+                  "y": -1,
+                  "block_condition": {
+                    "type": "in_tag",
+                    "tag": "townstead:roads"
+                  }
+                }
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:stamina",
+                "min": 30
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:stamina",
+            "amount": -30
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.calcite.place",
+          "volume": 1.0,
+          "pitch": 0.7
+        }
+      ]
     }
   }
 }

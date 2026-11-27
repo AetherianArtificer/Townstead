@@ -19,6 +19,18 @@ class RecipeProjectionMergeTest {
         public String getNothing() { return null; }
     }
 
+    public enum Stage { CAKE, CUPCAKE }
+
+    public record Staged(Stage stage) {}
+
+    @Test
+    void equalsComparesAValueWithNoBooleanOfItsOwn() {
+        RecipeProjectionAccess.Accessor ready = RecipeProjectionAccess.parse(JsonParser.parseString(
+                "{ \"path\": \"stage\", \"equals\": \"cake\" }"));
+        assertEquals(Boolean.TRUE, RecipeProjectionAccess.read(new Staged(Stage.CAKE), ready).value());
+        assertEquals(Boolean.FALSE, RecipeProjectionAccess.read(new Staged(Stage.CUPCAKE), ready).value());
+    }
+
     @Test
     void mergeConcatenatesEveryPathInOrder() {
         RecipeProjectionAccess.Accessor accessor = RecipeProjectionAccess.parse(JsonParser.parseString(

@@ -30,21 +30,10 @@
       "include_self": true,
       "target": "non_hostile",
       "action": {
-        "type": "pheno:and",
-        "actions": [
-          {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:speed",
-            "duration": 30,
-            "amplifier": 0
-          },
-          {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:haste",
-            "duration": 30,
-            "amplifier": 0
-          }
-        ]
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:haste",
+        "duration": 30,
+        "amplifier": 0
       }
     }
   }

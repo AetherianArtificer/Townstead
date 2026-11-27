@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "riposte"
+    "second_intention"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -25,14 +25,14 @@
           "type": "pheno:equipped_item",
           "slot": "mainhand",
           "item_condition": {
-            "type": "or",
+            "type": "pheno:or",
             "conditions": [
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "tag": "minecraft:swords"
               },
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "tag": "minecraft:axes"
               }
             ]
@@ -41,26 +41,15 @@
         {
           "type": "pheno:resource",
           "resource": "townstead:edge",
-          "min": 75
+          "min": 50
         }
       ]
     },
     "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:speed",
-          "duration": 30,
-          "amplifier": 1
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 30,
-          "amplifier": 0
-        }
-      ]
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 1
     }
   }
 }

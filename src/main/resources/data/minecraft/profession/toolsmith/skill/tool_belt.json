@@ -1,0 +1,46 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.tool_belt"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "translate": "skill.townstead.toolsmith.tool_belt.description"
+  },
+  "tier": 2,
+  "cost": 1,
+  "requires": [
+    "well_kept_tools"
+  ],
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 40,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 5
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:at",
+          "blocks": {
+            "type": "pheno:ray",
+            "distance": 6
+          },
+          "do": {
+            "type": "pheno:swap_best_tool"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.armor.equip_leather",
+          "volume": 0.8,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

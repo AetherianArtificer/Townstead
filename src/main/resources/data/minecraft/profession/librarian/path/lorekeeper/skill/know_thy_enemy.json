@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.librarian.lorekeeper.know_thy_enemy.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:lore_weakness",
+  "cost": 2,
+  "skill_group": "townstead:lorekeeper_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 300,
-    "slot": 1,
+    "cooldown": 240,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,24 +22,66 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:and",
-          "actions": [
-            {
-              "type": "pheno:apply_effect",
-              "effect": "minecraft:glowing",
-              "duration": 300,
-              "amplifier": 0
-            },
-            {
-              "type": "pheno:apply_effect",
-              "effect": "minecraft:weakness",
-              "duration": 300,
-              "amplifier": 0
-            }
-          ],
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:lorekeeper_exposed",
+                "duration": 300
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:glowing",
+                "duration": 300,
+                "amplifier": 0
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/lorekeeper/exploit"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:weakness",
+                  "duration": 300,
+                  "amplifier": 0
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
           "on": {
             "type": "pheno:ray",
             "distance": 16
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:librarian/lorekeeper/final_exam"
+          },
+          "if_action": {
+            "type": "pheno:set_flag",
+            "flag": "townstead:lorekeeper_exam",
+            "duration": 300
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {
@@ -49,6 +91,19 @@
           "pitch": 1.0
         }
       ]
+    }
+  },
+  "companions": {
+    "exposed": {
+      "type": "pheno:attack_modifier",
+      "modifier": 1.25,
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:flag",
+          "flag": "townstead:lorekeeper_exposed"
+        }
+      }
     }
   }
 }

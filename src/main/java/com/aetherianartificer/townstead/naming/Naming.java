@@ -1,14 +1,20 @@
 package com.aetherianartificer.townstead.naming;
 
 import com.aetherianartificer.townstead.culture.Culture;
+import com.aetherianartificer.townstead.culture.CultureAssignment;
 import com.aetherianartificer.townstead.culture.Cultures;
+import com.aetherianartificer.townstead.root.PlayerRoot;
 import com.aetherianartificer.townstead.villager.TownsteadVillager;
 import com.aetherianartificer.townstead.villager.TownsteadVillagers;
 import net.conczin.mca.entity.VillagerEntityMCA;
+import net.conczin.mca.entity.ai.relationship.EntityRelationship;
 import net.conczin.mca.entity.ai.relationship.Gender;
 import net.conczin.mca.resources.WeightedPool;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
@@ -58,6 +64,7 @@ public final class Naming {
         TownsteadVillager state = TownsteadVillagers.get(villager);
         String recorded = state.life().familyName();
         if (!recorded.isEmpty() || state.life().familyNameFixed()) return recorded;
+        if (SpawnNaming.inBirth()) return "";
 
         NamingTradition tradition = traditionOf(villager);
         if (tradition == null) return "";
@@ -66,6 +73,43 @@ public final class Naming {
         if (resolved.isEmpty()) return "";
         state.life().setFamilyName(resolved);
         TownsteadVillagers.flush(villager);
+        return resolved;
+    }
+
+    /**
+     * A player's tradition, which they pick themselves. As with a villager, a culture that declares
+     * one wins. Null until they pick.
+     */
+    public static @Nullable NamingTradition traditionOf(Player player) {
+        String fromCulture = TraditionAssignment.ofCulture(PlayerRoot.getCulture(player));
+        return NamingTraditions.get(ResourceLocation.tryParse(
+                fromCulture.isEmpty() ? PlayerRoot.getNamingTradition(player) : fromCulture));
+    }
+
+    /** The name list a player is named from, recorded on first use, or empty with no tradition. */
+    public static String nameList(Player player) {
+        String recorded = PlayerRoot.getNameList(player);
+        if (NameLists.hasGiven(recorded)) return recorded;
+        NamingTradition tradition = traditionOf(player);
+        if (tradition == null) return "";
+        String rolled = NamingTraditions.rollGivenList(tradition, player.getRandom());
+        if (!rolled.isEmpty()) PlayerRoot.setNameList(player, rolled);
+        return rolled;
+    }
+
+    /** A player's family name, settled from their tradition by the rules a villager follows. */
+    public static String familyName(Player player) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.NAMING)) return "";
+        String held = PlayerNames.authoritative(player);
+        if (!held.isEmpty()) return held;
+        String recorded = PlayerRoot.getFamilyName(player);
+        if (!recorded.isEmpty() || PlayerRoot.isFamilyNameFixed(player)) return recorded;
+        NamingTradition tradition = traditionOf(player);
+        if (tradition == null) return "";
+        nameList(player);
+        String resolved = buildFamilyName(player, tradition);
+        if (resolved.isEmpty()) resolved = PlayerNames.fallback(player, tradition);
+        if (!resolved.isEmpty()) PlayerRoot.setFamilyName(player, resolved);
         return resolved;
     }
 
@@ -107,18 +151,18 @@ public final class Naming {
      * built from the named parent's given name and the child's own gendered affix, which is what
      * makes {@code -sson}/{@code -sdottir} and {@code -ovich}/{@code -ovna} the same mechanism.</p>
      */
-    private static String buildFamilyName(VillagerEntityMCA villager, NamingTradition tradition) {
+    private static String buildFamilyName(Entity person, NamingTradition tradition) {
         NamingTradition.Family family = tradition.family();
         return switch (family.type()) {
             case NONE -> "";
-            case INHERITED -> inherited(villager, family);
-            case PATRONYMIC -> derived(villager, family, Gender.MALE);
-            case MATRONYMIC -> derived(villager, family, Gender.FEMALE);
+            case INHERITED -> inherited(person, family);
+            case PATRONYMIC -> derived(person, family, Gender.MALE);
+            case MATRONYMIC -> derived(person, family, Gender.FEMALE);
         };
     }
 
-    private static String inherited(VillagerEntityMCA villager, NamingTradition.Family family) {
-        String fromParents = parentFamilyName(villager, family.descent());
+    private static String inherited(Entity person, NamingTradition.Family family) {
+        String fromParents = parentFamilyName(person, family.descent());
         if (!fromParents.isEmpty()) return fromParents;
 
         // An explicit list wins, rolled among the rule's weighted sources so a culture can draw
@@ -126,47 +170,139 @@ public final class Naming {
         // a culture built on another mod's lists gets that mod's surnames without ever naming the
         // mod. When neither is loaded there is simply no family name, which is how a pack that
         // references something absent degrades instead of failing.
-        String rolled = NamingTraditions.rollFamilyList(family, villager.getRandom());
+        String rolled = NamingTraditions.rollFamilyList(family, randomOf(person));
         WeightedPool<String> pool = rolled.isEmpty() ? null : NameLists.family(rolled);
-        if (pool == null) pool = NameLists.family(TownsteadVillagers.get(villager).life().nameList());
+        if (pool == null) pool = NameLists.family(person instanceof Player player
+                ? PlayerRoot.getNameList(player)
+                : TownsteadVillagers.get((VillagerEntityMCA) person).life().nameList());
         return pool == null ? "" : pool.pickOne();
     }
 
-    private static String derived(VillagerEntityMCA villager, NamingTradition.Family family, Gender from) {
-        String stem = parentGivenName(villager, from);
+    private static String derived(Entity person, NamingTradition.Family family, Gender from) {
+        String stem = parentGivenName(person, from);
         if (stem.isEmpty()) return "";
-        return family.affix(genderOf(villager)).apply(stem);
+        return family.affix(parentGender(person)).apply(stem);
     }
 
-    /** A parent's family name, following the tradition's descent rule. */
-    private static String parentFamilyName(VillagerEntityMCA villager, NamingTradition.Descent descent) {
-        for (Entity parent : parents(villager)) {
-            if (!(parent instanceof VillagerEntityMCA person)) continue;
-            if (descent == NamingTradition.Descent.FATHER && genderOf(person) == Gender.FEMALE) continue;
-            if (descent == NamingTradition.Descent.MOTHER && genderOf(person) != Gender.FEMALE) continue;
-            String name = TownsteadVillagers.get(person).life().familyName();
+    private static RandomSource randomOf(Entity person) {
+        return person instanceof net.minecraft.world.entity.LivingEntity living ? living.getRandom() : RandomSource.create();
+    }
+
+    /**
+     * A parent's family name, following the tradition's descent rule. When that side has none to
+     * give, such as a player who never set one, the child takes the other parent's. A name another
+     * mod holds, such as a House, comes before descent. A parent's name is the one they show.
+     */
+    private static String parentFamilyName(Entity person, NamingTradition.Descent descent) {
+        String held = heldParentFamily(person);
+        if (!held.isEmpty()) return held;
+        String other = "";
+        for (Entity parent : parents(person)) {
+            String name = parent instanceof VillagerEntityMCA villager ? VillagerNames.parts(villager).family()
+                    : parent instanceof Player player ? familyName(player) : "";
+            if (name.isEmpty()) continue;
+            boolean skipped = descent == NamingTradition.Descent.FATHER && parentGender(parent) == Gender.FEMALE
+                    || descent == NamingTradition.Descent.MOTHER && parentGender(parent) != Gender.FEMALE;
+            if (!skipped) return name;
+            if (other.isEmpty()) other = name;
+        }
+        return other;
+    }
+
+    /**
+     * Settles a baby item's child once MCA has assigned its parents. The factory that built the
+     * child, or the dummy saved in the item, may have recorded naming facts from where it stood, so
+     * those are cleared and worked out again from the family.
+     */
+    public static void settleBirth(VillagerEntityMCA child) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.NAMING)) return;
+        if (!(child.level() instanceof ServerLevel level)) return;
+        TownsteadVillager.Life life = TownsteadVillagers.get(child).life();
+        life.setCulture("");
+        life.setNamingTradition("");
+        life.setNameList("");
+        life.setFamilyName("");
+        life.setFamilyNameFixed(false);
+        TownsteadVillagers.flush(child);
+        CultureAssignment.ensure(level, child);
+        TraditionAssignment.ensure(level, child);
+        nameList(child);
+        settleFromParents(child);
+    }
+
+    /**
+     * Passes on a family name the child's tradition would not build, such as one typed into the
+     * editor for a villager whose tradition gives none. Only a chosen or held name passes this way:
+     * where a tradition gives no names, another mod may own them and decide the child's itself.
+     */
+    public static void settleFromParents(VillagerEntityMCA child) {
+        TownsteadVillager.Life life = TownsteadVillagers.get(child).life();
+        if (!life.familyName().isEmpty() || life.familyNameFixed()) return;
+        NamingTradition tradition = traditionOf(child);
+        if (tradition != null && tradition.family().type() != NamingTradition.FamilyType.NONE) return;
+        String name = heldParentFamily(child);
+        if (name.isEmpty()) name = chosenParentFamily(child);
+        if (name.isEmpty()) return;
+        life.setFamilyName(name);
+        TownsteadVillagers.flush(child);
+    }
+
+    /** The family name another mod holds for one of this person's parents, or empty. */
+    public static String heldParentFamily(Entity person) {
+        for (Entity parent : parents(person)) {
+            if (parent instanceof Player player) {
+                String held = PlayerNames.authoritative(player);
+                if (!held.isEmpty()) return held;
+            } else if (parent instanceof VillagerEntityMCA villager) {
+                NameParts parts = VillagerNames.parts(villager);
+                if (parts.familyLocked() && parts.hasFamily()) return parts.family();
+            }
+        }
+        return "";
+    }
+
+    private static String chosenParentFamily(Entity person) {
+        for (Entity parent : parents(person)) {
+            String name = "";
+            if (parent instanceof Player player) {
+                name = familyName(player);
+            } else if (parent instanceof VillagerEntityMCA villager) {
+                TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+                if (life.familyNameFixed()) name = life.familyName();
+            }
             if (!name.isEmpty()) return name;
         }
         return "";
     }
 
     /** The given name of the parent a derived family name is built from. */
-    private static String parentGivenName(VillagerEntityMCA villager, Gender from) {
-        for (Entity parent : parents(villager)) {
-            if (!(parent instanceof VillagerEntityMCA person)) continue;
-            boolean female = genderOf(person) == Gender.FEMALE;
+    private static String parentGivenName(Entity person, Gender from) {
+        for (Entity parent : parents(person)) {
+            boolean female = parentGender(parent) == Gender.FEMALE;
             if (from == Gender.FEMALE != female) continue;
-            String name = person.getName().getString().trim();
+            String name = parent instanceof VillagerEntityMCA villager ? villager.getName().getString().trim()
+                    : parent instanceof Player player ? PlayerNames.given(player) : "";
             if (!name.isEmpty()) return name;
         }
         return "";
     }
 
-    private static Iterable<Entity> parents(VillagerEntityMCA villager) {
+    public static Iterable<Entity> parents(Entity person) {
         try {
-            return villager.getRelationships().getParents().toList();
+            if (person instanceof VillagerEntityMCA villager) return villager.getRelationships().getParents().toList();
+            return EntityRelationship.of(person).map(relationship -> relationship.getParents().toList())
+                    .orElse(java.util.List.of());
         } catch (Throwable ignored) {
             return java.util.List.of();
+        }
+    }
+
+    private static Gender parentGender(Entity parent) {
+        if (parent instanceof VillagerEntityMCA villager) return genderOf(villager);
+        try {
+            return EntityRelationship.of(parent).map(EntityRelationship::getGender).orElse(Gender.MALE);
+        } catch (Throwable ignored) {
+            return Gender.MALE;
         }
     }
 
@@ -229,6 +365,32 @@ public final class Naming {
         VillagerNames.publish(villager);
     }
 
+    /**
+     * Moves a villager to a culture, or to a tradition with no culture, from the editor. Picking the
+     * root of the culture they already hold changes nothing, so a subculture survives. A chosen
+     * family name stays, as it does with {@code /townstead naming}.
+     */
+    public static void reassign(ServerLevel level, VillagerEntityMCA villager, String cultureId, String traditionId) {
+        String culture = cultureId == null ? "" : cultureId.trim();
+        String tradition = traditionId == null ? "" : traditionId.trim();
+        TownsteadVillager.Life life = TownsteadVillagers.get(villager).life();
+        if (!culture.isEmpty()) {
+            Culture chosen = Cultures.get(culture);
+            if (chosen == null || chosen.isSubculture() || !NamingTraditions.culturePickable(chosen)) return;
+            if (chosen.id().toString().equals(Cultures.rootOf(life.culture()))) return;
+            life.setCulture(chosen.id().toString());
+            life.setNamingTradition("");
+        } else {
+            if (NamingTraditions.get(ResourceLocation.tryParse(tradition)) == null) return;
+            life.setCulture("");
+            life.setNamingTradition(tradition);
+        }
+        life.setNameList("");
+        if (!life.familyNameFixed()) life.setFamilyName("");
+        TownsteadVillagers.flush(villager);
+        TraditionAssignment.ensure(level, villager);
+    }
+
     /** The culture recorded on a villager, or empty. */
     public static String cultureOf(VillagerEntityMCA villager) {
         return TownsteadVillagers.get(villager).life().culture();
@@ -237,8 +399,8 @@ public final class Naming {
     /** A parent's culture, which is how culture is normally passed on at all. */
     public static Optional<String> cultureFromParents(VillagerEntityMCA villager) {
         for (Entity parent : parents(villager)) {
-            if (!(parent instanceof VillagerEntityMCA person)) continue;
-            String culture = TownsteadVillagers.get(person).life().culture();
+            String culture = parent instanceof VillagerEntityMCA person ? TownsteadVillagers.get(person).life().culture()
+                    : parent instanceof Player player ? PlayerRoot.getCulture(player) : "";
             if (Cultures.exists(culture)) return Optional.of(culture);
         }
         return Optional.empty();

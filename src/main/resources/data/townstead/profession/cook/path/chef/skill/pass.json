@@ -1,0 +1,141 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.chef.pass"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.cook.chef.pass.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:chef_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 160,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "condition": {
+      "type": "pheno:not",
+      "condition": {
+        "type": "pheno:equipped_item",
+        "slot": "mainhand",
+        "item_condition": {
+          "type": "pheno:empty"
+        }
+      }
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:cook/chef/chef_de_cuisine"
+          },
+          "if_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:hand_over"
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:poof",
+                  "count": 6,
+                  "spread": 0.3
+                },
+                {
+                  "type": "pheno:play_sound",
+                  "sound": "minecraft:entity.item.pickup",
+                  "volume": 1.0,
+                  "pitch": 0.8
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 24
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:hostile"
+              }
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:hand_over"
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:poof",
+                  "count": 6,
+                  "spread": 0.3
+                },
+                {
+                  "type": "pheno:play_sound",
+                  "sound": "minecraft:entity.item.pickup",
+                  "volume": 1.0,
+                  "pitch": 0.8
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 8
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:cook/chef/hands"
+          },
+          "if_action": {
+            "type": "pheno:apply_effect",
+            "effect": "minecraft:speed",
+            "duration": 60,
+            "amplifier": 0
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:swing_hand"
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.snowball.throw",
+          "volume": 0.8,
+          "pitch": 1.2
+        }
+      ]
+    }
+  }
+}

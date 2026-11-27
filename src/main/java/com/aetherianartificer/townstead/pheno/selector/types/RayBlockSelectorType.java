@@ -26,6 +26,8 @@ public final class RayBlockSelectorType implements BlockSelectorType {
     @Override
     public BlockSelector parse(JsonObject json) {
         RayCast ray = RayCast.parse(json);
+        int through = net.minecraft.util.GsonHelper.getAsInt(json, "through", 0);
+        if (through > 0) return ctx -> ray.blocksAlong(ctx, through);
         return ctx -> {
             var hit = ray.blockHit(ctx);
             return hit == null ? List.of() : List.of(hit.getBlockPos());

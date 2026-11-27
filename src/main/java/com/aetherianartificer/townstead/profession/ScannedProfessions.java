@@ -176,7 +176,7 @@ public final class ScannedProfessions {
             // Registered even with no states of its own, so the foreign blocks have a type to join.
             if (!unclaimed.isEmpty() || FOREIGN_JOB_BLOCKS.containsKey(def.id())) {
                 try {
-                    sink.accept(def.id(), new PoiType(Set.copyOf(unclaimed), 1, 1));
+                    sink.accept(def.id(), new PoiType(unclaimed.isEmpty() ? statesWhileWaiting(def.id()) : Set.copyOf(unclaimed), 1, 1));
                 } catch (Exception error) {
                     Townstead.LOGGER.warn("Could not register POI for scanned profession {}", def.id(), error);
                 }
@@ -188,6 +188,21 @@ public final class ScannedProfessions {
             }
         }
     }
+
+    /** The states of a type whose job blocks all belong to other mods, until those blocks join it. */
+    //? if neoforge {
+    private static Set<BlockState> statesWhileWaiting(ResourceLocation defId) {
+        return Set.of();
+    }
+    //?} else {
+    /*private static Set<BlockState> statesWhileWaiting(ResourceLocation defId) {
+        // PoiType is a record, so two types with no states are equal, and Forge's registry refuses
+        // the second as a duplicate. A private state of the job block keeps them apart; no world
+        // ever holds it, so it never matches anything.
+        Block block = BuiltInRegistries.BLOCK.get(FOREIGN_JOB_BLOCKS.get(defId).iterator().next());
+        return Set.of(new BlockState(block, block.defaultBlockState().getValues(), null));
+    }
+    *///?}
 
     /**
      * Joins other mods' job blocks to their def's POI once every mod has registered its own POIs.

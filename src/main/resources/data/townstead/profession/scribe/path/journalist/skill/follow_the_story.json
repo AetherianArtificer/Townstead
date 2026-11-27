@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.journalist.follow_the_story"
+  },
+  "icon": "minecraft:compass",
+  "description": {
+    "translate": "skill.townstead.scribe.journalist.follow_the_story.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tip_off"
+  ]
+}

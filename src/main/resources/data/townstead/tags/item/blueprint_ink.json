@@ -1,0 +1,10 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:charcoal",
+    "minecraft:coal",
+    "minecraft:ink_sac",
+    { "id": "#c:dyes", "required": false },
+    { "id": "#forge:dyes", "required": false }
+  ]
+}

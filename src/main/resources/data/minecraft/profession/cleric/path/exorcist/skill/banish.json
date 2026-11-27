@@ -1,0 +1,282 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.banish"
+  },
+  "icon": "minecraft:ender_pearl",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.banish.description"
+  },
+  "cost": 2,
+  "requires": [
+    "rebuke"
+  ],
+  "skill_group": "townstead:exorcist_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:cleric/exorcist/dawnbreak"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 16,
+                "include_self": false,
+                "target": "all",
+                "action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:flag",
+                    "flag": "townstead:exorcist_turned"
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 80,
+                        "amplifier": 6
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:weakness",
+                        "duration": 80,
+                        "amplifier": 4
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:jump_boost",
+                        "duration": 80,
+                        "amplifier": 128
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:glowing",
+                        "duration": 80,
+                        "amplifier": 0
+                      },
+                      {
+                        "type": "pheno:delay",
+                        "ticks": 80,
+                        "action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:if_else",
+                              "condition": {
+                                "type": "pheno:entity_group",
+                                "group": "undead"
+                              },
+                              "if_action": {
+                                "type": "pheno:damage",
+                                "amount": 8
+                              },
+                              "else_action": {
+                                "type": "pheno:nothing"
+                              }
+                            },
+                            {
+                              "type": "pheno:if_else",
+                              "condition": {
+                                "type": "pheno:origin",
+                                "condition": {
+                                  "type": "pheno:skill",
+                                  "skill": "minecraft:cleric/exorcist/exorcism"
+                                }
+                              },
+                              "if_action": {
+                                "type": "pheno:and",
+                                "actions": [
+                                  {
+                                    "type": "pheno:flee",
+                                    "duration": 60
+                                  },
+                                  {
+                                    "type": "pheno:if_else",
+                                    "condition": {
+                                      "type": "pheno:entity_group",
+                                      "group": "undead"
+                                    },
+                                    "if_action": {
+                                      "type": "pheno:ignite",
+                                      "seconds": 4
+                                    },
+                                    "else_action": {
+                                      "type": "pheno:nothing"
+                                    }
+                                  }
+                                ]
+                              },
+                              "else_action": {
+                                "type": "pheno:nothing"
+                              }
+                            },
+                            {
+                              "type": "pheno:spawn_particles",
+                              "particle": "minecraft:poof",
+                              "count": 10,
+                              "spread": 0.4
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:end_rod",
+                        "count": 12,
+                        "spread": 0.5
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              },
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:exorcist_banishing",
+                "duration": 80
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:hostile"
+            },
+            "if_action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 80,
+                  "amplifier": 6
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:weakness",
+                  "duration": 80,
+                  "amplifier": 4
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:jump_boost",
+                  "duration": 80,
+                  "amplifier": 128
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:glowing",
+                  "duration": 80,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:delay",
+                  "ticks": 80,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:entity_group",
+                          "group": "undead"
+                        },
+                        "if_action": {
+                          "type": "pheno:damage",
+                          "amount": 8
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      },
+                      {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:cleric/exorcist/exorcism"
+                          }
+                        },
+                        "if_action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:flee",
+                              "duration": 60
+                            },
+                            {
+                              "type": "pheno:if_else",
+                              "condition": {
+                                "type": "pheno:entity_group",
+                                "group": "undead"
+                              },
+                              "if_action": {
+                                "type": "pheno:ignite",
+                                "seconds": 4
+                              },
+                              "else_action": {
+                                "type": "pheno:nothing"
+                              }
+                            }
+                          ]
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:poof",
+                        "count": 10,
+                        "spread": 0.4
+                      }
+                    ]
+                  }
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:end_rod",
+                  "count": 12,
+                  "spread": 0.5
+                }
+              ]
+            },
+            "else_action": {
+              "type": "pheno:nothing"
+            },
+            "on": {
+              "type": "pheno:ray",
+              "distance": 16
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.enderman.teleport",
+          "volume": 0.8,
+          "pitch": 0.6
+        }
+      ]
+    }
+  }
+}

@@ -58,7 +58,7 @@ public final class AttachmentDoctorCommand {
             "frequency", "frequency.root", "frequency.tip", "damping_ratio", "damping_ratio.root",
             "damping_ratio.tip", "gravity", "gravity.root", "gravity.tip", "inertia", "inertia.root",
             "inertia.tip", "drag", "drag.root", "drag.tip", "limit", "limit.root", "limit.tip",
-            "rest_pitch", "sway", "sway_speed");
+            "wind", "wind.root", "wind.tip", "radius", "rest_pitch", "sway", "sway_speed");
 
     private static final SuggestionProvider<CommandSourceStack> PARAMS = (c, b) ->
             QuotedSuggestions.suggest(PHYSICS_PARAMS, b);
@@ -205,8 +205,8 @@ public final class AttachmentDoctorCommand {
         }
         AttachmentDef updated = new AttachmentDef(current.id(), current.geoSha1(), current.textureSha1(),
                 current.targetTag(), current.targetPoint(), current.bone(), current.offset(), current.rotation(),
-                current.scale(), current.tint(), current.tintSource(), current.tintBlend(), current.tintStrength(), current.tintMaskSha1(), current.emissiveSha1(), current.translucent(), current.hidesUnder(), current.whenJson(), current.morph(), current.visibility(),
-                current.stages(), current.poses(), chains, current.animations());
+                current.scale(), current.tint(), current.tintSource(), current.tintBlend(), current.tintStrength(), current.tintMaskSha1(), current.emissiveSha1(), current.translucent(), current.opacity(), current.hidesUnder(), current.whenJson(), current.morph(), current.visibility(),
+                current.stages(), current.poses(), chains, current.animations(), current.body());
         AttachmentServerData.replaceDefinition(updated);
         c.getSource().getServer().getPlayerList().getPlayers().forEach(AttachmentSync::sendManifest);
         c.getSource().sendSuccess(() -> Component.translatable(
@@ -224,8 +224,9 @@ public final class AttachmentDoctorCommand {
         }
         AttachmentDef.Knob frequency = chain.frequency(), dampingRatio = chain.dampingRatio();
         AttachmentDef.Knob gravity = chain.gravity(), inertia = chain.inertia();
-        AttachmentDef.Knob drag = chain.drag(), limit = chain.limit();
+        AttachmentDef.Knob drag = chain.drag(), limit = chain.limit(), wind = chain.wind();
         float restPitch = chain.restPitch(), sway = chain.sway(), swaySpeed = chain.swaySpeed();
+        float radius = chain.radius();
         switch (name) {
             case "frequency" -> frequency = ramp(frequency, end, value);
             case "damping_ratio" -> dampingRatio = ramp(dampingRatio, end, value);
@@ -233,13 +234,15 @@ public final class AttachmentDoctorCommand {
             case "inertia" -> inertia = ramp(inertia, end, value);
             case "drag" -> drag = ramp(drag, end, value);
             case "limit" -> limit = ramp(limit, end, value);
+            case "wind" -> wind = ramp(wind, end, value);
+            case "radius" -> radius = value;
             case "rest_pitch" -> restPitch = value;
             case "sway" -> sway = value;
             case "sway_speed" -> swaySpeed = value;
         }
         return new AttachmentDef.PhysicsChain(chain.bones(), chain.preset(), frequency, dampingRatio, gravity,
                 inertia, drag, limit, chain.hinge(), chain.collide(), restPitch, sway, swaySpeed,
-                chain.scaleWithSize(), chain.segments(), chain.axis(), chain.notes());
+                chain.scaleWithSize(), chain.segments(), chain.axis(), wind, chain.blocks(), radius, chain.notes());
     }
 
     private static AttachmentDef.Knob ramp(AttachmentDef.Knob knob, String end, float value) {
@@ -300,12 +303,12 @@ public final class AttachmentDoctorCommand {
 
     private static AttachmentDef withScale(AttachmentDef d, float scale) {
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                d.offset(), d.rotation(), scale, d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                d.offset(), d.rotation(), scale, d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.opacity(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations(), d.body());
     }
 
     private static AttachmentDef withBone(AttachmentDef d, String bone) {
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), bone,
-                d.offset(), d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                d.offset(), d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.opacity(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations(), d.body());
     }
 
     /** Whether this attachment's file reads in Blockbench space (v2), so commands speak its numbers. */
@@ -326,14 +329,14 @@ public final class AttachmentDoctorCommand {
         float[] offset = new float[]{x, y, z};
         if (blockbench(d.id())) offset = com.aetherianartificer.townstead.root.attachment.AttachmentConvention.offset(offset);
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                offset, d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                offset, d.rotation(), d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.opacity(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations(), d.body());
     }
 
     private static AttachmentDef adjustRotation(AttachmentDef d, float x, float y, float z) {
         float[] rotation = new float[]{x, y, z};
         if (blockbench(d.id())) rotation = com.aetherianartificer.townstead.root.attachment.AttachmentConvention.rotation(rotation);
         return new AttachmentDef(d.id(), d.geoSha1(), d.textureSha1(), d.targetTag(), d.targetPoint(), d.bone(),
-                d.offset(), rotation, d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations());
+                d.offset(), rotation, d.scale(), d.tint(), d.tintSource(), d.tintBlend(), d.tintStrength(), d.tintMaskSha1(), d.emissiveSha1(), d.translucent(), d.opacity(), d.hidesUnder(), d.whenJson(), d.morph(), d.visibility(), d.stages(), d.poses(), d.physics(), d.animations(), d.body());
     }
 
     /** The chains as file-ready {@code physics} JSON, so dump round-trips live tuning. */

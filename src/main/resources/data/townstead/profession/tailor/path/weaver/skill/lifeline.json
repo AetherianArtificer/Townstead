@@ -1,0 +1,134 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.lifeline"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.lifeline.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:weaver_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:tailor/weaver/web_of_silk"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:set_flag",
+                    "flag": "townstead:weaver_lifeline",
+                    "duration": 2400
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:tailor/weaver/belayer"
+                    },
+                    "if_action": {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:not",
+                        "condition": {
+                          "type": "pheno:hostile"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slow_falling",
+                        "duration": 200,
+                        "amplifier": 0
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      },
+                      "on": {
+                        "type": "pheno:ray",
+                        "distance": 8
+                      }
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:stitch",
+                "amount": -10
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:set_flag",
+                "flag": "townstead:weaver_lifeline",
+                "duration": 600
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:tailor/weaver/belayer"
+                },
+                "if_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:not",
+                    "condition": {
+                      "type": "pheno:hostile"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:slow_falling",
+                    "duration": 200,
+                    "amplifier": 0
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  },
+                  "on": {
+                    "type": "pheno:ray",
+                    "distance": 8
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.leash_knot.place",
+          "volume": 1.0,
+          "pitch": 1.0
+        }
+      ]
+    }
+  }
+}

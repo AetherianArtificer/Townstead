@@ -20,6 +20,8 @@ public final class CostumeHearts {
     private static final int FRIENDLY_TALK = 3;
     private static final int NEUTRAL_TALK = 1;
     private static final int DEFAULT_SETTLE = 25;
+    /** Who a player's talk has won over, settling once that player's screen closes. */
+    private static final java.util.Map<java.util.UUID, java.lang.ref.WeakReference<Mob>> DUE = new java.util.HashMap<>();
 
     private CostumeHearts() {}
 
@@ -31,6 +33,10 @@ public final class CostumeHearts {
         CompoundTag talked = player.getPersistentData().getCompound(TALKED);
         String key = mob.getUUID().toString();
         if (talked.contains(key) && talked.getLong(key) == day) return;
+        // Only today's talks matter, so the record stays the size of one day.
+        for (String other : java.util.List.copyOf(talked.getAllKeys())) {
+            if (talked.getLong(other) != day) talked.remove(other);
+        }
         talked.putLong(key, day);
         player.getPersistentData().put(TALKED, talked);
         Disposition stance = Dispositions.between(mob, player);
@@ -39,7 +45,23 @@ public final class CostumeHearts {
         Memories memories = person.getVillagerBrain().getMemoriesForPlayer(player);
         memories.modHearts(gain);
         WildCostume.dress(mob, person);
-        settleIfReady(player, mob, memories);
+        // Not now: settling removes the mob, and this talk is about to run on it.
+        if (memories.getHearts() >= settleHearts(person)) DUE.put(player.getUUID(), new java.lang.ref.WeakReference<>(mob));
+    }
+
+    /** The talk is over and its screen closed: whoever it won over settles, with what the talk changed. */
+    public static void settleDue(ServerPlayer player) {
+        java.lang.ref.WeakReference<Mob> due = DUE.remove(player.getUUID());
+        Mob mob = due == null ? null : due.get();
+        if (mob == null || !mob.isAlive() || !WildCostume.has(mob)) return;
+        VillagerEntityMCA person = WildCostume.person(mob);
+        if (person == null) return;
+        WildCostume.dress(mob, person);
+        settleIfReady(player, mob, person.getVillagerBrain().getMemoriesForPlayer(player));
+    }
+
+    public static void forgetDue(ServerPlayer player) {
+        DUE.remove(player.getUUID());
     }
 
     /** A sneaking click with something in hand: MCA's own gift, given to the person. False when not one. */
@@ -55,11 +77,13 @@ public final class CostumeHearts {
         return true;
     }
 
-    private static void settleIfReady(ServerPlayer player, Mob mob, Memories memories) {
-        VillagerEntityMCA person = WildCostume.person(mob);
+    private static int settleHearts(VillagerEntityMCA person) {
         MobReplacement replacement = person == null ? null : MobReplacer.replacementOf(person);
-        int needed = replacement == null ? DEFAULT_SETTLE : replacement.settleHearts();
-        if (memories.getHearts() < needed) return;
+        return replacement == null ? DEFAULT_SETTLE : replacement.settleHearts();
+    }
+
+    private static void settleIfReady(ServerPlayer player, Mob mob, Memories memories) {
+        if (memories.getHearts() < settleHearts(WildCostume.person(mob))) return;
         VillagerEntityMCA settled = WildCostume.convert(mob, true);
         if (settled == null) return;
         player.displayClientMessage(Component.translatable("message.townstead.costume.settled",

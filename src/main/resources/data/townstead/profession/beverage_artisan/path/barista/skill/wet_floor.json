@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.beverage_artisan.barista.wet_floor"
+  },
+  "icon": "minecraft:brown_carpet",
+  "description": {
+    "translate": "skill.townstead.beverage_artisan.barista.wet_floor.description"
+  },
+  "cost": 1,
+  "requires": [
+    "spilled_coffee"
+  ]
+}

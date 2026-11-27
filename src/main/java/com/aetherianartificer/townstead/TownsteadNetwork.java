@@ -86,7 +86,7 @@ import java.util.function.Function;
 public final class TownsteadNetwork {
     private TownsteadNetwork() {}
 
-    private static final String PROTOCOL_VERSION = "20";
+    private static final String PROTOCOL_VERSION = "22";
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(Townstead.MOD_ID, "main"),
             () -> PROTOCOL_VERSION,
@@ -109,12 +109,18 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload::write,
                 com.aetherianartificer.townstead.story.net.StoryQuestSyncS2CPayload::read,
                 payload -> com.aetherianartificer.townstead.client.story.StoryClient.setQuests(payload));
+        registerS2C(com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload.class,
+                com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload::write,
+                com.aetherianartificer.townstead.naming.PlayerFamiliesS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.naming.NameClientStore.setPlayerFamilies(payload.families()));
+        registerS2C(com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload.class,
+                com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload::write,
+                com.aetherianartificer.townstead.naming.NamingCatalogS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.naming.NamingCatalogClient.set(payload));
         registerS2C(com.aetherianartificer.townstead.naming.NameSyncPayload.class,
                 com.aetherianartificer.townstead.naming.NameSyncPayload::encode,
                 com.aetherianartificer.townstead.naming.NameSyncPayload::decode,
-                payload -> com.aetherianartificer.townstead.naming.NameClientStore.set(
-                        payload.entityId(), payload.familyName(), payload.culture(),
-                        payload.order(), payload.familyType(), payload.tradition()));
+                payload -> com.aetherianartificer.townstead.client.naming.NameSyncClient.apply(payload));
         // Server -> Client
         registerS2C(com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload.class,
                 com.aetherianartificer.townstead.switchboard.SwitchboardOpenS2CPayload::write,
@@ -202,6 +208,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload::read,
                 com.aetherianartificer.townstead.pheno.screen.ScreenEffectS2CPayload::accept);
+        registerS2C(com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.class,
+                (p, buf) -> com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload.write(buf, p),
+                com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload::read,
+                com.aetherianartificer.townstead.profession.ProfessionClothingSyncPayload::accept);
         registerS2C(com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.class,
                 (p, buf) -> com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload.write(buf, p),
                 com.aetherianartificer.townstead.pheno.particle.DataParticlesS2CPayload::read,
@@ -270,6 +280,10 @@ public final class TownsteadNetwork {
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.profession.career.CareerStampC2SPayload::read,
                 TownsteadNetwork::handleCareerStamp);
+        registerC2S(com.aetherianartificer.townstead.profession.career.CareerFocusC2SPayload.class,
+                (p, buf) -> p.write(buf),
+                com.aetherianartificer.townstead.profession.career.CareerFocusC2SPayload::read,
+                TownsteadNetwork::handleCareerFocus);
         registerC2S(com.aetherianartificer.townstead.seal.SealC2SPayload.class,
                 (p, buf) -> p.write(buf),
                 com.aetherianartificer.townstead.seal.SealC2SPayload::read,
@@ -293,12 +307,12 @@ public final class TownsteadNetwork {
         registerC2S(HungerSetPayload.class, HungerSetPayload::write, HungerSetPayload::read,
                 TownsteadNetwork::handleHungerSet);
 
-        if (ThirstBridgeResolver.anyThirstModLoaded()) {
-            registerS2C(ThirstSyncPayload.class, ThirstSyncPayload::write, ThirstSyncPayload::read,
-                    TownsteadNetwork::handleThirstSync);
-            registerC2S(ThirstSetPayload.class, ThirstSetPayload::write, ThirstSetPayload::read,
-                    TownsteadNetwork::handleThirstSet);
-        }
+        // Always registered: SimpleChannel ids follow this order, so a conditional here would shift
+        // every later packet when client and server mods differ.
+        registerS2C(ThirstSyncPayload.class, ThirstSyncPayload::write, ThirstSyncPayload::read,
+                TownsteadNetwork::handleThirstSync);
+        registerC2S(ThirstSetPayload.class, ThirstSetPayload::write, ThirstSetPayload::read,
+                TownsteadNetwork::handleThirstSet);
 
         // Fatigue management
         registerS2C(FatigueSyncPayload.class, FatigueSyncPayload::write, FatigueSyncPayload::read,
@@ -496,6 +510,18 @@ public final class TownsteadNetwork {
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::write,
                 com.aetherianartificer.townstead.aspect.AspectC2SPayload::read,
                 (payload, sp) -> com.aetherianartificer.townstead.aspect.AspectC2SPayload.handle(sp, payload));
+        registerS2C(com.aetherianartificer.townstead.root.attachment.BodyPartLostS2CPayload.class,
+                com.aetherianartificer.townstead.root.attachment.BodyPartLostS2CPayload::write,
+                com.aetherianartificer.townstead.root.attachment.BodyPartLostS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.attachment.FallingPieces.want(payload.entityId(), payload.attachment(), payload.piece()));
+        registerS2C(com.aetherianartificer.townstead.root.attachment.BodyPartsS2CPayload.class,
+                com.aetherianartificer.townstead.root.attachment.BodyPartsS2CPayload::write,
+                com.aetherianartificer.townstead.root.attachment.BodyPartsS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.client.attachment.BodyPartsClient.receive(payload));
+        registerS2C(com.aetherianartificer.townstead.root.attachment.BodyValuesS2CPayload.class,
+                com.aetherianartificer.townstead.root.attachment.BodyValuesS2CPayload::write,
+                com.aetherianartificer.townstead.root.attachment.BodyValuesS2CPayload::read,
+                payload -> com.aetherianartificer.townstead.root.attachment.BodyValues.receive(payload.entityId(), payload.values()));
         registerS2C(com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload.class,
                 com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload::write,
                 com.aetherianartificer.townstead.pheno.state.StateFormS2CPayload::read,
@@ -820,8 +846,9 @@ public final class TownsteadNetwork {
 
     private static void handleVillagerLifeRequest(
             com.aetherianartificer.townstead.calendar.VillagerLifeRequestC2SPayload payload, ServerPlayer sp) {
-        VillagerEntityMCA villager = findVillager(sp.getServer(), payload.villagerUuid());
+        VillagerEntityMCA villager = findPerson(sp.getServer(), payload.villagerUuid());
         if (villager == null) return;
+            com.aetherianartificer.townstead.naming.NameSyncTarget.syncToPlayer(sp, villager);
         net.minecraft.server.MinecraftServer server = sp.getServer();
         if (server != null) {
             com.aetherianartificer.townstead.calendar.VillagerLifeStamper.ensureStamped(villager, server);
@@ -1110,6 +1137,13 @@ public final class TownsteadNetwork {
         com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleStamp(
                 sp, payload.skillId(), payload.x(), payload.y(), payload.rotation(),
                 payload.textureId(), payload.sourcePack(), payload.label());
+    }
+
+    private static void handleCareerFocus(
+            com.aetherianartificer.townstead.profession.career.CareerFocusC2SPayload payload,
+            ServerPlayer sp) {
+        com.aetherianartificer.townstead.profession.career.CareerTreeOpener.handleFocus(
+                sp, payload.careerId());
     }
 
     private static void handleFishermanHookLink(FishermanHookLinkPayload payload) {
@@ -1451,6 +1485,20 @@ public final class TownsteadNetwork {
         }
     }
 
+    // As findVillager, and for a zombie villager the person they still are.
+    private static VillagerEntityMCA findPerson(net.minecraft.server.MinecraftServer server, java.util.UUID uuid) {
+        if (server == null) return null;
+        for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
+            Entity entity = level.getEntity(uuid);
+            if (entity instanceof VillagerEntityMCA v) return v;
+            if (entity instanceof net.minecraft.world.entity.Mob mob) {
+                VillagerEntityMCA person = com.aetherianartificer.townstead.villager.ZombifiedVillagers.person(mob);
+                if (person != null) return person;
+            }
+        }
+        return null;
+    }
+
     private static VillagerEntityMCA findVillager(net.minecraft.server.MinecraftServer server, java.util.UUID uuid) {
         if (server == null) return null;
         for (net.minecraft.server.level.ServerLevel level : server.getAllLevels()) {
@@ -1645,6 +1693,8 @@ public final class TownsteadNetwork {
     }
 
     private static void townstead$releaseStaleJobSites(net.minecraft.server.level.ServerLevel level, Village village, VillagerProfession profession) {
+        // An unloaded resident may hold one of these tickets, and their claim cannot be read.
+        if (village.getResidentsUUIDs().anyMatch(id -> level.getEntity(id) == null)) return;
         PoiManager poiManager = level.getPoiManager();
         Set<BlockPos> liveClaims = new HashSet<>();
         for (VillagerEntityMCA resident : village.getResidents(level)) {

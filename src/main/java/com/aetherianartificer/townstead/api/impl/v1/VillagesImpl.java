@@ -2,6 +2,7 @@ package com.aetherianartificer.townstead.api.impl.v1;
 
 import com.aetherianartificer.townstead.api.v1.VillagesApi;
 import com.aetherianartificer.townstead.api.v1.model.BuildingSnapshot;
+import com.aetherianartificer.townstead.api.v1.model.GeneratedPieceSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.SpiritSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.VillageId;
 import com.aetherianartificer.townstead.api.v1.model.VillageNeedsSummary;
@@ -79,6 +80,22 @@ final class VillagesImpl implements VillagesApi {
         } catch (Throwable t) {
             ApiSupport.swallow("villages.within", t);
             return Optional.empty();
+        }
+    }
+
+    @Override
+    public List<GeneratedPieceSnapshot> generatedPieces(ServerLevel level, BlockPos pos) {
+        try {
+            if (level == null || pos == null) return List.of();
+            List<GeneratedPieceSnapshot> out = new ArrayList<>();
+            for (var box : com.aetherianartificer.townstead.village.GeneratedVillages.pieces(level, pos)) {
+                out.add(new GeneratedPieceSnapshot(new BlockPos(box.minX(), box.minY(), box.minZ()),
+                        new BlockPos(box.maxX(), box.maxY(), box.maxZ())));
+            }
+            return List.copyOf(out);
+        } catch (Throwable t) {
+            ApiSupport.swallow("villages.generatedPieces", t);
+            return List.of();
         }
     }
 

@@ -38,6 +38,9 @@ public record AttachmentRequestC2SPayload(List<String> hashes) implements Custom
     /*public static final ResourceLocation ID = new ResourceLocation(Townstead.MOD_ID, "attachment_request_c2s");
     *///?}
 
+    // Serverbound custom payloads are capped at 32767 bytes; a hash costs ~41.
+    public static final int MAX_HASHES = 256;
+
     public void write(FriendlyByteBuf buf) {
         buf.writeVarInt(hashes.size());
         for (String hash : hashes) buf.writeUtf(hash);

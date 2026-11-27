@@ -7,30 +7,109 @@
   "description": {
     "translate": "skill.townstead.weaponsmith.honer.keen_strike.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "quick_hone"
+    "warband"
   ],
-  "skill_group": "townstead:honer_edge",
+  "skill_group": "townstead:honer_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:stamina",
+      "resource": "townstead:edge",
       "amount": 30
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:damage",
-          "amount": 6,
-          "source": "other",
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:weaponsmith/honer/perfect_edge"
+                }
+              },
+              "if_action": {
+                "type": "pheno:damage",
+                "amount": {
+                  "type": "pheno:arithmetic",
+                  "operation": "add",
+                  "values": [
+                    6,
+                    {
+                      "type": "pheno:arithmetic",
+                      "operation": "divide",
+                      "values": [
+                        {
+                          "type": "pheno:resource",
+                          "resource": "townstead:edge",
+                          "of": "other"
+                        },
+                        10
+                      ]
+                    }
+                  ]
+                },
+                "source": "other"
+              },
+              "else_action": {
+                "type": "pheno:damage",
+                "amount": 6,
+                "source": "other"
+              }
+            },
+            {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:weaponsmith/honer/armor_breaker"
+                }
+              },
+              "if_action": {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:weakness",
+                "duration": 100,
+                "amplifier": 1
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:sweep_attack",
+              "count": 1,
+              "spread": 0.1
+            }
+          ],
           "on": {
             "type": "pheno:ray",
             "distance": 4
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:weaponsmith/honer/perfect_edge"
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:edge",
+            "operation": "set",
+            "amount": 0
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {
@@ -38,6 +117,9 @@
           "sound": "minecraft:item.trident.hit",
           "volume": 0.8,
           "pitch": 1.6
+        },
+        {
+          "type": "pheno:swing_hand"
         }
       ]
     }

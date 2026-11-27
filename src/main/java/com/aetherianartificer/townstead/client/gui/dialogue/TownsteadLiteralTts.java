@@ -145,7 +145,7 @@ public final class TownsteadLiteralTts {
 
     private static void playRealtime(String text, String gender, String language, float pitch, float gene, VillagerEntityMCA villager, long request) {
         CompletableFuture.runAsync(() -> {
-            List<String> voices = REALTIME.getVoices(language, gender);
+            List<String> voices = realtimeVoices(language, gender);
             if (voices == null) return;
             if (voices.isEmpty()) {
                 OnlineSpeechManager.languageNotSupported();
@@ -159,6 +159,28 @@ public final class TownsteadLiteralTts {
                 playCached(cacheKey, pitch, villager, request);
             }
         });
+    }
+
+    /**
+     * The realtime server's voices for a language and gender, or null when they cannot be read.
+     * MCA replaced the blocking getVoices with getVoicesAsync, so whichever exists is called.
+     * This already runs off the client thread, so waiting on the async form is fine.
+     */
+    @SuppressWarnings("unchecked")
+    private static List<String> realtimeVoices(String language, String gender) {
+        try {
+            try {
+                java.lang.reflect.Method async = RealtimeSpeechManager.class
+                        .getMethod("getVoicesAsync", String.class, String.class);
+                return ((CompletableFuture<List<String>>) async.invoke(REALTIME, language, gender)).join();
+            } catch (NoSuchMethodException ignored) {
+            }
+            java.lang.reflect.Method blocking = RealtimeSpeechManager.class
+                    .getMethod("getVoices", String.class, String.class);
+            return (List<String>) blocking.invoke(REALTIME, language, gender);
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            return null;
+        }
     }
 
     private static void playElevenlabs(String text, String gender, float pitch, float gene, VillagerEntityMCA villager, long request) {

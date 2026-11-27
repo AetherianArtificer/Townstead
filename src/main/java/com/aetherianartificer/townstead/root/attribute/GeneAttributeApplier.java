@@ -30,12 +30,13 @@ import java.util.UUID;
 public final class GeneAttributeApplier {
 
     private static final int INTERVAL = 10;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(INTERVAL);
 
     private GeneAttributeApplier() {}
 
     public static void tick(LivingEntity entity) {
         if (entity.level().isClientSide) return;
-        if ((entity.level().getGameTime() + entity.getId()) % INTERVAL != 0) return;
+        if (!STRIDE.due(entity, entity.level().getGameTime() + entity.getId())) return;
 
         ConditionContext ctx = new ConditionContext(entity);
         for (Power gene : Powers.active(entity)) {

@@ -36,7 +36,7 @@ import java.util.WeakHashMap;
  * Downed instead of dead. A covered villager who would die drops to 1 health and lies down; they
  * cannot be hurt or targeted, and they get up after a while, or sooner when a player helps them
  * up. A downed villager somewhere nobody can reach (the void, lava) is carried back to their home
- * village. Personas are covered unless permadeath is on; other villagers through
+ * village. Personas and essential story visitors are covered unless permadeath is on; other villagers through
  * {@link DownedRules}. The time left is kept on the entity, so it survives a restart.
  */
 public final class DownedService {
@@ -57,6 +57,9 @@ public final class DownedService {
             var persona = com.aetherianartificer.townstead.persona.Personas.byId(instance.persona());
             return Systems.on(Systems.PERSONAS) && !Switchboard.get(TownsteadConfig.PERSONA_PERMADEATH)
                     && (persona == null || persona.downed());
+        }
+        if (com.aetherianartificer.townstead.visitor.Visitors.essential(villager)) {
+            return Systems.on(Systems.PERSONAS) && !Switchboard.get(TownsteadConfig.PERSONA_PERMADEATH);
         }
         return DownedRules.covers(entity);
     }
@@ -81,6 +84,8 @@ public final class DownedService {
 
     /** Damage hook: a downed villager takes no damage except from the void, which rescues them. */
     public static boolean blocksDamage(LivingEntity entity, DamageSource source) {
+        // /kill stays a way for an operator to remove anyone, downed or not.
+        if (source != null && source.is(DamageTypes.GENERIC_KILL)) return false;
         if (com.aetherianartificer.townstead.pet.PetDowned.blocksDamage(entity)) return true;
         if (!isDowned(entity)) return false;
         if (source != null && source.is(DamageTypes.FELL_OUT_OF_WORLD)) {
@@ -114,7 +119,7 @@ public final class DownedService {
         if (!(entity instanceof VillagerEntityMCA villager) || entity.level().isClientSide) return;
         if (villager.getPersistentData().getLong(KEY) > 0) {
             DOWN.put(villager, Boolean.TRUE);
-            pose(villager);
+            stayDown(villager);
         }
     }
 
@@ -137,7 +142,9 @@ public final class DownedService {
                 rescue(villager);
                 if (villager.isRemoved()) continue;
             }
-            if (!CollapsePlayback.active(villager)) pose(villager);
+            // The collapse playback ends on a sleeper, so leaving them in bed restarts it every pass.
+            if (villager.isSleeping()) villager.stopSleeping();
+            if (!CollapsePlayback.active(villager)) stayDown(villager);
             villager.getNavigation().stop();
             if (villager.getHealth() < 1f) villager.setHealth(1f);
         }
@@ -147,6 +154,7 @@ public final class DownedService {
         long until = villager.level().getGameTime() + recoveryTicks(villager);
         villager.getPersistentData().putLong(KEY, until);
         DOWN.put(villager, Boolean.TRUE);
+        if (villager.isSleeping()) villager.stopSleeping();
         villager.getNavigation().stop();
         villager.setTarget(null);
         pose(villager);
@@ -164,6 +172,12 @@ public final class DownedService {
     private static void pose(VillagerEntityMCA villager) {
         long left = villager.getPersistentData().getLong(KEY) - villager.level().getGameTime();
         CollapsePlayback.start(villager, CollapseMotion.CHANNEL, (int) Math.max(20, Math.min(left, Integer.MAX_VALUE)), 1000);
+    }
+
+    /** Already on the ground: holds the pose without playing the fall again. */
+    private static void stayDown(VillagerEntityMCA villager) {
+        long left = villager.getPersistentData().getLong(KEY) - villager.level().getGameTime();
+        CollapsePlayback.holdDown(villager, CollapseMotion.CHANNEL, (int) Math.max(20, Math.min(left, Integer.MAX_VALUE)), 1000);
     }
 
     /**

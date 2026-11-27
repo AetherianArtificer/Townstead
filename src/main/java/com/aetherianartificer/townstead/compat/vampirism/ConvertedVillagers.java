@@ -6,6 +6,7 @@ import net.conczin.mca.entity.VillagerEntityMCA;
 import net.conczin.mca.entity.VillagerFactory;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.npc.Villager;
@@ -43,7 +44,7 @@ public final class ConvertedVillagers {
         // short; a village with every bed taken turns its newcomer away.
         if (totem && net.conczin.mca.server.world.data.Village.findNearest(villager)
                 .filter(village -> !village.hasSpace()).isPresent()) {
-            level.getServer().execute(villager::discard);
+            nextTick(level, villager::discard);
             return;
         }
         if (converted) {
@@ -53,7 +54,12 @@ public final class ConvertedVillagers {
             return;
         }
         // Not while the level is still adding it: swap on the next tick.
-        level.getServer().execute(() -> swap(level, villager, converted));
+        nextTick(level, () -> swap(level, villager, converted));
+    }
+
+    /** Server.execute runs at once on the server thread; a villager removed mid-join stays on clients as a frozen ghost. */
+    private static void nextTick(ServerLevel level, Runnable task) {
+        level.getServer().tell(new TickTask(level.getServer().getTickCount() + 1, task));
     }
 
     private static void swap(ServerLevel level, Villager converted, boolean vampire) {

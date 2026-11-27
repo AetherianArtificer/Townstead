@@ -89,9 +89,13 @@ public final class NamingRegisters {
      * register MCA has no name pool for, since {@code pickCitizenName} would dereference it.
      */
     public static String resolve(Entity entity) {
+        if (enabled() && entity instanceof net.minecraft.world.entity.player.Player player) {
+            String list = NameLists.givenKey(Naming.nameList(player));
+            return usable(list) ? list : "";
+        }
         if (!enabled() || !(entity instanceof VillagerEntityMCA villager)) return "";
         if (!(villager.level() instanceof ServerLevel level)) return "";
-        if (SpawnNaming.pending(villager) || DERIVING.get()) return "";
+        if (SpawnNaming.pending(villager) || SpawnNaming.inBirth() || DERIVING.get()) return "";
 
         String own = recorded(villager);
         if (usable(own)) return own;
@@ -150,7 +154,7 @@ public final class NamingRegisters {
         if (!enabled() || !usable(derived)) return;
         if (!(entity instanceof VillagerEntityMCA villager)) return;
         if (!(villager.level() instanceof ServerLevel level)) return;
-        if (SpawnNaming.pending(villager)) return;
+        if (SpawnNaming.pending(villager) || SpawnNaming.inBirth()) return;
 
         record(villager, derived);
         try {

@@ -104,7 +104,14 @@ public record WorkstationDef(
          */
         Set<ResourceLocation> supportBelow,
         List<ResourceLocation> supportBelowTags,
-        ShiftEndPolicy shiftEnd) {
+        ShiftEndPolicy shiftEnd,
+        /**
+         * Another use of blocks that have a station of their own: charring an herb over a campfire
+         * that is also a cook's fire. The block's own definition still answers every general
+         * question about it; this one is used only by a worker whose trade declares this
+         * definition's work task at that block. Never shadowed by a V2 definition of the block.
+         */
+        boolean alongside) {
 
     /**
      * Which of this station's outputs a trade may be ordered for. The trade's output tag stays
@@ -203,7 +210,7 @@ public record WorkstationDef(
                 recipeTier, cookTimeTicks, beverage,
                 null, Set.of(), List.of(), null, null, List.of(), List.of(), FurnaceSlots.VANILLA,
                 false, null, false, null, Orderable.TAGGED, false, Set.of(), List.of(),
-                ShiftEndPolicy.FINISH);
+                ShiftEndPolicy.FINISH, false);
     }
 
     static @Nullable WorkstationDef parse(ResourceLocation id, JsonObject obj) {
@@ -377,7 +384,7 @@ public record WorkstationDef(
                 ? GsonHelper.getAsInt(obj, "cook_time")
                 : role == StationType.CRAFT_SURFACE ? 1 : 200;
 
-        return new WorkstationDef(id, Set.copyOf(blocks), List.copyOf(tags), role,
+        return new WorkstationDef(id, java.util.Collections.unmodifiableSet(new LinkedHashSet<>(blocks)), List.copyOf(tags), role,
                 GsonHelper.getAsInt(obj, "container_slot", 7),
                 GsonHelper.getAsInt(obj, "ingredient_slots", 6),
                 List.copyOf(stands),
@@ -393,7 +400,8 @@ public record WorkstationDef(
                 workTask,
                 orderable,
                 GsonHelper.getAsBoolean(obj, "fuel", false),
-                Set.copyOf(supportBelow), List.copyOf(supportBelowTags), shiftEnd);
+                Set.copyOf(supportBelow), List.copyOf(supportBelowTags), shiftEnd,
+                GsonHelper.getAsBoolean(obj, "alongside", false));
     }
 
     /**

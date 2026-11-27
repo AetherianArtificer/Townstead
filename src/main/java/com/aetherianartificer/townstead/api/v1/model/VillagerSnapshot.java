@@ -32,13 +32,29 @@ public record VillagerSnapshot(
         ScheduleSnapshot schedule,
         Map<String, String> carriedVariants,
         List<String> expressedAlleles,
-        Map<String, Float> heritage
+        Map<String, Float> heritage,
+        Optional<WorldPos> home,
+        Optional<WorldPos> jobSite
 ) {
     public VillagerSnapshot {
         homeVillage = homeVillage == null ? Optional.empty() : homeVillage;
+        home = home == null ? Optional.empty() : home;
+        jobSite = jobSite == null ? Optional.empty() : jobSite;
         carriedVariants = carriedVariants == null ? Map.of() : Map.copyOf(carriedVariants);
         expressedAlleles = expressedAlleles == null ? List.of() : List.copyOf(expressedAlleles);
         heritage = heritage == null ? Map.of() : Map.copyOf(heritage);
+    }
+
+    /** The snapshot without {@code home} and {@code jobSite}, as before revision 2. */
+    public VillagerSnapshot(UUID uuid, String name, String entityType, boolean player, Optional<VillageId> homeVillage,
+                            String rootId, String personalityId, String lifeStage, long biologicalAgeDays,
+                            int apparentAgeYears, boolean immortal, boolean ageless, boolean senior, float fertility,
+                            String professionId, String professionPathId, int professionTier, int professionXp,
+                            NeedsSnapshot needs, ScheduleSnapshot schedule, Map<String, String> carriedVariants,
+                            List<String> expressedAlleles, Map<String, Float> heritage) {
+        this(uuid, name, entityType, player, homeVillage, rootId, personalityId, lifeStage, biologicalAgeDays,
+                apparentAgeYears, immortal, ageless, senior, fertility, professionId, professionPathId, professionTier,
+                professionXp, needs, schedule, carriedVariants, expressedAlleles, heritage, Optional.empty(), Optional.empty());
     }
 
     public boolean hasProfession() {

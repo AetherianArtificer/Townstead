@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class EmptyContainerDropoff {
 
     private static final int CADENCE_TICKS = 100;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(CADENCE_TICKS);
     // Return a leftover to its origin only if the villager is near it (cheap squared distance, no
     // scan/pathfind). Keeps returns opportunistic — never teleporting empties or making a dedicated
     // trip across a building (e.g. when villagers eat at a table away from where they grabbed food).
@@ -85,7 +86,7 @@ public final class EmptyContainerDropoff {
      */
     public static void tick(VillagerEntityMCA villager) {
         if (!(villager.level() instanceof ServerLevel level)) return;
-        if (Math.floorMod(level.getGameTime() + villager.getId(), CADENCE_TICKS) != 0) return;
+        if (!STRIDE.due(villager, level.getGameTime() + villager.getId())) return;
         if (!TownsteadConfig.isEmptyContainerDropoffEnabled()) return;
         long dayTime = level.getDayTime() % 24000L;
         if (villager.getBrain().getSchedule().getActivityAt((int) dayTime) == Activity.WORK) return;

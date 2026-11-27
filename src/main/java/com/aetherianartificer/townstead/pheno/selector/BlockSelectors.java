@@ -32,7 +32,13 @@ public final class BlockSelectors {
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
             String role = element.getAsString();
             if (role.isBlank()) return null;
-            return ctx -> ctx.blockRole(role);
+            // A string names a block role of the context, or else a place ("here", "above", "in_front").
+            Region place = Spatial.parse(element);
+            if (place == null) return ctx -> ctx.blockRole(role);
+            return ctx -> {
+                List<BlockPos> named = ctx.blockRole(role);
+                return named.isEmpty() ? place.positions(ctx, ENUM_CAP) : named;
+            };
         }
         Region region = Spatial.parse(element);
         if (region != null) {

@@ -1753,6 +1753,9 @@ public final class TownsteadVillager {
                     tag.getCompound("careerProfile"))
                     : new com.aetherianartificer.townstead.profession.career.CareerProfile();
             for (ResourceLocation learned : learnedSkills) careerProfile.learnChoice(learned);
+            // A villager saved before skill revisions: forget the old skills once. It picks again at its next work.
+            if (!tag.getCompound("careerProfile").contains("skillRevision")) careerProfile.markSkillsOutdated();
+            if (careerProfile.respec()) learnedSkills.clear();
             for (Map.Entry<String, ProfessionXp> entry : xpByProfession.entrySet()) {
                 careerProfile.setProfessionXp(entry.getKey(), entry.getValue());
             }

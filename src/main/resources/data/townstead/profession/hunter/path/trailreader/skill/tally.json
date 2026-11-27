@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.trailreader.tally"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.hunter.trailreader.tally.description"
+  },
+  "cost": 1,
+  "requires": [
+    "read_the_trail"
+  ]
+}

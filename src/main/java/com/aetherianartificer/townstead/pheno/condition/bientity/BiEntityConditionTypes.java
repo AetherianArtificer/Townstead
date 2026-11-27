@@ -28,7 +28,14 @@ public final class BiEntityConditionTypes {
         }
     }
 
+    /** The type for a key: this copy's own, else the other copy of Pheno's, when that is installed. */
     public static Optional<BiEntityConditionType> get(String key) {
+        Optional<BiEntityConditionType> own = own(key);
+        return own.isPresent() ? own : com.aetherianartificer.townstead.compat.pheno.ForeignTypes.biEntityCondition(key);
+    }
+
+    /** This copy's own type for a key, never the other copy's. The bridge asks only this, so a lookup never loops. */
+    public static Optional<BiEntityConditionType> own(String key) {
         if (key == null) return Optional.empty();
         return Optional.ofNullable(TYPES.get(key.toLowerCase(Locale.ROOT)));
     }

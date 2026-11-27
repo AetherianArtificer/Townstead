@@ -9,6 +9,7 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 //?}
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,14 +26,45 @@ import java.util.List;
 public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, String worksiteDetail,
                                        boolean listOnly, List<Row> rows, List<Option> options,
                                        List<Station> stations, List<Worker> workers,
-                                       DriverControl driver)
+                                       DriverControl driver, List<Family> families)
         implements CustomPacketPayload {
 //?} else {
 /*public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, String worksiteDetail,
                                        boolean listOnly, List<Row> rows, List<Option> options,
                                        List<Station> stations, List<Worker> workers,
-                                       DriverControl driver) {
+                                       DriverControl driver, List<Family> families) {
 *///?}
+
+    /**
+     * One thing offered here in several variants: an herb dried or charred, a potion as a drink or a splash, wool in
+     * colours. The screen shows it once, with a row of choices per axis; each member is a variant offered here.
+     *
+     * @param label the base's name, a translation key or plain text
+     * @param icon  an item to show for the base, or null
+     */
+    public record Family(ResourceLocation family, ResourceLocation base, String label, @Nullable ResourceLocation icon,
+                         List<Axis> axes, List<Member> members) {
+        public Family {
+            axes = List.copyOf(axes);
+            members = List.copyOf(members);
+        }
+    }
+
+    /** An axis of a family: its values in order; with {@code any}, a line may leave it open. */
+    public record Axis(ResourceLocation id, String label, boolean any, List<AxisValue> values) {
+        public Axis {
+            values = List.copyOf(values);
+        }
+    }
+
+    public record AxisValue(String id, String label, @Nullable ResourceLocation icon) {}
+
+    /** A variant offered here: its value on each axis, in the family's axis order, and its product. */
+    public record Member(List<String> values, ResourceLocation product, boolean available) {
+        public Member {
+            values = List.copyOf(values);
+        }
+    }
 
     /** Why a line is or is not being worked, in the words the screen shows. */
     public enum Status { WORKING, WAITING, BLOCKED, PAUSED, SATISFIED }
@@ -327,6 +359,73 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
             buf.writeUtf(choice.name());
             buf.writeResourceLocation(choice.type());
         }
+        buf.writeVarInt(families.size());
+        for (Family family : families) {
+            buf.writeResourceLocation(family.family());
+            buf.writeResourceLocation(family.base());
+            buf.writeUtf(family.label());
+            writeOptional(buf, family.icon());
+            buf.writeVarInt(family.axes().size());
+            for (Axis axis : family.axes()) {
+                buf.writeResourceLocation(axis.id());
+                buf.writeUtf(axis.label());
+                buf.writeBoolean(axis.any());
+                buf.writeVarInt(axis.values().size());
+                for (AxisValue value : axis.values()) {
+                    buf.writeUtf(value.id());
+                    buf.writeUtf(value.label());
+                    writeOptional(buf, value.icon());
+                }
+            }
+            buf.writeVarInt(family.members().size());
+            for (Member member : family.members()) {
+                buf.writeVarInt(member.values().size());
+                for (String v : member.values()) buf.writeUtf(v);
+                buf.writeResourceLocation(member.product());
+                buf.writeBoolean(member.available());
+            }
+        }
+    }
+
+    private static void writeOptional(FriendlyByteBuf buf, @Nullable ResourceLocation id) {
+        buf.writeBoolean(id != null);
+        if (id != null) buf.writeResourceLocation(id);
+    }
+
+    private static @Nullable ResourceLocation readOptional(FriendlyByteBuf buf) {
+        return buf.readBoolean() ? buf.readResourceLocation() : null;
+    }
+
+    private static List<Family> readFamilies(FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
+        List<Family> out = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            ResourceLocation family = buf.readResourceLocation();
+            ResourceLocation base = buf.readResourceLocation();
+            String label = buf.readUtf();
+            ResourceLocation icon = readOptional(buf);
+            int axisCount = buf.readVarInt();
+            List<Axis> axes = new ArrayList<>(axisCount);
+            for (int a = 0; a < axisCount; a++) {
+                ResourceLocation id = buf.readResourceLocation();
+                String axisLabel = buf.readUtf();
+                boolean any = buf.readBoolean();
+                int valueCount = buf.readVarInt();
+                List<AxisValue> values = new ArrayList<>(valueCount);
+                for (int v = 0; v < valueCount; v++) values.add(new AxisValue(buf.readUtf(), buf.readUtf(), readOptional(buf)));
+                axes.add(new Axis(id, axisLabel, any, values));
+            }
+            int memberCount = buf.readVarInt();
+            List<Member> members = new ArrayList<>(memberCount);
+            for (int m = 0; m < memberCount; m++) {
+                int n = buf.readVarInt();
+                List<String> values = new ArrayList<>(n);
+                for (int v = 0; v < n; v++) values.add(buf.readUtf());
+                members.add(new Member(values, buf.readResourceLocation(), buf.readBoolean()));
+            }
+            out.add(new Family(family, base, label, icon, axes, members));
+        }
+        return out;
     }
 
     public static OrdersSnapshotS2CPayload read(FriendlyByteBuf buf) {
@@ -430,10 +529,12 @@ public record OrdersSnapshotS2CPayload(long worksiteId, String worksiteName, Str
         for (int i = 0; i < driverCount; i++) {
             drivers.add(new Driver(buf.readUtf(), buf.readUtf(), buf.readResourceLocation()));
         }
+        List<Family> families = readFamilies(buf);
         return new OrdersSnapshotS2CPayload(id, name, detail, listOnly,
                 List.copyOf(rows), List.copyOf(options), List.copyOf(stations),
                 List.copyOf(workers),
-                new DriverControl(driverSupported, workerFallback, selectedDriver, drivers));
+                new DriverControl(driverSupported, workerFallback, selectedDriver, drivers),
+                List.copyOf(families));
     }
 
     //? if neoforge {

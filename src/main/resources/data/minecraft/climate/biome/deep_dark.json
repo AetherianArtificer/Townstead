@@ -3,5 +3,6 @@
   "mean_c": 12.0,
   "season_kind": "none",
   "underground_offset_c": -25.0,
+  "underground_offset_over_mod_climate": true,
   "humidity": 0.6
 }

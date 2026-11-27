@@ -57,9 +57,11 @@ public final class VillageSpiritAggregator {
         Map<String, Integer> perSpirit = new HashMap<>();
         int total = 0;
         int contributingBuildings = 0;
+        // The type MCA resolves the room to, which is what the blueprint shows.
+        Map<Integer, String> effective = com.aetherianartificer.townstead.compat.mca.McaBuildingCompat.effectiveTypes(village);
         for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
-            Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(b.getType());
+            Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(effective.getOrDefault(b.getId(), b.getType()));
             if (contributions.isEmpty()) continue;
             boolean anyAdded = false;
             for (Map.Entry<String, Integer> e : contributions.entrySet()) {
@@ -85,9 +87,11 @@ public final class VillageSpiritAggregator {
     public static Map<String, List<ContributorRow>> contributorsFor(Village village) {
         if (village == null) return Map.of();
         Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
+        // The type MCA resolves the room to, which is what the blueprint shows.
+        Map<Integer, String> effective = com.aetherianartificer.townstead.compat.mca.McaBuildingCompat.effectiveTypes(village);
         for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
-            String type = b.getType();
+            String type = effective.getOrDefault(b.getId(), b.getType());
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
             if (contributions.isEmpty()) continue;
             for (Map.Entry<String, Integer> e : contributions.entrySet()) {
@@ -128,9 +132,11 @@ public final class VillageSpiritAggregator {
         Map<String, Map<String, int[]>> bySpirit = new HashMap<>();
         int total = 0;
         int contributingBuildings = 0;
+        // The type MCA resolves the room to, which is what the blueprint shows.
+        Map<Integer, String> effective = com.aetherianartificer.townstead.compat.mca.McaBuildingCompat.effectiveTypes(village);
         for (Building b : com.aetherianartificer.townstead.compat.mca.McaBuildings.all(village)) {
             if (!b.isComplete()) continue;
-            String type = b.getType();
+            String type = effective.getOrDefault(b.getId(), b.getType());
             Map<String, Integer> contributions = BuildingSpiritIndex.contributionsFor(type);
             if (contributions.isEmpty()) continue;
             boolean anyAdded = false;

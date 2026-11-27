@@ -59,13 +59,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * already present, and never own or end their participants' visits.
  */
 public final class HangoutEngine {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site PRUNE_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(400);
     private static final int ACQUISITION_STRIDE = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site ACQUISITION = new com.aetherianartificer.townstead.tick.Stride.Site(ACQUISITION_STRIDE);
     private static final int ACTIVE_STRIDE = 20;
     private static final int BEAT_RETRY_TICKS = 100;
     private static final int DANGER_GRACE_TICKS = 200;
     private static final double ARRIVAL_DISTANCE_SQUARED = 2.75D;
-    private static final HangoutClaims CLAIMS = new HangoutClaims();
-    private static final HostedServiceCoordinator HOSTED_SERVICE = new HostedServiceCoordinator();
+    private static HangoutClaims CLAIMS = new HangoutClaims();
+    private static HostedServiceCoordinator HOSTED_SERVICE = new HostedServiceCoordinator();
     private static final Map<UUID, HangoutVisit> VISITS = new ConcurrentHashMap<>();
     private static final Map<UUID, UUID> BY_VISITOR = new ConcurrentHashMap<>();
     private static final Map<UUID, HangoutBeat> BEATS = new ConcurrentHashMap<>();
@@ -86,6 +88,11 @@ public final class HangoutEngine {
                 && visit.phase() != HangoutVisit.Phase.INTERRUPTED;
     }
 
+    /** Whether this villager is on a hangout visit, which advances every tick it runs. */
+    public static boolean visiting(UUID visitor) {
+        return BY_VISITOR.containsKey(visitor);
+    }
+
     public static @Nullable HangoutVisit visit(UUID visitor) {
         UUID id = BY_VISITOR.get(visitor);
         return id == null ? null : VISITS.get(id);
@@ -99,6 +106,29 @@ public final class HangoutEngine {
         return rest == null ? 0F : rest.fatigueRecovery();
     }
 
+    /** Server stop. Nothing here is saved; seats left in the world are recovered as orphans next time. */
+    public static void clear() {
+        VISITS.clear();
+        BY_VISITOR.clear();
+        BEATS.clear();
+        BY_BEAT_MEMBER.clear();
+        COOLDOWNS.clear();
+        LAST_DIAGNOSTIC.clear();
+        CLAIMS = new HangoutClaims();
+        HOSTED_SERVICE = new HostedServiceCoordinator();
+    }
+
+    /** Ends visits whose visitor is gone and stopped renewing, since only the visitor's own tick moves a visit. */
+    private static void sweepOrphans(ServerLevel level, long now) {
+        for (HangoutVisit visit : List.copyOf(VISITS.values())) {
+            if (visit.dimension().equals(level.dimension().location())
+                    && villager(level, visit.visitor().entity()) == null
+                    && !CLAIMS.holdsAny(visit.id(), now)) {
+                cleanupVisit(level, visit, false, "visitor_gone", now);
+            }
+        }
+    }
+
     public static void onReload() {
         // Visits and beats resolve definitions every tick and leave cleanly if one disappeared.
     }
@@ -107,7 +137,8 @@ public final class HangoutEngine {
         if (!(villager.level() instanceof ServerLevel level)) return;
         long now = level.getGameTime();
         HangoutEmbodiment.bootstrap();
-        if ((now + (villager.getUUID().hashCode() & 31)) % 400L == 0L) {
+        if (PRUNE_STRIDE.due(villager, now + (villager.getUUID().hashCode() & 31))) {
+            sweepOrphans(level, now);
             HangoutEmbodiment.recoverNearby(level, villager.blockPosition());
             CLAIMS.prune(now);
             HOSTED_SERVICE.prune(now);
@@ -125,7 +156,7 @@ public final class HangoutEngine {
 
         if (HangoutData.policies().isEmpty() || HangoutData.venues().isEmpty()
                 || HangoutData.activities().isEmpty() || HangoutData.spots().isEmpty()) return;
-        if ((now + (villager.getUUID().hashCode() & Integer.MAX_VALUE)) % ACQUISITION_STRIDE != 0L) return;
+        if (!ACQUISITION.due(villager, now + (villager.getUUID().hashCode() & Integer.MAX_VALUE))) return;
         long cooldown = COOLDOWNS.getOrDefault(villager.getUUID(), 0L);
         if (cooldown > now) {
             if (isMeet(villager)) traceRejection(villager, now, "cooldown " + (cooldown - now) + " ticks");
@@ -936,6 +967,9 @@ public final class HangoutEngine {
 
     private static String availabilityReason(VillagerEntityMCA villager) {
         if (!villager.isAlive() || villager.isRemoved()) return "not alive";
+        var outranked = com.aetherianartificer.townstead.villager.VillagerControl.outrankedBy(villager,
+                com.aetherianartificer.townstead.villager.VillagerControl.Owner.HANGOUT);
+        if (outranked != null) return "outranked by " + outranked;
         if (villager.isSleeping()) return "sleeping";
         if (villager.isPassenger()) return "already riding";
         if (villager.getVillagerBrain().isPanicking()) return "panicking";
@@ -946,6 +980,8 @@ public final class HangoutEngine {
 
     private static boolean safe(VillagerEntityMCA villager) {
         return villager.isAlive() && !villager.isRemoved() && !villager.isSleeping()
+                && !com.aetherianartificer.townstead.villager.VillagerControl.outranked(villager,
+                        com.aetherianartificer.townstead.villager.VillagerControl.Owner.HANGOUT)
                 && !(TownsteadConfig.isVillagerTemperatureEnabled()
                     && com.aetherianartificer.townstead.villager.TownsteadVillagers.get(villager).needs().seekingRelief())
                 && !villager.getVillagerBrain().isPanicking() && !recentlyAttacked(villager);

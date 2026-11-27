@@ -1,0 +1,78 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.clothier.wardrobe"
+  },
+  "icon": "minecraft:chest",
+  "description": {
+    "translate": "skill.townstead.tailor.clothier.wardrobe.description"
+  },
+  "cost": 2,
+  "requires": [
+    "quick_change"
+  ],
+  "skill_group": "townstead:clothier_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stitch",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:tailor/clothier/master_of_disguise"
+          },
+          "if_action": {
+            "type": "pheno:wear_cosmetic",
+            "slot": "head",
+            "item": [
+              "minecraft:zombie_head"
+            ],
+            "duration": 6000
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:tailor/clothier/dress_the_part"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:flee",
+              "duration": 40,
+              "speed": 0
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.armor.equip_leather",
+          "volume": 1.0,
+          "pitch": 1.2
+        },
+        {
+          "type": "pheno:swap_armor"
+        }
+      ]
+    }
+  }
+}

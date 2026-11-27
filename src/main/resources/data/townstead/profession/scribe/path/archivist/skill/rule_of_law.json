@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.rule_of_law"
+  },
+  "icon": "minecraft:iron_bars",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.rule_of_law.description"
+  },
+  "cost": 1,
+  "requires": [
+    "by_the_book"
+  ]
+}

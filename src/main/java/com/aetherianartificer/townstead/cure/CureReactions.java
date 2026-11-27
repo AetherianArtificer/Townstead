@@ -33,6 +33,7 @@ import java.util.Map;
  * they tell whoever cured them, now or the next time that person comes near.
  */
 public final class CureReactions extends SimpleJsonResourceReloadListener {
+    private static final com.aetherianartificer.townstead.tick.Stride.Site STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(20);
     private static final Logger LOGGER = LoggerFactory.getLogger(Townstead.MOD_ID + "/CureReactions");
     /** Who began the cure, saved on the one being cured by {@code pheno:remember} or a cure item. */
     public static final String CURED_BY = "townstead:cured_by";
@@ -146,7 +147,7 @@ public final class CureReactions extends SimpleJsonResourceReloadListener {
 
     /** Says the reaction to the curer once they are near and in sight. */
     public static void tick(VillagerEntityMCA villager) {
-        if (villager.tickCount % 20 != 0) return;
+        if (!STRIDE.due(villager, villager.tickCount)) return;
         CompoundTag data = villager.getPersistentData();
         if (!data.contains(PENDING)) return;
         CompoundTag pending = data.getCompound(PENDING);

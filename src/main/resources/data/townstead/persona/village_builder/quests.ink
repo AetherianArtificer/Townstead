@@ -325,20 +325,25 @@ Have you got a minute? There's something I keep thinking about.
 
 === water ===
 # quest: Water you can reach
-# about: Get the village's thirst to a good level. Put water where people live.
+# about: Get the village's thirst to a good level. Keep bottles of clean water in a chest in each house.
 # goal: watered
 # skip if: watered
 ~ lesson_day = today
 {not meeting_asked:
-    Put water where people live. Anything that isn't a long walk with a heavy bucket.
+    Clean water, in bottles, in a chest in every house. Nobody should have to walk to the river with a bucket.
 }
 ->->
 
 = waiting
 -> checkin ->
-{~Water's still a walk for some people.|It's closer than it was! Closer still would be lovely.}
+{~Some people here are still thirsty.|It's getting better! Not everyone's drinking enough yet.}
 + [Any advice?]
-    Water near the houses is the whole trick. A water source by the front doors does more than a lake past the fields.
+    Fill some bottles, boil them over a campfire so they're clean, and put them in a chest inside each house. People drink what they can reach.
+    {mod("thirstwastaken2"): A cauldron of clean water works too. People fill a bottle from it themselves.}
+    {mod("toughasnails"): So does a rain collector, once it's caught some rain.}
+    {mod("homeostatic"): Purified water works too, if there's a pool of it close by.}
+    {mod("bakery"): A filled kitchen sink works too.}
+    River water won't do. Nobody drinks straight from a river if they can help it.
 + [Working on it.]
     I know. Thank you.
 + [See you later.]
@@ -347,20 +352,28 @@ Have you got a minute? There's something I keep thinking about.
 = done
 ~ daily()
 ~ done_water = true
+{not check("thirst_on"):
+    Forget what I said about water. Nobody here goes thirsty these days. I'll stop counting bottles. Mostly.
+    -> DONE
+}
 ~ trust(5)
 Nobody's short of water now. Not one person.
 {worry() == "water": I used to carry buckets for an hour every morning, as a child. I don't miss it. Anyway!}
 + [Thank you for pushing.]
     Thank you for listening. Not everyone does.
-+ [You can stop counting steps.]
++ [You can stop counting bottles.]
     I can, can't I? I probably won't.
 - -> DONE
 
 = skipped
 ~ daily()
 ~ done_water = true
+{not check("thirst_on"):
+    Actually, never mind the water. Nobody here goes thirsty these days. One less thing to fuss about.
+    -> DONE
+}
 ~ trust(5)
-Oh! There's already water close by. Good. That's one thing I don't have to worry about.
+Oh! Everyone's already drinking enough. Good. That's one thing I don't have to worry about.
 -> DONE
 
 // ---- Let someone else carry it (after their first collapse) ----

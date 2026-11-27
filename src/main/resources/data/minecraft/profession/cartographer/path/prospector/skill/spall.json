@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.prospector.spall"
+  },
+  "icon": "minecraft:flint",
+  "description": {
+    "translate": "skill.townstead.cartographer.prospector.spall.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pick_hammer"
+  ]
+}

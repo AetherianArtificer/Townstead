@@ -9,42 +9,45 @@
   },
   "cost": 1,
   "requires": [
-    "miners_eyes"
+    "vein_sense"
   ],
   "power": {
     "type": "pheno:action_over_time",
-    "interval": 20,
+    "interval": 40,
     "resource_cost": {
       "resource": "townstead:bearing",
       "amount": 0
     },
     "condition": {
-      "type": "pheno:and",
-      "conditions": [
-        {
-          "type": "pheno:not",
-          "condition": {
-            "type": "pheno:block",
-            "y": 0,
-            "block_condition": {
-              "type": "exposed_to_sky"
-            }
-          }
-        },
-        {
-          "type": "pheno:block",
-          "y": 0,
-          "block_condition": {
-            "type": "height",
-            "max": 60
-          }
-        }
-      ]
+      "type": "pheno:resource",
+      "resource": "townstead:bearing",
+      "min": 50
     },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:bearing",
-      "amount": 3
+      "type": "pheno:at",
+      "blocks": {
+        "radius": 12,
+        "where": {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:in_tag",
+              "tag": "c:ores"
+            },
+            {
+              "type": "pheno:in_tag",
+              "tag": "forge:ores"
+            }
+          ]
+        }
+      },
+      "do": {
+        "type": "pheno:spawn_particles",
+        "particle": "minecraft:wax_on",
+        "count": 6,
+        "spread": 0.4
+      },
+      "optional": true
     }
   }
 }

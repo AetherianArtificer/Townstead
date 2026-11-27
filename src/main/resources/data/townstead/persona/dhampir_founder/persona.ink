@@ -171,6 +171,8 @@ VAR scene_job = false
     ~ return scene(-> bringer_arrival, "Did you hear something?")
 - confession_after_ready():
     ~ return scene(-> confession_after, "About her...")
+- midwife_road_ready():
+    ~ return scene(-> midwife_road, "Is it much further?")
 - wounded_down_ready():
     ~ return scene(-> wounded_down, "Is it breathing?")
 - wounded_up_ready():

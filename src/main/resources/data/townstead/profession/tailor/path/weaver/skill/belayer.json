@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.tailor.weaver.belayer"
+  },
+  "icon": "minecraft:tripwire_hook",
+  "description": {
+    "translate": "skill.townstead.tailor.weaver.belayer.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lifeline"
+  ]
+}

@@ -69,6 +69,9 @@ public final class SetBlockBlockActionType implements BlockActionType {
         int[] sourceOffset = copyFrom;
         return new BlockAction() {
             @Override public boolean canRun(BlockActionContext context) {
+                // A block taken from the held item is unknown until something is held; the
+                // caller's own item filter decides which items may be used.
+                if (resolver.fromItem() && context.itemRole("item").isEmpty()) return true;
                 ResourceLocation id = resolver.resolve(context);
                 return id != null && BuiltInRegistries.BLOCK.containsKey(id);
             }

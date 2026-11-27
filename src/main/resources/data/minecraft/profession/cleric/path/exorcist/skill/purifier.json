@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "undying_faith"
+    "zeal"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:faith",
-      "min": 75
+      "min": 50
     },
     "action": {
       "type": "pheno:area_of_effect",
@@ -37,6 +37,9 @@
         "if_action": {
           "type": "pheno:ignite",
           "seconds": 3
+        },
+        "else_action": {
+          "type": "pheno:nothing"
         }
       }
     }

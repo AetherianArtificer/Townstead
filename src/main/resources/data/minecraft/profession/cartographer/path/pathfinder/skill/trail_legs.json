@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "sure_stride"
+    "wide_survey"
   ],
   "power": {
     "type": "pheno:step_height",

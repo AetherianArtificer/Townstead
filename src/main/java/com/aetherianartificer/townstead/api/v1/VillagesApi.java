@@ -1,6 +1,7 @@
 package com.aetherianartificer.townstead.api.v1;
 
 import com.aetherianartificer.townstead.api.v1.model.BuildingSnapshot;
+import com.aetherianartificer.townstead.api.v1.model.GeneratedPieceSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.SpiritSnapshot;
 import com.aetherianartificer.townstead.api.v1.model.VillageId;
 import com.aetherianartificer.townstead.api.v1.model.VillageNeedsSummary;
@@ -29,6 +30,14 @@ public interface VillagesApi {
      */
     default Optional<VillageSnapshot> within(ServerLevel level, BlockPos pos) {
         return Optional.empty();
+    }
+
+    /**
+     * The pieces the world generated for the village whose pieces reach the chunk at {@code pos}: its houses, smithy
+     * and farms as laid out, whatever MCA has registered since. Empty where no village generated. Added in revision 2.
+     */
+    default List<GeneratedPieceSnapshot> generatedPieces(ServerLevel level, BlockPos pos) {
+        return List.of();
     }
 
     List<VillageSnapshot> all(ServerLevel level);

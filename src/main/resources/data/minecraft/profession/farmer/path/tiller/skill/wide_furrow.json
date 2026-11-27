@@ -8,13 +8,21 @@
     "translate": "skill.townstead.farmer.tiller.wide_furrow.description"
   },
   "cost": 1,
+  "requires": [
+    "rootbound"
+  ],
   "power": {
     "type": "pheno:trigger",
     "trigger": "when_work",
-    "verbs": ["townstead:tilled"],
+    "verbs": [
+      "townstead:tilled"
+    ],
     "action": {
       "type": "pheno:if_else",
-      "condition": { "type": "pheno:entity_type", "entity_type": "minecraft:player" },
+      "condition": {
+        "type": "pheno:entity_type",
+        "entity_type": "minecraft:player"
+      },
       "if_action": {
         "type": "pheno:at",
         "blocks": [
@@ -27,12 +35,27 @@
                 {
                   "type": "pheno:or",
                   "conditions": [
-                    { "type": "pheno:block", "block": "minecraft:dirt" },
-                    { "type": "pheno:block", "block": "minecraft:grass_block" },
-                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:grass_block"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt_path"
+                    }
                   ]
                 },
-                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } }
+                {
+                  "type": "pheno:offset",
+                  "y": 1,
+                  "condition": {
+                    "type": "pheno:air"
+                  }
+                }
               ]
             }
           },
@@ -45,17 +68,35 @@
                 {
                   "type": "pheno:or",
                   "conditions": [
-                    { "type": "pheno:block", "block": "minecraft:dirt" },
-                    { "type": "pheno:block", "block": "minecraft:grass_block" },
-                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:grass_block"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt_path"
+                    }
                   ]
                 },
-                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } }
+                {
+                  "type": "pheno:offset",
+                  "y": 1,
+                  "condition": {
+                    "type": "pheno:air"
+                  }
+                }
               ]
             }
           }
         ],
-        "do": { "type": "pheno:set_block", "block": "minecraft:farmland" }
+        "do": {
+          "type": "pheno:set_block",
+          "block": "minecraft:farmland"
+        }
       },
       "else_action": {
         "type": "pheno:at",
@@ -69,13 +110,31 @@
                 {
                   "type": "pheno:or",
                   "conditions": [
-                    { "type": "pheno:block", "block": "minecraft:dirt" },
-                    { "type": "pheno:block", "block": "minecraft:grass_block" },
-                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:grass_block"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt_path"
+                    }
                   ]
                 },
-                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } },
-                { "type": "pheno:in_work_area", "area": "townstead:field_post_soil" }
+                {
+                  "type": "pheno:offset",
+                  "y": 1,
+                  "condition": {
+                    "type": "pheno:air"
+                  }
+                },
+                {
+                  "type": "pheno:in_work_area",
+                  "area": "townstead:field_post_soil"
+                }
               ]
             }
           },
@@ -88,18 +147,39 @@
                 {
                   "type": "pheno:or",
                   "conditions": [
-                    { "type": "pheno:block", "block": "minecraft:dirt" },
-                    { "type": "pheno:block", "block": "minecraft:grass_block" },
-                    { "type": "pheno:block", "block": "minecraft:dirt_path" }
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:grass_block"
+                    },
+                    {
+                      "type": "pheno:block",
+                      "block": "minecraft:dirt_path"
+                    }
                   ]
                 },
-                { "type": "pheno:offset", "y": 1, "condition": { "type": "pheno:air" } },
-                { "type": "pheno:in_work_area", "area": "townstead:field_post_soil" }
+                {
+                  "type": "pheno:offset",
+                  "y": 1,
+                  "condition": {
+                    "type": "pheno:air"
+                  }
+                },
+                {
+                  "type": "pheno:in_work_area",
+                  "area": "townstead:field_post_soil"
+                }
               ]
             }
           }
         ],
-        "do": { "type": "pheno:set_block", "block": "minecraft:farmland" }
+        "do": {
+          "type": "pheno:set_block",
+          "block": "minecraft:farmland"
+        }
       }
     }
   }

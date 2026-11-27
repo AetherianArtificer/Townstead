@@ -64,6 +64,14 @@ public final class AttachmentServerData {
         return definitions;
     }
 
+    /** A definition by id, or null. */
+    public static AttachmentDef definition(String id) {
+        for (AttachmentDef def : definitions) {
+            if (def.id().equals(id)) return def;
+        }
+        return null;
+    }
+
     public static List<AttachmentPointDef> slots() {
         return slots;
     }

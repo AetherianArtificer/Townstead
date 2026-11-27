@@ -4,8 +4,10 @@ package com.aetherianartificer.townstead.storage;
 import com.aetherianartificer.townstead.storage.StorageSearchContext;
 import com.aetherianartificer.townstead.storage.VillageAiBudget;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.chunk.LevelChunk;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -17,8 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 final class WorksiteStorageCandidateIndex {
     private static final long SNAPSHOT_TTL_TICKS = 200L;
     private static final int REFRESH_BUDGET_PER_TICK = 2;
-    private static final int HORIZONTAL_RADIUS = 2;
-    private static final int VERTICAL_RADIUS = 1;
+    private static final int HORIZONTAL_RADIUS = StorageCandidateOrder.HORIZONTAL_RADIUS;
+    private static final int VERTICAL_RADIUS = StorageCandidateOrder.VERTICAL_RADIUS;
     private static final Map<SnapshotKey, Snapshot> SNAPSHOTS = new ConcurrentHashMap<>();
 
     private WorksiteStorageCandidateIndex() {}
@@ -58,6 +60,51 @@ final class WorksiteStorageCandidateIndex {
     }
 
     private static Snapshot buildSnapshot(ServerLevel level, WorksiteStorageIndex.BoundsKey boundsKey, long gameTime) {
+        long[] bounds = boundsKey.positions();
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (long key : bounds) {
+            int x = BlockPos.getX(key), y = BlockPos.getY(key), z = BlockPos.getZ(key);
+            minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+            minZ = Math.min(minZ, z); maxZ = Math.max(maxZ, z);
+        }
+        minX -= HORIZONTAL_RADIUS; maxX += HORIZONTAL_RADIUS;
+        minZ -= HORIZONTAL_RADIUS; maxZ += HORIZONTAL_RADIUS;
+        minY -= VERTICAL_RADIUS; maxY += VERTICAL_RADIUS;
+
+        // Only block entities can be candidates, so read them from the loaded chunks instead of
+        // probing every block. A chunk that is not loaded falls back to the probe, which loads it.
+        List<Long> found = new ArrayList<>();
+        for (int chunkX = SectionPos.blockToSectionCoord(minX); chunkX <= SectionPos.blockToSectionCoord(maxX); chunkX++) {
+            for (int chunkZ = SectionPos.blockToSectionCoord(minZ); chunkZ <= SectionPos.blockToSectionCoord(maxZ); chunkZ++) {
+                LevelChunk chunk = level.getChunkSource().getChunkNow(chunkX, chunkZ);
+                if (chunk == null) return probeSnapshot(level, boundsKey, gameTime);
+                for (BlockPos pos : chunk.getBlockEntitiesPos()) {
+                    if (pos.getX() < minX || pos.getX() > maxX || pos.getZ() < minZ || pos.getZ() > maxZ
+                            || pos.getY() < minY || pos.getY() > maxY) continue;
+                    found.add(pos.asLong());
+                }
+            }
+        }
+        if (found.isEmpty()) return new Snapshot(List.of(), gameTime + SNAPSHOT_TTL_TICKS);
+
+        long[] nearby = new long[found.size()];
+        for (int i = 0; i < nearby.length; i++) nearby[i] = found.get(i);
+        long[] ordered = StorageCandidateOrder.inProbeOrder(bounds, nearby);
+        StorageSearchContext searchContext = new StorageSearchContext(level, Math.max(64, ordered.length), Math.max(16, ordered.length));
+        List<BlockPos> positions = new ArrayList<>();
+        for (long key : ordered) {
+            StorageSearchContext.ObservedBlock observed = searchContext.observe(BlockPos.of(key));
+            BlockEntity blockEntity = observed.blockEntity();
+            if (blockEntity == null) continue;
+            if (!StorageRoles.isStorageCandidate(level, observed.pos(), blockEntity)) continue;
+            positions.add(observed.pos());
+        }
+        return new Snapshot(List.copyOf(positions), gameTime + SNAPSHOT_TTL_TICKS);
+    }
+
+    private static Snapshot probeSnapshot(ServerLevel level, WorksiteStorageIndex.BoundsKey boundsKey, long gameTime) {
         int estimatedObservedBlocks = Math.max(64, boundsKey.positions().length * 20);
         StorageSearchContext searchContext = new StorageSearchContext(level, estimatedObservedBlocks, estimatedObservedBlocks / 4);
         List<BlockPos> positions = new ArrayList<>();

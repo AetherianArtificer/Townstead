@@ -1,0 +1,81 @@
+{
+  "schema": "townstead:workstation/v2",
+  "mods": [
+    "beachparty",
+    {
+      "block": "beachparty:palm_bar_glass"
+    }
+  ],
+  "blocks": [
+    "beachparty:palm_bar"
+  ],
+  "stands": [
+    [
+      0,
+      0,
+      1
+    ],
+    [
+      -1,
+      0,
+      1
+    ],
+    [
+      1,
+      0,
+      1
+    ]
+  ],
+  "stands_relative_to_facing": true,
+  "shift_end": "finish",
+  "requires": {
+    "type": "pheno:offset",
+    "y": 1,
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:replaceable"
+        },
+        {
+          "type": "pheno:block",
+          "block": "beachparty:palm_bar_glass"
+        }
+      ]
+    }
+  },
+  "ready": {
+    "type": "pheno:block_entity",
+    "property": "result",
+    "non_empty": true
+  },
+  "behavior": [
+    {
+      "type": "pheno:use_block",
+      "item": "ingredient"
+    },
+    {
+      "type": "pheno:offset",
+      "y": 1,
+      "block_action": {
+        "type": "pheno:use_block",
+        "item": "ingredient",
+        "all": true
+      }
+    },
+    {
+      "type": "pheno:offset",
+      "y": 1,
+      "block_action": {
+        "type": "pheno:use_block"
+      }
+    }
+  ],
+  "collect": {
+    "type": "pheno:offset",
+    "y": 1,
+    "block_action": {
+      "type": "pheno:use_block"
+    }
+  }
+}

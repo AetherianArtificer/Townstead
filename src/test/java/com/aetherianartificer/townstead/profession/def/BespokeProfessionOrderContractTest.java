@@ -5,6 +5,7 @@ import com.aetherianartificer.townstead.work.WorkActivities;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.resources.ResourceLocation;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.InputStream;
@@ -19,6 +20,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Contracts for vanilla professions whose work is driven by a spatial, bespoke task engine. */
 class BespokeProfessionOrderContractTest {
+
+    @BeforeAll
+    static void registerJobGates() {
+        // Every profession's tidy job is gated by a habit; the mod registers that condition at startup.
+        com.aetherianartificer.townstead.pheno.condition.ConditionTypes.register(
+                new com.aetherianartificer.townstead.habit.HabitDueConditionType());
+    }
 
     @Test
     void fishermanOffersItsExistingFishingLoopAsAnActivity() {

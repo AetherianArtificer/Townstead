@@ -53,6 +53,7 @@ public final class DataParticle extends Particle {
     private final float peakAlpha;
     private final float spinPerTick;
     private float size;
+    private float stretchNow = 1f;
 
     private DataParticle(ClientLevel level, double x, double y, double z, double xd, double yd, double zd,
                          DataParticleDef def) {
@@ -115,19 +116,33 @@ public final class DataParticle extends Particle {
         float pz = (float) (Mth.lerp(partialTicks, zo, z) - cam.z());
         Quaternionf rotation = new Quaternionf(camera.rotation());
         float r = Mth.lerp(partialTicks, oRoll, roll);
+        float lengthen = 1f;
+        if (def.stretch() > 0f) {
+            // Along the way it's moving as seen from here: turn to face that way and draw it longer.
+            Vector3f moving = new Vector3f((float) (x - xo), (float) (y - yo), (float) (z - zo));
+            new Quaternionf(camera.rotation()).conjugate().transform(moving);
+            float across = (float) Math.sqrt(moving.x() * moving.x() + moving.y() * moving.y());
+            if (across > 1.0e-3f) {
+                r = (float) Math.atan2(moving.y(), moving.x());
+                lengthen = Math.min(4f, 1f + def.stretch() * across);
+            }
+        }
         if (r != 0) rotation.rotateZ(r);
+        stretchNow = lengthen;
         float v0 = frame() / (float) def.frames();
         float v1 = (frame() + 1) / (float) def.frames();
         int light = def.glow() ? 0xF000F0 : getLightColor(partialTicks);
-        vertex(vc, rotation, px, py, pz, -1, -1, 1f, v1, light);
-        vertex(vc, rotation, px, py, pz, -1, 1, 1f, v0, light);
-        vertex(vc, rotation, px, py, pz, 1, 1, 0f, v0, light);
-        vertex(vc, rotation, px, py, pz, 1, -1, 0f, v1, light);
+        // Corners in the order vanilla particles use, so the face points at the camera (the other way round it's
+        // a back face and culled, and the particle never shows).
+        vertex(vc, rotation, px, py, pz, 1, -1, 1f, v1, light);
+        vertex(vc, rotation, px, py, pz, 1, 1, 1f, v0, light);
+        vertex(vc, rotation, px, py, pz, -1, 1, 0f, v0, light);
+        vertex(vc, rotation, px, py, pz, -1, -1, 0f, v1, light);
     }
 
     private void vertex(VertexConsumer vc, Quaternionf rotation, float px, float py, float pz,
                         float cx, float cy, float u, float v, int light) {
-        Vector3f corner = new Vector3f(cx, cy, 0).rotate(rotation).mul(size).add(px, py, pz);
+        Vector3f corner = new Vector3f(cx * stretchNow, cy, 0).rotate(rotation).mul(size).add(px, py, pz);
         //? if >=1.21 {
         vc.addVertex(corner.x(), corner.y(), corner.z()).setUv(u, v).setColor(rCol, gCol, bCol, alpha).setLight(light);
         //?} else {

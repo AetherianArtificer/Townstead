@@ -70,6 +70,7 @@ class GeneRegistryNestedPathTest {
 
         assertEquals(parent, index.aliases().get(id("example:triple_jump")));
         assertFalse(index.aliases().containsKey(id("example:jumps")));
+        assertEquals(companion, index.aliases().get(id("example:triple_jump/jumps")));
     }
 
     @Test

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "mile_marker"
+    "trail_legs"
   ],
   "power": {
     "type": "pheno:action_over_time",
@@ -21,7 +21,7 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:bearing",
-      "min": 50
+      "min": 25
     },
     "action": {
       "type": "pheno:energize",

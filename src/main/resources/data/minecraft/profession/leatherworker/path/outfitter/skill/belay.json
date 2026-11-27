@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.leatherworker.outfitter.belay"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.leatherworker.outfitter.belay.description"
+  },
+  "cost": 1,
+  "requires": [
+    "pitons"
+  ]
+}

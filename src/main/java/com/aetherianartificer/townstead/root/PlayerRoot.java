@@ -27,6 +27,11 @@ public final class PlayerRoot {
     private static final String HERITAGE_KEY = "heritage";
     /** The browser mix the player was founded from; any new root or heritage drops it. */
     private static final String MIX_KEY = "rootMix";
+    private static final String FAMILY_NAME_KEY = "familyName";
+    private static final String FAMILY_NAME_FIXED_KEY = "familyNameFixed";
+    private static final String NAMING_TRADITION_KEY = "namingTradition";
+    private static final String NAME_LIST_KEY = "nameList";
+    private static final String CULTURE_KEY = "culture";
 
     private PlayerRoot() {}
 
@@ -44,6 +49,57 @@ public final class PlayerRoot {
         net.minecraft.nbt.ListTag list = tag.getList(GRANTED_KEY, net.minecraft.nbt.Tag.TAG_STRING);
         list.add(net.minecraft.nbt.StringTag.valueOf(geneId));
         tag.put(GRANTED_KEY, list);
+        store(player, tag);
+    }
+
+    public static String getFamilyName(Player player) {
+        return data(player).getString(FAMILY_NAME_KEY);
+    }
+
+    public static void setFamilyName(Player player, String name) {
+        CompoundTag tag = data(player);
+        if (name == null || name.isEmpty()) tag.remove(FAMILY_NAME_KEY);
+        else tag.putString(FAMILY_NAME_KEY, name);
+        store(player, tag);
+    }
+
+    public static boolean isFamilyNameFixed(Player player) {
+        return data(player).getBoolean(FAMILY_NAME_FIXED_KEY);
+    }
+
+    public static void setFamilyNameFixed(Player player, boolean fixed) {
+        CompoundTag tag = data(player);
+        tag.putBoolean(FAMILY_NAME_FIXED_KEY, fixed);
+        store(player, tag);
+    }
+
+    public static String getCulture(Player player) {
+        return data(player).getString(CULTURE_KEY);
+    }
+
+    public static void setCulture(Player player, String id) {
+        CompoundTag tag = data(player);
+        tag.putString(CULTURE_KEY, id == null ? "" : id);
+        store(player, tag);
+    }
+
+    public static String getNamingTradition(Player player) {
+        return data(player).getString(NAMING_TRADITION_KEY);
+    }
+
+    public static void setNamingTradition(Player player, String id) {
+        CompoundTag tag = data(player);
+        tag.putString(NAMING_TRADITION_KEY, id == null ? "" : id);
+        store(player, tag);
+    }
+
+    public static String getNameList(Player player) {
+        return data(player).getString(NAME_LIST_KEY);
+    }
+
+    public static void setNameList(Player player, String reference) {
+        CompoundTag tag = data(player);
+        tag.putString(NAME_LIST_KEY, reference == null ? "" : reference);
         store(player, tag);
     }
 

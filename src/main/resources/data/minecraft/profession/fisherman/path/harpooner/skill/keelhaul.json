@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fisherman.harpooner.keelhaul"
+  },
+  "icon": "minecraft:prismarine_shard",
+  "description": {
+    "translate": "skill.townstead.fisherman.harpooner.keelhaul.description"
+  },
+  "cost": 1,
+  "requires": [
+    "trawl"
+  ]
+}

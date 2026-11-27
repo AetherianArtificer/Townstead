@@ -1,0 +1,863 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.lorekeeper.cite"
+  },
+  "icon": "minecraft:enchanted_book",
+  "description": {
+    "translate": "skill.townstead.librarian.lorekeeper.cite.description"
+  },
+  "cost": 2,
+  "requires": [
+    "exploit"
+  ],
+  "skill_group": "townstead:lorekeeper_combat",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
+    "resource_cost": {
+      "resource": "townstead:focus",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:flag",
+                      "flag": "townstead:lorekeeper_exposed"
+                    },
+                    {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:librarian/lorekeeper/final_exam"
+                      }
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:flag",
+                        "flag": "townstead:lorekeeper_identified"
+                      },
+                      "if_action": {
+                        "type": "pheno:if_else_list",
+                        "actions": [
+                          {
+                            "condition": {
+                              "type": "pheno:entity_group",
+                              "group": "undead"
+                            },
+                            "action": {
+                              "type": "pheno:ignite",
+                              "seconds": 10
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:creeper"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:slowness",
+                                  "duration": 200,
+                                  "amplifier": 6
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:weakness",
+                                  "duration": 200,
+                                  "amplifier": 4
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:enderman"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:endermite"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:shulker"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:apply_effect",
+                              "effect": "minecraft:slowness",
+                              "duration": 200,
+                              "amplifier": 4
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:spider"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:cave_spider"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:haze",
+                                  "kind": "townstead:net",
+                                  "blocks": {
+                                    "radius": 0
+                                  }
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:slowness",
+                                  "duration": 200,
+                                  "amplifier": 2
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:witch"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:evoker"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:illusioner"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:clear_effect"
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:weakness",
+                                  "duration": 200,
+                                  "amplifier": 2
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:pillager"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:vindicator"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:piglin"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:piglin_brute"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:disarm"
+                            }
+                          }
+                        ],
+                        "fallback_action": {
+                          "type": "pheno:damage",
+                          "amount": 4,
+                          "source": "other"
+                        }
+                      },
+                      "else_action": {
+                        "type": "pheno:damage",
+                        "amount": 4,
+                        "source": "other"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:enchanted_hit",
+                      "count": 8,
+                      "spread": 0.4
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:flag",
+                        "flag": "townstead:lorekeeper_identified"
+                      },
+                      "if_action": {
+                        "type": "pheno:if_else_list",
+                        "actions": [
+                          {
+                            "condition": {
+                              "type": "pheno:entity_group",
+                              "group": "undead"
+                            },
+                            "action": {
+                              "type": "pheno:ignite",
+                              "seconds": 5
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:creeper"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:slowness",
+                                  "duration": 100,
+                                  "amplifier": 6
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:weakness",
+                                  "duration": 100,
+                                  "amplifier": 4
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:enderman"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:endermite"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:shulker"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:apply_effect",
+                              "effect": "minecraft:slowness",
+                              "duration": 100,
+                              "amplifier": 4
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:spider"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:cave_spider"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:haze",
+                                  "kind": "townstead:net",
+                                  "blocks": {
+                                    "radius": 0
+                                  }
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:slowness",
+                                  "duration": 100,
+                                  "amplifier": 2
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:witch"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:evoker"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:illusioner"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:and",
+                              "actions": [
+                                {
+                                  "type": "pheno:clear_effect"
+                                },
+                                {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:weakness",
+                                  "duration": 100,
+                                  "amplifier": 2
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "condition": {
+                              "type": "pheno:or",
+                              "conditions": [
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:pillager"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:vindicator"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:piglin"
+                                },
+                                {
+                                  "type": "pheno:entity_type",
+                                  "entity_type": "minecraft:piglin_brute"
+                                }
+                              ]
+                            },
+                            "action": {
+                              "type": "pheno:disarm"
+                            }
+                          }
+                        ],
+                        "fallback_action": {
+                          "type": "pheno:damage",
+                          "amount": 4,
+                          "source": "other"
+                        }
+                      },
+                      "else_action": {
+                        "type": "pheno:damage",
+                        "amount": 4,
+                        "source": "other"
+                      }
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:enchanted_hit",
+                      "count": 8,
+                      "spread": 0.4
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:librarian/lorekeeper/footnote"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 6,
+                  "include_self": false,
+                  "target": "hostile",
+                  "action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:and",
+                      "conditions": [
+                        {
+                          "type": "pheno:flag",
+                          "flag": "townstead:lorekeeper_exposed"
+                        },
+                        {
+                          "type": "pheno:origin",
+                          "condition": {
+                            "type": "pheno:skill",
+                            "skill": "minecraft:librarian/lorekeeper/final_exam"
+                          }
+                        }
+                      ]
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:flag",
+                            "flag": "townstead:lorekeeper_identified"
+                          },
+                          "if_action": {
+                            "type": "pheno:if_else_list",
+                            "actions": [
+                              {
+                                "condition": {
+                                  "type": "pheno:entity_group",
+                                  "group": "undead"
+                                },
+                                "action": {
+                                  "type": "pheno:ignite",
+                                  "seconds": 10
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:creeper"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:slowness",
+                                      "duration": 200,
+                                      "amplifier": 6
+                                    },
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:weakness",
+                                      "duration": 200,
+                                      "amplifier": 4
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:enderman"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:endermite"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:shulker"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:slowness",
+                                  "duration": 200,
+                                  "amplifier": 4
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:spider"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:cave_spider"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:haze",
+                                      "kind": "townstead:net",
+                                      "blocks": {
+                                        "radius": 0
+                                      }
+                                    },
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:slowness",
+                                      "duration": 200,
+                                      "amplifier": 2
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:witch"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:evoker"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:illusioner"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:clear_effect"
+                                    },
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:weakness",
+                                      "duration": 200,
+                                      "amplifier": 2
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:pillager"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:vindicator"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:piglin"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:piglin_brute"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:disarm"
+                                }
+                              }
+                            ],
+                            "fallback_action": {
+                              "type": "pheno:damage",
+                              "amount": 4,
+                              "source": "other"
+                            }
+                          },
+                          "else_action": {
+                            "type": "pheno:damage",
+                            "amount": 4,
+                            "source": "other"
+                          }
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:enchanted_hit",
+                          "count": 8,
+                          "spread": 0.4
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:flag",
+                            "flag": "townstead:lorekeeper_identified"
+                          },
+                          "if_action": {
+                            "type": "pheno:if_else_list",
+                            "actions": [
+                              {
+                                "condition": {
+                                  "type": "pheno:entity_group",
+                                  "group": "undead"
+                                },
+                                "action": {
+                                  "type": "pheno:ignite",
+                                  "seconds": 5
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:creeper"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:slowness",
+                                      "duration": 100,
+                                      "amplifier": 6
+                                    },
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:weakness",
+                                      "duration": 100,
+                                      "amplifier": 4
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:enderman"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:endermite"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:shulker"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:apply_effect",
+                                  "effect": "minecraft:slowness",
+                                  "duration": 100,
+                                  "amplifier": 4
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:spider"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:cave_spider"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:haze",
+                                      "kind": "townstead:net",
+                                      "blocks": {
+                                        "radius": 0
+                                      }
+                                    },
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:slowness",
+                                      "duration": 100,
+                                      "amplifier": 2
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:witch"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:evoker"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:illusioner"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:and",
+                                  "actions": [
+                                    {
+                                      "type": "pheno:clear_effect"
+                                    },
+                                    {
+                                      "type": "pheno:apply_effect",
+                                      "effect": "minecraft:weakness",
+                                      "duration": 100,
+                                      "amplifier": 2
+                                    }
+                                  ]
+                                }
+                              },
+                              {
+                                "condition": {
+                                  "type": "pheno:or",
+                                  "conditions": [
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:pillager"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:vindicator"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:piglin"
+                                    },
+                                    {
+                                      "type": "pheno:entity_type",
+                                      "entity_type": "minecraft:piglin_brute"
+                                    }
+                                  ]
+                                },
+                                "action": {
+                                  "type": "pheno:disarm"
+                                }
+                              }
+                            ],
+                            "fallback_action": {
+                              "type": "pheno:damage",
+                              "amount": 4,
+                              "source": "other"
+                            }
+                          },
+                          "else_action": {
+                            "type": "pheno:damage",
+                            "amount": 4,
+                            "source": "other"
+                          }
+                        },
+                        {
+                          "type": "pheno:spawn_particles",
+                          "particle": "minecraft:enchanted_hit",
+                          "count": 8,
+                          "spread": 0.4
+                        }
+                      ]
+                    }
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          },
+          "on": {
+            "type": "pheno:ray",
+            "distance": 16
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.enchantment_table.use",
+          "volume": 1.0,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

@@ -44,6 +44,24 @@ public interface VillagersApi {
     /** Moves a need by a delta, clamped to its range. */
     NeedResult adjustNeed(Entity entity, String needId, int delta, ResourceLocation source);
 
+    /** The clothes an MCA villager wears, as MCA's clothing id. Empty for anyone else. Added in revision 2. */
+    default Optional<String> clothes(Entity villager) {
+        return Optional.empty();
+    }
+
+    /** Puts these clothes on an MCA villager. False when its clothing is locked, or it isn't one. Added in revision 2. */
+    default boolean setClothes(Entity villager, String clothes) {
+        return false;
+    }
+
+    /**
+     * Everyday clothes for an MCA villager to wear while their own are washed: ones that suit their gender and fit their
+     * body, not what they wear now, and the same pick each time. Empty when none fits. Added in revision 2.
+     */
+    default Optional<String> spareClothes(Entity villager) {
+        return Optional.empty();
+    }
+
     /**
      * Assigns a Root to a villager or player, the same as {@code /townstead root set}: root-derived
      * genes, heritage and personality are reseeded, body metrics re-roll inside the new root's

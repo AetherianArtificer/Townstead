@@ -32,8 +32,11 @@ public final class PlaySoundActionType implements ActionType {
         SoundSpec spec = SoundSpec.read(json);
         if (spec == null) return null;
         SoundSource source = parseSource(GsonHelper.getAsString(json, "category", "neutral"));
-        return ctx -> spec.playAt(ctx.entity().level(), ctx.entity().getX(), ctx.entity().getY(),
-                ctx.entity().getZ(), source, ctx.entity().getRandom());
+        // Where something landed (a shot's impact) it's heard there, not at whoever threw it.
+        return ctx -> {
+            var at = ctx.place();
+            spec.playAt(ctx.entity().level(), at.x, at.y, at.z, source, ctx.entity().getRandom());
+        };
     }
 
     private static SoundSource parseSource(String raw) {

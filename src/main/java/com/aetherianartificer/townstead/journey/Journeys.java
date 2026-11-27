@@ -210,6 +210,12 @@ public final class Journeys extends SavedData {
         villager.getPersistentData().put(LEAVING_TAG, saved);
     }
 
+    /** Calls off a walk out of town, here and in what is written on them. */
+    public static void cancelLeaving(VillagerEntityMCA villager) {
+        LEAVING.remove(villager.getUUID());
+        villager.getPersistentData().remove(LEAVING_TAG);
+    }
+
     /** Join hook: someone who was walking out of town when the world closed sets off again. */
     public static void onJoin(Entity entity) {
         if (!(entity instanceof VillagerEntityMCA villager) || !(entity.level() instanceof ServerLevel level)
@@ -230,6 +236,9 @@ public final class Journeys extends SavedData {
                 it.remove();
                 continue;
             }
+            // Still leaving, once whatever outranks it lets go: nobody sets off while downed or at rest.
+            if (!com.aetherianartificer.townstead.villager.VillagerControl.mayMove(villager,
+                    com.aetherianartificer.townstead.villager.VillagerControl.Owner.LEAVING)) continue;
             // Never in front of anyone: a villager held still in a conversation cannot walk away, and
             // leaving on a timer made them vanish mid-sentence. They go when nobody is near to see it.
             boolean seen = leaving.level().getNearestPlayer(villager, UNSEEN) != null;
@@ -239,6 +248,8 @@ public final class Journeys extends SavedData {
                 villager.getPersistentData().remove(LEAVING_TAG);
                 if (leaving.purpose() == null) {
                     McaResidency.leaveVillage(villager);
+                    com.aetherianartificer.townstead.compat.mca.McaFamily.forget(villager);
+                    com.aetherianartificer.townstead.tick.FatigueVillagerTicker.forget(villager);
                     villager.discard();
                 } else {
                     depart(villager, leaving.purpose(), leaving.days(), leaving.data());

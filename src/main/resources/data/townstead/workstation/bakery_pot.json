@@ -1,6 +1,6 @@
 {
   "schema": "townstead:workstation/v2",
-  "mods": ["bakery", "farm_and_charm"],
+  "mods": ["farm_and_charm", {"mod": "bakery", "version": "<2.1.8"}],
   "blocks": ["bakery:small_cooking_pot"],
   "inventory": {
     "slots": {

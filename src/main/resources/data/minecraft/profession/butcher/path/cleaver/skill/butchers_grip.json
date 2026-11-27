@@ -9,26 +9,21 @@
   },
   "cost": 1,
   "requires": [
-    "keen_edge"
+    "bloodlust"
   ],
   "power": {
     "type": "pheno:attack_modifier",
     "modifier": 1.25,
     "condition": {
-      "type": "pheno:equipped_item",
-      "slot": "mainhand",
-      "item_condition": {
-        "type": "or",
-        "conditions": [
-          {
-            "type": "ingredient",
-            "tag": "townstead:butcher_cleavers"
-          },
-          {
-            "type": "ingredient",
-            "tag": "minecraft:axes"
-          }
-        ]
+      "type": "pheno:resource",
+      "resource": "townstead:cut",
+      "min": 50
+    },
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:bleeding"
       }
     }
   }

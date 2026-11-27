@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.pastry_chef.sticky_clouds"
+  },
+  "icon": "minecraft:cobweb",
+  "description": {
+    "translate": "skill.townstead.baker.pastry_chef.sticky_clouds.description"
+  },
+  "cost": 1,
+  "requires": [
+    "candy_floss"
+  ]
+}

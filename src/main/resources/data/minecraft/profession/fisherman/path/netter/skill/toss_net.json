@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.fisherman.netter.toss_net.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:netter_net",
+  "cost": 2,
+  "skill_group": "townstead:netter_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,16 +22,264 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 5,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:haze",
-            "kind": "townstead:net",
-            "blocks": {
-              "radius": 0
-            }
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/netter/great_net"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:tide",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:tide",
+                "amount": -10
+              },
+              {
+                "type": "pheno:and",
+                "actions": [
+                  {
+                    "type": "pheno:area_of_effect",
+                    "radius": 12,
+                    "include_self": false,
+                    "target": "hostile",
+                    "action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:haze",
+                          "kind": "townstead:net",
+                          "blocks": {
+                            "radius": 0
+                          }
+                        },
+                        {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:origin",
+                            "condition": {
+                              "type": "pheno:skill",
+                              "skill": "minecraft:fisherman/netter/weighted_net"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:jump_boost",
+                                "duration": 100,
+                                "amplifier": 128
+                              },
+                              {
+                                "type": "pheno:add_velocity",
+                                "y": -1.0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      ]
+                    }
+                  },
+                  {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:fisherman/netter/bait_and_switch"
+                    },
+                    "if_action": {
+                      "type": "pheno:area_of_effect",
+                      "radius": 16,
+                      "include_self": false,
+                      "target": "hostile",
+                      "action": {
+                        "type": "pheno:if_else",
+                        "condition": {
+                          "type": "pheno:flag",
+                          "flag": "townstead:netter_lured"
+                        },
+                        "if_action": {
+                          "type": "pheno:and",
+                          "actions": [
+                            {
+                              "type": "pheno:haze",
+                              "kind": "townstead:net",
+                              "blocks": {
+                                "radius": 0
+                              }
+                            },
+                            {
+                              "type": "pheno:if_else",
+                              "condition": {
+                                "type": "pheno:origin",
+                                "condition": {
+                                  "type": "pheno:skill",
+                                  "skill": "minecraft:fisherman/netter/weighted_net"
+                                }
+                              },
+                              "if_action": {
+                                "type": "pheno:and",
+                                "actions": [
+                                  {
+                                    "type": "pheno:apply_effect",
+                                    "effect": "minecraft:jump_boost",
+                                    "duration": 100,
+                                    "amplifier": 128
+                                  },
+                                  {
+                                    "type": "pheno:add_velocity",
+                                    "y": -1.0
+                                  }
+                                ]
+                              },
+                              "else_action": {
+                                "type": "pheno:nothing"
+                              }
+                            }
+                          ]
+                        },
+                        "else_action": {
+                          "type": "pheno:nothing"
+                        }
+                      }
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 5,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:haze",
+                      "kind": "townstead:net",
+                      "blocks": {
+                        "radius": 0
+                      }
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:fisherman/netter/weighted_net"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:jump_boost",
+                            "duration": 100,
+                            "amplifier": 128
+                          },
+                          {
+                            "type": "pheno:add_velocity",
+                            "y": -1.0
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:fisherman/netter/bait_and_switch"
+                },
+                "if_action": {
+                  "type": "pheno:area_of_effect",
+                  "radius": 16,
+                  "include_self": false,
+                  "target": "hostile",
+                  "action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:netter_lured"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:haze",
+                          "kind": "townstead:net",
+                          "blocks": {
+                            "radius": 0
+                          }
+                        },
+                        {
+                          "type": "pheno:if_else",
+                          "condition": {
+                            "type": "pheno:origin",
+                            "condition": {
+                              "type": "pheno:skill",
+                              "skill": "minecraft:fisherman/netter/weighted_net"
+                            }
+                          },
+                          "if_action": {
+                            "type": "pheno:and",
+                            "actions": [
+                              {
+                                "type": "pheno:apply_effect",
+                                "effect": "minecraft:jump_boost",
+                                "duration": 100,
+                                "amplifier": 128
+                              },
+                              {
+                                "type": "pheno:add_velocity",
+                                "y": -1.0
+                              }
+                            ]
+                          },
+                          "else_action": {
+                            "type": "pheno:nothing"
+                          }
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ]
           }
         },
         {

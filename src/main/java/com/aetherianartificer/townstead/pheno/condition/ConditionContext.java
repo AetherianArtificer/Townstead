@@ -59,8 +59,15 @@ public final class ConditionContext {
     public @Nullable LivingEntity origin() { return origin; }
     public @Nullable java.util.UUID otherId() { return otherId; }
 
+    /**
+     * A condition asked inside an action. When the action works at a block (a routine step's place, a job's target), the
+     * condition is asked there, as a routine step's own {@code when} is; it also asks about the action's item.
+     */
     public static ConditionContext of(com.aetherianartificer.townstead.pheno.action.ActionContext context) {
-        return new ConditionContext(context.entity(), context.other(), context.origin());
+        ConditionContext out = new ConditionContext(context.entity(), context.other(), context.origin());
+        if (context.focusBlock() != null) out.probe = context.focusBlock().immutable();
+        if (!context.item().isEmpty()) out.item = context.item();
+        return out;
     }
 
     public static ConditionContext of(com.aetherianartificer.townstead.pheno.selector.SelectorContext context) {

@@ -21,11 +21,11 @@
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:goodwill",
-      "min": 75
+      "min": 50
     },
     "action": {
       "type": "pheno:area_of_effect",
-      "radius": 12,
+      "radius": 8,
       "include_self": false,
       "target": "hostile",
       "action": {

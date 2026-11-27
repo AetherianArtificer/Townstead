@@ -37,6 +37,10 @@ import java.util.Locale;
  * {@code applies_to} makes it an aura: {@code {"radius":8, "self":true, "condition":{...}}}
  * applies it to every creature within the radius that passes the condition.</p>
  *
+ * <p>A {@code target} that is a namespaced id rather than a built-in name, such as
+ * {@code my_mod:grind_speed}, modifies a mechanic another mod owns and reads through
+ * {@code custom}; it does nothing while that mod is absent.</p>
+ *
  * <p>v1: {@code { "type":"pheno:modifier", "modifier":"break_speed", "value":1.5 }}<br>
  * v2: {@code { "type":"pheno:modifier", "target":"healing",
  *      "modify":{"operation":"multiply","value":1.5}, "when":{...} }}</p>
@@ -77,7 +81,12 @@ public final class ModifierGeneType implements GeneType {
         /** Knockback strength the bearer receives; above 1 throws them further. */
         KNOCKBACK_TAKEN("knockback_taken"),
         /** Knockback strength the bearer's hits deal. */
-        KNOCKBACK_DEALT("knockback_dealt");
+        KNOCKBACK_DEALT("knockback_dealt"),
+        /**
+         * A mechanic another mod owns, named by a namespaced id such as {@code my_mod:grind_speed}. The id is
+         * the discriminator; that mod reads it through the hooks' {@code custom} methods.
+         */
+        CUSTOM("custom");
 
         private final String key;
 
@@ -99,7 +108,7 @@ public final class ModifierGeneType implements GeneType {
         public static Modifier byKey(String raw) {
             if (raw == null) return null;
             String needle = raw.toLowerCase(Locale.ROOT);
-            for (Modifier m : values()) if (m.key.equals(needle)) return m;
+            for (Modifier m : values()) if (m != CUSTOM && m.key.equals(needle)) return m;
             return null;
         }
     }
@@ -154,9 +163,13 @@ public final class ModifierGeneType implements GeneType {
                 ? GsonHelper.getAsString(json, "target", "")
                 : GsonHelper.getAsString(json, "modifier", "");
         Modifier modifier = Modifier.byKey(rawTarget);
-        if (modifier == null) return null;
-
         ResourceLocation discriminator = null;
+        if (modifier == null) {
+            // Any namespaced id names a mechanic another mod reads; it does nothing unless that mod is loaded.
+            discriminator = rawTarget.indexOf(':') > 0 ? ResourceLocation.tryParse(rawTarget.toLowerCase(Locale.ROOT)) : null;
+            if (discriminator == null) return null;
+            modifier = Modifier.CUSTOM;
+        }
         if (modifier.usesEffect() && json.has("effect")) {
             discriminator = DataPackLang.parseId(GsonHelper.getAsString(json, "effect", ""));
         } else if (modifier.usesEnchantment() && json.has("enchantment")) {

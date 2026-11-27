@@ -14,7 +14,7 @@
   ],
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 600,
+    "cooldown": 400,
     "slot": 1,
     "ai_trigger": "when_hurt_nearby",
     "resource_cost": {

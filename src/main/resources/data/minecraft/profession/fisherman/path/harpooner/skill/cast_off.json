@@ -7,31 +7,272 @@
   "description": {
     "translate": "skill.townstead.fisherman.harpooner.cast_off.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:harpooner_line",
+  "cost": 2,
+  "requires": [
+    "long_gaff"
+  ],
+  "skill_group": "townstead:harpooner_utility",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 200,
-    "slot": 2,
+    "cooldown": 300,
+    "slot": 1,
     "ai_trigger": "never",
     "resource_cost": {
-      "resource": "townstead:stamina",
-      "amount": 20
+      "resource": "townstead:tide",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:ingredient",
+            "item": "minecraft:fishing_rod"
+          },
+          {
+            "type": "pheno:ingredient",
+            "tag": "starcatcher:rods"
+          }
+        ]
+      }
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:add_velocity",
-          "relative": true,
-          "z": 1.6,
-          "y": 0.6
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:flag",
+                "flag": "townstead:harpooner_far"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/harpooner/leviathans_line"
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:target_action",
+                "action": {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": -1.9,
+                  "y": 0.45
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:fisherman/harpooner/boarding"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:delay",
+                  "ticks": 10,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:add_velocity",
+                        "away_from_other": 1.2,
+                        "y": 0.3
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 40,
+                        "amplifier": 1
+                      }
+                    ]
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:fisherman/harpooner/hook_line_and_sinker"
+                      },
+                      {
+                        "type": "pheno:resource",
+                        "resource": "townstead:tide",
+                        "min": 10
+                      }
+                    ]
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 60,
+                      "amplifier": 3
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:weakness",
+                      "duration": 60,
+                      "amplifier": 0
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 24
+            }
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:target_action",
+                "action": {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": -1.9,
+                  "y": 0.45
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:fisherman/harpooner/boarding"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:delay",
+                  "ticks": 10,
+                  "action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:add_velocity",
+                        "away_from_other": 1.2,
+                        "y": 0.3
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 40,
+                        "amplifier": 1
+                      }
+                    ]
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:fisherman/harpooner/hook_line_and_sinker"
+                      },
+                      {
+                        "type": "pheno:resource",
+                        "resource": "townstead:tide",
+                        "min": 10
+                      }
+                    ]
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 60,
+                      "amplifier": 3
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:weakness",
+                      "duration": 60,
+                      "amplifier": 0
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            ],
+            "on": {
+              "type": "pheno:ray",
+              "distance": 12
+            }
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/harpooner/hook_line_and_sinker"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:tide",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:tide",
+            "amount": -10
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
         },
         {
           "type": "pheno:play_sound",
           "sound": "minecraft:entity.fishing_bobber.retrieve",
           "volume": 1.0,
           "pitch": 0.8
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.trident.riptide_1",
+          "volume": 0.6,
+          "pitch": 1.4
         }
       ]
     }

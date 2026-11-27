@@ -24,6 +24,8 @@ public final class Buoyancy {
     public static boolean ignoresCurrentFluid(LivingEntity entity) {
         if (!entity.isInWater() && !entity.isInLava()) return false;
         if (!ExpressedGenes.canCarry(entity)) return false;
+        if (entity.isInWater() && com.aetherianartificer.townstead.root.ability.MovementAbilities
+                .isActive(entity, com.aetherianartificer.townstead.root.ability.Ability.SINK)) return true;
         List<TagKey<Fluid>> fluids = entity.level().isClientSide
                 ? com.aetherianartificer.townstead.client.root.ClientBuoyancy.ignoredFluids(entity)
                 : serverFluids(entity);

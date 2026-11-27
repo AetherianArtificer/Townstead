@@ -1,0 +1,224 @@
+{
+  "schema": "townstead:variants/v1",
+  "axes": [
+    {
+      "id": "townstead:colour",
+      "label": "townstead.variant.colour",
+      "any": true,
+      "values": [
+        {
+          "id": "white",
+          "label": "color.minecraft.white",
+          "icon": "minecraft:white_dye"
+        },
+        {
+          "id": "orange",
+          "label": "color.minecraft.orange",
+          "icon": "minecraft:orange_dye"
+        },
+        {
+          "id": "magenta",
+          "label": "color.minecraft.magenta",
+          "icon": "minecraft:magenta_dye"
+        },
+        {
+          "id": "light_blue",
+          "label": "color.minecraft.light_blue",
+          "icon": "minecraft:light_blue_dye"
+        },
+        {
+          "id": "yellow",
+          "label": "color.minecraft.yellow",
+          "icon": "minecraft:yellow_dye"
+        },
+        {
+          "id": "lime",
+          "label": "color.minecraft.lime",
+          "icon": "minecraft:lime_dye"
+        },
+        {
+          "id": "pink",
+          "label": "color.minecraft.pink",
+          "icon": "minecraft:pink_dye"
+        },
+        {
+          "id": "gray",
+          "label": "color.minecraft.gray",
+          "icon": "minecraft:gray_dye"
+        },
+        {
+          "id": "light_gray",
+          "label": "color.minecraft.light_gray",
+          "icon": "minecraft:light_gray_dye"
+        },
+        {
+          "id": "cyan",
+          "label": "color.minecraft.cyan",
+          "icon": "minecraft:cyan_dye"
+        },
+        {
+          "id": "purple",
+          "label": "color.minecraft.purple",
+          "icon": "minecraft:purple_dye"
+        },
+        {
+          "id": "blue",
+          "label": "color.minecraft.blue",
+          "icon": "minecraft:blue_dye"
+        },
+        {
+          "id": "brown",
+          "label": "color.minecraft.brown",
+          "icon": "minecraft:brown_dye"
+        },
+        {
+          "id": "green",
+          "label": "color.minecraft.green",
+          "icon": "minecraft:green_dye"
+        },
+        {
+          "id": "red",
+          "label": "color.minecraft.red",
+          "icon": "minecraft:red_dye"
+        },
+        {
+          "id": "black",
+          "label": "color.minecraft.black",
+          "icon": "minecraft:black_dye"
+        }
+      ]
+    }
+  ],
+  "families": [
+    {
+      "id": "townstead:wool",
+      "base": "townstead:wool",
+      "label": "townstead.variant.family.wool",
+      "icon": "minecraft:white_wool",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_wool"
+    },
+    {
+      "id": "townstead:carpet",
+      "base": "townstead:carpet",
+      "label": "townstead.variant.family.carpet",
+      "icon": "minecraft:white_carpet",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_carpet"
+    },
+    {
+      "id": "townstead:bed",
+      "base": "townstead:bed",
+      "label": "townstead.variant.family.bed",
+      "icon": "minecraft:white_bed",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_bed"
+    },
+    {
+      "id": "townstead:banner",
+      "base": "townstead:banner",
+      "label": "townstead.variant.family.banner",
+      "icon": "minecraft:white_banner",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_banner"
+    },
+    {
+      "id": "townstead:terracotta",
+      "base": "townstead:terracotta",
+      "label": "townstead.variant.family.terracotta",
+      "icon": "minecraft:white_terracotta",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_terracotta"
+    },
+    {
+      "id": "townstead:glazed_terracotta",
+      "base": "townstead:glazed_terracotta",
+      "label": "townstead.variant.family.glazed_terracotta",
+      "icon": "minecraft:white_glazed_terracotta",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_glazed_terracotta"
+    },
+    {
+      "id": "townstead:concrete",
+      "base": "townstead:concrete",
+      "label": "townstead.variant.family.concrete",
+      "icon": "minecraft:white_concrete",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_concrete"
+    },
+    {
+      "id": "townstead:concrete_powder",
+      "base": "townstead:concrete_powder",
+      "label": "townstead.variant.family.concrete_powder",
+      "icon": "minecraft:white_concrete_powder",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_concrete_powder"
+    },
+    {
+      "id": "townstead:stained_glass",
+      "base": "townstead:stained_glass",
+      "label": "townstead.variant.family.stained_glass",
+      "icon": "minecraft:white_stained_glass",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_stained_glass"
+    },
+    {
+      "id": "townstead:stained_glass_pane",
+      "base": "townstead:stained_glass_pane",
+      "label": "townstead.variant.family.stained_glass_pane",
+      "icon": "minecraft:white_stained_glass_pane",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_stained_glass_pane"
+    },
+    {
+      "id": "townstead:candle",
+      "base": "townstead:candle",
+      "label": "townstead.variant.family.candle",
+      "icon": "minecraft:white_candle",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_candle"
+    },
+    {
+      "id": "townstead:shulker_box",
+      "base": "townstead:shulker_box",
+      "label": "townstead.variant.family.shulker_box",
+      "icon": "minecraft:white_shulker_box",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_shulker_box"
+    },
+    {
+      "id": "townstead:dye",
+      "base": "townstead:dye",
+      "label": "townstead.variant.family.dye",
+      "icon": "minecraft:white_dye",
+      "axes": [
+        "townstead:colour"
+      ],
+      "items": "minecraft:{value}_dye"
+    }
+  ]
+}

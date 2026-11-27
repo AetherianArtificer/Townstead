@@ -1,0 +1,30 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.cleaver.dress_the_kill"
+  },
+  "icon": "minecraft:leather",
+  "description": {
+    "translate": "skill.townstead.butcher.cleaver.dress_the_kill.description"
+  },
+  "cost": 1,
+  "requires": [
+    "keen_steel"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_kill",
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:flag",
+        "flag": "townstead:bleeding"
+      }
+    },
+    "action": {
+      "type": "pheno:change_resource",
+      "resource": "townstead:cut",
+      "amount": 10
+    }
+  }
+}

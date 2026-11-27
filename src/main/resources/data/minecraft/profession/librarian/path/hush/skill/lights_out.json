@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.hush.lights_out"
+  },
+  "icon": "minecraft:black_candle",
+  "description": {
+    "translate": "skill.townstead.librarian.hush.lights_out.description"
+  },
+  "cost": 1,
+  "requires": [
+    "blackout"
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.honer.whet"
+  },
+  "icon": "minecraft:grindstone",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.honer.whet.description"
+  },
+  "cost": 2,
+  "requires": [
+    "fit_the_grip"
+  ],
+  "skill_group": "townstead:honer_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:edge",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:equipped_item",
+          "slot": "mainhand",
+          "item_condition": {
+            "type": "pheno:or",
+            "conditions": [
+              {
+                "type": "pheno:ingredient",
+                "tag": "minecraft:swords"
+              },
+              {
+                "type": "pheno:ingredient",
+                "tag": "minecraft:axes"
+              }
+            ]
+          }
+        },
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:block_in_radius",
+              "radius": 3,
+              "block_condition": {
+                "type": "pheno:block",
+                "block": "minecraft:grindstone"
+              }
+            },
+            {
+              "type": "pheno:skill",
+              "skill": "minecraft:weaponsmith/honer/masterforged"
+            }
+          ]
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:honer_whetted",
+          "duration": 1200
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:weaponsmith/honer/masterforged"
+          },
+          "if_action": {
+            "type": "pheno:equipped_item_action",
+            "slot": "mainhand",
+            "item_action": {
+              "type": "pheno:damage",
+              "amount": 25
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:weaponsmith/honer/share_the_stone"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 6,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:equipped_item_action",
+              "slot": "mainhand",
+              "item_action": {
+                "type": "pheno:damage",
+                "amount": -40
+              }
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:block.grindstone.use",
+          "volume": 1.0,
+          "pitch": 0.8
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:crit",
+          "count": 20,
+          "spread": 0.5
+        }
+      ]
+    }
+  }
+}

@@ -9,15 +9,11 @@
   },
   "cost": 1,
   "requires": [
-    "hauling_arms"
+    "set_the_hook"
   ],
   "power": {
     "type": "pheno:action_over_time",
     "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:tide",
-      "amount": 0
-    },
     "condition": {
       "type": "pheno:and",
       "conditions": [
@@ -25,14 +21,14 @@
           "type": "pheno:equipped_item",
           "slot": "mainhand",
           "item_condition": {
-            "type": "or",
+            "type": "pheno:or",
             "conditions": [
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "item": "minecraft:fishing_rod"
               },
               {
-                "type": "ingredient",
+                "type": "pheno:ingredient",
                 "tag": "starcatcher:rods"
               }
             ]
@@ -40,7 +36,7 @@
         },
         {
           "type": "pheno:entity_in_radius",
-          "radius": 8,
+          "radius": 4,
           "condition": {
             "type": "pheno:hostile"
           }
@@ -48,9 +44,16 @@
       ]
     },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:tide",
-      "amount": 3
+      "type": "pheno:area_of_effect",
+      "radius": 4,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:apply_effect",
+        "effect": "minecraft:slowness",
+        "duration": 30,
+        "amplifier": 0
+      }
     }
   }
 }

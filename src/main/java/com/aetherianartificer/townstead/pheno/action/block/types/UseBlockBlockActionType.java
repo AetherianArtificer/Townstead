@@ -82,8 +82,15 @@ public final class UseBlockBlockActionType implements BlockActionType {
                 // implement machines through RightClickBlock listeners rather than Block methods;
                 // bypassing ServerPlayerGameMode would make those machines impossible to port
                 // through data alone.
-                InteractionResult result = actor.gameMode.useItemOn(actor, context.level(),
-                        actor.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+                // A block that applies its user's skills or rewards asks who the stand-in acts for.
+                com.aetherianartificer.townstead.pheno.action.block.StandIns.begin(actor, context.cause());
+                InteractionResult result;
+                try {
+                    result = actor.gameMode.useItemOn(actor, context.level(),
+                            actor.getMainHandItem(), InteractionHand.MAIN_HAND, hit);
+                } finally {
+                    com.aetherianartificer.townstead.pheno.action.block.StandIns.end(actor);
+                }
                 boolean changed = !beforeBlock.equals(context.level().getBlockState(context.pos()))
                         || !ItemStack.matches(beforeItem, actor.getMainHandItem());
                 // Event-driven integrations do not always claim the vanilla interaction result,

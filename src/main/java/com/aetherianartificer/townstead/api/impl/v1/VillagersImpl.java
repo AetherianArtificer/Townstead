@@ -78,6 +78,43 @@ final class VillagersImpl implements VillagersApi {
     }
 
     @Override
+    public Optional<String> clothes(Entity villager) {
+        try {
+            return villager instanceof net.conczin.mca.entity.VillagerEntityMCA mca ? Optional.ofNullable(mca.getClothes()) : Optional.empty();
+        } catch (Throwable t) {
+            ApiSupport.swallow("villagers.clothes", t);
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public boolean setClothes(Entity villager, String clothes) {
+        try {
+            if (!(villager instanceof net.conczin.mca.entity.VillagerEntityMCA mca) || clothes == null || clothes.isEmpty() || mca.isClothingLocked()) return false;
+            mca.setClothes(clothes);
+            return true;
+        } catch (Throwable t) {
+            ApiSupport.swallow("villagers.setClothes", t);
+            return false;
+        }
+    }
+
+    @Override
+    public Optional<String> spareClothes(Entity villager) {
+        try {
+            if (!(villager instanceof net.conczin.mca.entity.VillagerEntityMCA mca)) return Optional.empty();
+            String now = mca.getClothes();
+            java.util.function.Predicate<String> fits = com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.applies(mca)
+                    ? skin -> com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.fits(mca, skin) : skin -> true;
+            return com.aetherianartificer.townstead.clothing.policy.RigSkinPicker.pick(fits.and(skin -> !skin.equals(now)),
+                    mca.getGenetics().getGender(), "minecraft:none", mca.getUUID().getLeastSignificantBits() ^ 0x5A4E3L);
+        } catch (Throwable t) {
+            ApiSupport.swallow("villagers.spareClothes", t);
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public NeedResult adjustNeed(Entity entity, String needId, int delta, ResourceLocation source) {
         return mutate(entity, needId, delta, true, source);
     }

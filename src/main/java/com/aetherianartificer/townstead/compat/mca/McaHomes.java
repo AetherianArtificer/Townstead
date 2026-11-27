@@ -19,6 +19,7 @@ public final class McaHomes {
 
     /** Claims {@code bed} as the villager's home. False when someone else holds it. */
     public static boolean assign(ServerLevel level, VillagerEntityMCA villager, BlockPos bed) {
+        if (!com.aetherianartificer.townstead.root.attachment.BodyFit.canReach(villager, bed)) return false;
         Optional<GlobalPos> previous = villager.getBrain().getMemory(MemoryModuleType.HOME);
         if (previous.filter(home -> home.dimension().equals(level.dimension()) && home.pos().equals(bed)).isPresent()) {
             return true;

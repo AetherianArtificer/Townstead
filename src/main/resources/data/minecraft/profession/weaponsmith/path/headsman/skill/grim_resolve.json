@@ -1,0 +1,45 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.grim_resolve"
+  },
+  "icon": "minecraft:wither_skeleton_skull",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.grim_resolve.description"
+  },
+  "cost": 1,
+  "requires": [
+    "executioner"
+  ],
+  "power": {
+    "type": "pheno:prevent",
+    "what": "death",
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:edge",
+          "min": 50
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 4,
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:hostile"
+              },
+              {
+                "type": "pheno:health",
+                "max": 0.3,
+                "relative": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,5 +1,6 @@
 package com.aetherianartificer.townstead.politics.order;
 
+import com.aetherianartificer.townstead.profession.ProfessionTradeLedger;
 import com.aetherianartificer.townstead.culture.FactionNaming;
 import com.aetherianartificer.townstead.politics.definition.FactionKind;
 import com.aetherianartificer.townstead.politics.definition.PoliticalDefinitions;
@@ -35,6 +36,7 @@ public final class Orders {
     public static final ResourceLocation HUNTER_ORDER = ResourceLocation.tryParse("townstead:hunter_order");
     private static final ResourceLocation PROVENANCE = ResourceLocation.tryParse("townstead:lodge_founding");
     private static final int SYNC_INTERVAL = 200;
+    private static final com.aetherianartificer.townstead.tick.Stride.Site SYNC_STRIDE = new com.aetherianartificer.townstead.tick.Stride.Site(SYNC_INTERVAL);
 
     private Orders() {}
 
@@ -131,7 +133,7 @@ public final class Orders {
      * profession practices it, and so does someone training to join one; anyone else loses it.
      */
     public static void syncProfession(VillagerEntityMCA villager) {
-        if ((villager.tickCount + villager.getId()) % SYNC_INTERVAL != 0 || !(villager.level() instanceof ServerLevel level)) return;
+        if (!SYNC_STRIDE.due(villager, villager.tickCount + villager.getId()) || !(villager.level() instanceof ServerLevel level)) return;
         // A Persona's job comes from who they are, not from membership.
         if (com.aetherianartificer.townstead.persona.PersonaService.pinnedProfession(villager) != null) return;
         PoliticalSavedData data = PoliticalSavedData.get(level.getServer());
@@ -150,10 +152,10 @@ public final class Orders {
             if (sworn.profession().equals(current)) return;
             VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.getOptional(sworn.profession()).orElse(null);
             if (profession == null) return;
-            villager.setProfession(profession);
+            ProfessionTradeLedger.change(villager, profession);
             if (sworn.shift() != null) takeShift(level, villager, sworn.shift());
         } else if (memberProfessions().contains(current)) {
-            villager.setProfession(VillagerProfession.NONE);
+            ProfessionTradeLedger.change(villager, VillagerProfession.NONE);
             leaveShift(villager);
         }
     }
@@ -196,7 +198,7 @@ public final class Orders {
         if (members.profession() == null) return;
         VillagerProfession profession = BuiltInRegistries.VILLAGER_PROFESSION.getOptional(members.profession()).orElse(null);
         if (profession == null) return;
-        if (villager.getProfession() != profession) villager.setProfession(profession);
+        ProfessionTradeLedger.change(villager, profession);
         if (members.shift() != null) takeShift(level, villager, members.shift());
     }
 

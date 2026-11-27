@@ -1,7 +1,6 @@
 package com.aetherianartificer.townstead.replace;
 
 import com.aetherianartificer.townstead.root.disposition.Dispositions;
-import net.conczin.mca.entity.VillagerEntityMCA;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Mob;
 
@@ -21,12 +20,12 @@ public final class WildPlates {
 
     private WildPlates() {}
 
-    public static WildPlateS2CPayload plate(ServerPlayer player, Mob mob, VillagerEntityMCA person) {
+    public static WildPlateS2CPayload plate(ServerPlayer player, Mob mob, String name) {
         byte disposition = (byte) Dispositions.between(mob, player).ordinal();
         synchronized (SENT) {
             SENT.computeIfAbsent(player, key -> new HashMap<>()).put(mob.getId(), disposition);
         }
-        return new WildPlateS2CPayload(mob.getId(), person.getDisplayName().getString(), disposition);
+        return new WildPlateS2CPayload(mob.getId(), name, disposition);
     }
 
     public static void tick(ServerPlayer player) {
@@ -41,9 +40,9 @@ public final class WildPlates {
             seen.put(mob.getId(), disposition);
             Byte last = sent.get(mob.getId());
             if (last != null && last == disposition) continue;
-            VillagerEntityMCA person = WildCostume.person(mob);
-            if (person == null) continue;
-            send(player, new WildPlateS2CPayload(mob.getId(), person.getDisplayName().getString(), disposition));
+            String name = WildCostume.name(mob);
+            if (name == null) continue;
+            send(player, new WildPlateS2CPayload(mob.getId(), name, disposition));
         }
         synchronized (SENT) {
             sent.clear();

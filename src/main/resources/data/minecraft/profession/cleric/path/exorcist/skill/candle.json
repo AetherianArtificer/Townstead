@@ -1,0 +1,217 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.exorcist.candle"
+  },
+  "icon": "minecraft:candle",
+  "description": {
+    "translate": "skill.townstead.cleric.exorcist.candle.description"
+  },
+  "cost": 2,
+  "requires": [
+    "passing_bell"
+  ],
+  "skill_group": "townstead:exorcist_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:faith",
+      "amount": 30
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:cleric/exorcist/consecrate"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:faith",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:faith",
+                "amount": -10
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:cleric/exorcist/vigil_candle"
+                },
+                "if_action": {
+                  "type": "pheno:cloud",
+                  "radius": 6.0,
+                  "height": 3.0,
+                  "duration": 6000,
+                  "wait_time": 10,
+                  "reapply_delay": 20,
+                  "particle": "minecraft:small_flame",
+                  "do": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:entity_group",
+                      "group": "undead"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:flee",
+                          "duration": 40
+                        },
+                        {
+                          "type": "pheno:add_velocity",
+                          "away_from_other": 0.6,
+                          "y": 0.1
+                        },
+                        {
+                          "type": "pheno:ignite",
+                          "seconds": 3
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:cloud",
+                  "radius": 6.0,
+                  "height": 3.0,
+                  "duration": 1200,
+                  "wait_time": 10,
+                  "reapply_delay": 20,
+                  "particle": "minecraft:small_flame",
+                  "do": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:entity_group",
+                      "group": "undead"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:flee",
+                          "duration": 40
+                        },
+                        {
+                          "type": "pheno:add_velocity",
+                          "away_from_other": 0.6,
+                          "y": 0.1
+                        },
+                        {
+                          "type": "pheno:ignite",
+                          "seconds": 3
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:nothing"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:cleric/exorcist/vigil_candle"
+            },
+            "if_action": {
+              "type": "pheno:cloud",
+              "radius": 6.0,
+              "height": 3.0,
+              "duration": 6000,
+              "wait_time": 10,
+              "reapply_delay": 20,
+              "particle": "minecraft:small_flame",
+              "do": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:entity_group",
+                  "group": "undead"
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:flee",
+                      "duration": 40
+                    },
+                    {
+                      "type": "pheno:add_velocity",
+                      "away_from_other": 0.6,
+                      "y": 0.1
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            },
+            "else_action": {
+              "type": "pheno:cloud",
+              "radius": 6.0,
+              "height": 3.0,
+              "duration": 1200,
+              "wait_time": 10,
+              "reapply_delay": 20,
+              "particle": "minecraft:small_flame",
+              "do": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:entity_group",
+                  "group": "undead"
+                },
+                "if_action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:flee",
+                      "duration": 40
+                    },
+                    {
+                      "type": "pheno:add_velocity",
+                      "away_from_other": 0.6,
+                      "y": 0.1
+                    }
+                  ]
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.flintandsteel.use",
+          "volume": 0.8,
+          "pitch": 1.4
+        }
+      ]
+    }
+  }
+}

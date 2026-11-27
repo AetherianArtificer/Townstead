@@ -1,0 +1,21 @@
+{
+  "schema": "townstead:hangout_venue/v2",
+  "mods": [
+    "bitofamess"
+  ],
+  "buildings": [
+    "compat/bitofamess/bathhouse"
+  ],
+  "capacity": 6,
+  "activities": [
+    "townstead:bathhouse_soak"
+  ],
+  "tags": [
+    "townstead_hangouts:quiet",
+    "townstead_hangouts:relaxed"
+  ],
+  "amenities": [
+    "bathing",
+    "conversation"
+  ]
+}

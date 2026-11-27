@@ -1356,6 +1356,7 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
         SimpleContainer inventory = villager.getInventory();
         int foodSlot = townstead$findBestFoodSlot(villager, inventory);
         ItemStack keptFood = foodSlot >= 0 ? inventory.getItem(foodSlot) : ItemStack.EMPTY;
+        java.util.Set<ItemStack> keptSeeds = townstead$keptSeedStacks(inventory);
         return stack -> {
             if (stack == null || stack.isEmpty()) return false;
             boolean forced = townstead$isAlwaysStockOutput(stack);
@@ -1365,8 +1366,25 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
             if (com.aetherianartificer.townstead.farming.WaterContainers.isContainer(stack)) return false;
             if (townstead$isHarvestTool(stack)) return false;
             if (townstead$isWorkMaterial(stack)) return false;
-            return !townstead$isSeed(stack) || forced;
+            return forced || !keptSeeds.contains(stack);
         };
+    }
+
+    /**
+     * The largest stack of each seed item, which the farmer keeps for planting. Other stacks of
+     * the same item are surplus and go to storage, so crops that are their own seed (potatoes,
+     * carrots) still reach the granary.
+     */
+    private java.util.Set<ItemStack> townstead$keptSeedStacks(SimpleContainer inv) {
+        java.util.Map<net.minecraft.world.item.Item, ItemStack> largest = new java.util.HashMap<>();
+        for (int i = 0; i < inv.getContainerSize(); i++) {
+            ItemStack stack = inv.getItem(i);
+            if (!townstead$isSeed(stack)) continue;
+            largest.merge(stack.getItem(), stack, (a, b) -> b.getCount() > a.getCount() ? b : a);
+        }
+        java.util.Set<ItemStack> kept = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        kept.addAll(largest.values());
+        return kept;
     }
 
     /** The planned cell under the crop column that contains pos, or null. */
@@ -1601,12 +1619,13 @@ public class HarvestWorkTask extends Behavior<VillagerEntityMCA> implements Work
     }
 
     private boolean townstead$hasStockableOutput(SimpleContainer inv) {
+        java.util.Set<ItemStack> keptSeeds = townstead$keptSeedStacks(inv);
         for (int i = 0; i < inv.getContainerSize(); i++) {
             ItemStack s = inv.getItem(i);
             if (s.isEmpty()) continue;
             if (townstead$isAlwaysStockOutput(s)) return true;
             if (com.aetherianartificer.townstead.farming.Farmland.isHoe(s)) continue;
-            if (townstead$isSeed(s)) continue;
+            if (keptSeeds.contains(s)) continue;
             if (townstead$isWorkMaterial(s)) continue;
             return true;
         }

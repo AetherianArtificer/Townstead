@@ -9,43 +9,89 @@
   },
   "cost": 1,
   "requires": [
-    "hooded"
+    "judge"
   ],
-  "skill_group": "townstead:headsman_dread",
   "power": {
-    "type": "pheno:active_ability",
-    "cooldown": 400,
-    "slot": 2,
-    "ai_trigger": "when_threatened",
-    "resource_cost": {
-      "resource": "townstead:edge",
-      "amount": 30
-    },
-    "action": {
-      "type": "pheno:and",
-      "actions": [
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:weakness",
-          "duration": 300,
-          "amplifier": 1
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:slowness",
-          "duration": 300,
-          "amplifier": 1
-        },
-        {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:glowing",
-          "duration": 300,
-          "amplifier": 0
+    "type": "pheno:attack_modifier",
+    "modifier": 1.5,
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:flag",
+                "flag": "townstead:headsman_judged"
+              },
+              {
+                "type": "pheno:health",
+                "max": 0.4,
+                "relative": true
+              }
+            ]
+          },
+          {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:health",
+              "max": 0.3,
+              "relative": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  "companions": {
+    "executioner": {
+      "type": "pheno:attack_modifier",
+      "modifier": 2.0,
+      "bientity_condition": {
+        "type": "pheno:target_condition",
+        "condition": {
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:flag",
+                  "flag": "townstead:headsman_judged"
+                },
+                {
+                  "type": "pheno:health",
+                  "max": 0.4,
+                  "relative": true
+                }
+              ]
+            },
+            {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:health",
+                "max": 0.3,
+                "relative": true
+              }
+            }
+          ]
         }
-      ],
-      "on": {
-        "type": "pheno:ray",
-        "distance": 16
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:resource",
+            "resource": "townstead:edge",
+            "min": 25
+          },
+          {
+            "type": "pheno:skill",
+            "skill": "minecraft:weaponsmith/headsman/executioner"
+          }
+        ]
       }
     }
   }

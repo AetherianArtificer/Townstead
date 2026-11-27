@@ -299,12 +299,16 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
 
     private Optional<VillagerEntityMCA> townstead$findNearestNeedyYoung(ServerLevel level, VillagerEntityMCA caregiver) {
         AABB box = caregiver.getBoundingBox().inflate(SEARCH_RADIUS, VERTICAL_RADIUS, SEARCH_RADIUS);
-        List<VillagerEntityMCA> candidates = level.getEntitiesOfClass(VillagerEntityMCA.class, box,
-                v -> v.isAlive() && v != caregiver && townstead$isYoungHungry(v));
-
-        return candidates.stream()
-                .filter(child -> townstead$mayCareFor(caregiver, child))
-                .min(Comparator.comparingDouble(caregiver::distanceToSqr));
+        VillagerEntityMCA nearest = null;
+        double nearestSq = Double.MAX_VALUE;
+        for (VillagerEntityMCA child : YoungVillagerIndex.hungry(level)) {
+            if (child == caregiver || !child.isAlive() || !child.getBoundingBox().intersects(box)) continue;
+            double distanceSq = caregiver.distanceToSqr(child);
+            if (distanceSq >= nearestSq || !townstead$isYoungHungry(child) || !townstead$mayCareFor(caregiver, child)) continue;
+            nearest = child;
+            nearestSq = distanceSq;
+        }
+        return Optional.ofNullable(nearest);
     }
 
     private boolean townstead$mayCareFor(VillagerEntityMCA caregiver, VillagerEntityMCA child) {
@@ -334,11 +338,8 @@ public class CareForYoungTask extends Behavior<VillagerEntityMCA> {
     }
 
     private boolean townstead$isYoungHungry(VillagerEntityMCA villager) {
-        AgeState ageState = AgeState.byCurrentAge(villager.getAge());
-        if (!(ageState == AgeState.BABY || ageState == AgeState.TODDLER || ageState == AgeState.CHILD)) {
-            return false;
-        }
-        return TownsteadVillagers.get(villager).needs().hunger() < HungerData.ADEQUATE_THRESHOLD;
+        return YoungVillagerIndex.isYoung(villager)
+                && TownsteadVillagers.get(villager).needs().hunger() < HungerData.ADEQUATE_THRESHOLD;
     }
 
     private boolean townstead$hasFood(VillagerEntityMCA villager) {

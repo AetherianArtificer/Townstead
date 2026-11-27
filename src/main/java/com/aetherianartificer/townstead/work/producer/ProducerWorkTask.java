@@ -61,6 +61,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     protected static final int COLLECT_WAIT_MAX_TICKS = 40;
     protected static final long STATION_SESSION_LEASE_TICKS = MAX_DURATION + 40L;
     protected static final int OPPORTUNISTIC_SWEEP_INTERVAL = 10;
+    private final com.aetherianartificer.townstead.tick.Stride opportunisticSweep =
+            new com.aetherianartificer.townstead.tick.Stride(OPPORTUNISTIC_SWEEP_INTERVAL);
     protected static final int MAX_RECIPE_ATTEMPTS = 3;
     protected static final long WORKSITE_TARGET_RETRY_COOLDOWN_TICKS = 60L;
     protected static final int WORKSITE_MAX_RETRIES = 2;
@@ -489,6 +491,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             // order claim and subclass protocol state intact; reconciliation reads the machine's
             // real state before doing anything else.
             resumeCommittedCycle = true;
+            if (claimedLine != null) claimedLine.renew(claimedLineLease, gameTime + PARKED_CLAIM_LEASE_TICKS);
             return;
         }
         resumeCommittedCycle = false;
@@ -503,6 +506,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
 
     @Override
     protected void tick(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        if (claimedLine != null) claimedLine.renew(claimedLineLease, gameTime + CLAIM_LEASE_TICKS);
         if (!isEligibleVillager(level, villager) && !hasPendingPhysicalTransfer(level, villager)) {
             clearAll(level, villager, gameTime);
             return;
@@ -545,7 +549,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             recipeAttempts = 0;
         }
 
-        if (gameTime % OPPORTUNISTIC_SWEEP_INTERVAL == 0) {
+        if (opportunisticSweep.due(gameTime, villager)) {
             onOpportunisticSweep(level, villager, gameTime);
         }
 
@@ -636,6 +640,8 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         // A dish already on the shelf fills an empty plate faster than cooking another one.
         if (tryBeginPlateRestock(level, villager, gameTime)) return;
 
+        // stepping down from a chest or mid-jump, no path can be planned to any station: wait for the ground
+        if (!com.aetherianartificer.townstead.work.WorkBuildingNav.canPlanPath(villager)) return;
         ProducerStationSelection selection = selectStation(level, villager, gameTime);
         if (selection == null) {
             onNoWork(level, villager, gameTime);
@@ -712,6 +718,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     @Nullable private com.aetherianartificer.townstead.work.order.Order claimedLine;
     /** Output units reserved on that line; batching stations can claim more than one. */
     private int claimedLineAmount;
+    @Nullable private java.util.UUID claimedLineLease;
+    /** Renewed every tick while working, so a worker who vanished frees the line this soon after. */
+    private static final long CLAIM_LEASE_TICKS = 600L;
+    /** A committed cycle parked by a shift boundary is not ticked until the next shift; a day covers it. */
+    private static final long PARKED_CLAIM_LEASE_TICKS = 24000L;
     /** Number of copies of the active recipe physically committed in this cycle. */
     private int activeBatchOperations = 1;
 
@@ -742,8 +753,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     /** Hands a claim back when a job ends without producing. Safe to call when nothing is held. */
     protected void releaseOrderClaim() {
         if (claimedLine != null) {
-            claimedLine.abandon(claimedLineAmount);
+            claimedLine.abandon(claimedLineLease);
             claimedLine = null;
+            claimedLineLease = null;
             claimedLineAmount = 0;
             activeBatchOperations = 1;
             markOrdersChanged();
@@ -755,10 +767,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         boolean completed = false;
         if (claimedLine != null) {
             Order credited = claimedLine;
-            claimedLine.finish(claimedLineAmount, count);
+            claimedLine.finish(claimedLineLease, count);
             OrderContext context = orderContext(level, villager);
             completed = context != null && credited.satisfied(context);
             claimedLine = null;
+            claimedLineLease = null;
             claimedLineAmount = 0;
             activeBatchOperations = 1;
             markOrdersChanged();
@@ -791,6 +804,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
      * <p>The intermediate is deliberately not claimed against the line: only the recipe which
      * actually yields the ordered product may reserve or credit its quantity.</p>
      */
+    /** Whether a line still wanted can be made, or begun, at another station this worker uses. None by default. */
+    protected boolean orderWaitsElsewhere(ServerLevel level, VillagerEntityMCA villager, long gameTime,
+                                          OrderList orders, OrderContext context) {
+        return false;
+    }
+
     protected @Nullable ProducerRecipe orderedIntermediate(
             ServerLevel level, VillagerEntityMCA villager, long gameTime,
             OrderList orders, OrderContext context) {
@@ -840,7 +859,7 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                             (outstanding + outputPerOperation - 1) / outputPerOperation));
                     claimedLineAmount = Math.min(outstanding,
                             activeBatchOperations * outputPerOperation);
-                    claimedLine.claim(claimedLineAmount);
+                    claimedLineLease = claimedLine.claim(claimedLineAmount, gameTime + CLAIM_LEASE_TICKS);
                     markOrdersChanged();
                     debugChat(level, villager, "SELECT:ordered " + ordered.recipe().output()
                             + " x" + claimedLineAmount);
@@ -853,6 +872,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
                             + intermediate.output());
                     return intermediate;
                 }
+                // A line still wanted, and workable at another of this worker's stations, comes before working on
+                // their own here: own work would spend the very things the line needs.
+                if (orderWaitsElsewhere(level, villager, gameTime, orders, context)) {
+                    debugChat(level, villager, "SELECT:an order waits at another station");
+                    return null;
+                }
             }
         }
         // Standing down is checked last and needs no context: reading the list is a question about
@@ -864,7 +889,11 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
         Predicate<ResourceLocation> autonomousOutputAllowed = orders == null || orders.isEmpty()
                 ? output -> true
                 : output -> !orders.governs(output);
-        return pickRecipe(level, villager, gameTime, autonomousOutputAllowed);
+        ProducerRecipe picked = pickRecipe(level, villager, gameTime, autonomousOutputAllowed);
+        // An exact-product line (a potion, a taught brew) governs no item id, only its own recipe:
+        // once it is satisfied, the worker must not go on making that product on their own.
+        if (picked != null && orders != null && !orders.isEmpty() && orders.governs(picked)) return null;
+        return picked;
     }
 
     private void tickSelectRecipe(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
@@ -890,7 +919,9 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             }
             String missing = noRecipeMissingRequirement(level, villager, gameTime);
             debugChat(level, villager, "SELECT:no recipe, rotating"
-                    + (missing == null ? "" : " (missing " + missing + ")"));
+                    + (missing == null ? "" : " (missing " + missing + ")")
+                    + " at " + net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(
+                            level.getBlockState(stationAnchor).getBlock()));
             setBlocked(level, villager, gameTime,
                     missing == null ? ProducerBlockedReason.NO_RECIPE
                             : ProducerBlockedReason.NO_INGREDIENTS,
@@ -1066,6 +1097,14 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
             transition(ProducerState.COLLECT_WAIT, gameTime);
             return;
         }
+        if (!result.collected() && activeRecipe == null && stationAnchor != null) {
+            // finished output this worker has no recipe for and cannot take: coming straight back to collect it
+            // again ran every tick, forever. Leave the station a while; its own maker, or a player, takes it.
+            debugChat(level, villager, "COLLECT:nothing to take at " + level.getBlockState(stationAnchor).getBlock()
+                    + ", leaving it a while");
+            abandonCurrentStation(level, villager, gameTime, true);
+            return;
+        }
         finishCollect(level, villager, gameTime);
     }
 
@@ -1097,6 +1136,12 @@ public abstract class ProducerWorkTask extends Behavior<VillagerEntityMCA> imple
     // ── finishCollect ──
 
     private void finishCollect(ServerLevel level, VillagerEntityMCA villager, long gameTime) {
+        // Making it leaves what making it leaves, at the station, as a player's work there does.
+        if (stationAnchor != null && activeRecipe != null) {
+            com.aetherianartificer.townstead.compat.mess.MessBridge.worked(villager, stationAnchor,
+                    net.minecraft.core.registries.BuiltInRegistries.ITEM.get(activeRecipe.output()).getDefaultInstance(),
+                    Math.max(1, activeRecipe.outputCount()) * activeBatchOperations());
+        }
         storeOutputs(level, villager, gameTime);
         onSessionRelease(level, villager, stationAnchor, gameTime);
         releaseStationClaim(level, villager, stationAnchor);

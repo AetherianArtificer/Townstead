@@ -3,16 +3,173 @@
   "display_name": {
     "translate": "skill.townstead.fisherman.tidecaller.deep_breath"
   },
-  "icon": "minecraft:pufferfish",
+  "icon": "minecraft:turtle_helmet",
   "description": {
     "translate": "skill.townstead.fisherman.tidecaller.deep_breath.description"
   },
-  "cost": 1,
-  "requires": [
-    "webbed_feet"
-  ],
+  "cost": 2,
+  "skill_group": "townstead:tidecaller_utility",
   "power": {
-    "type": "pheno:ability",
-    "ability": "water_breathing"
+    "type": "pheno:active_ability",
+    "cooldown": 400,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 20
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:fisherman/tidecaller/spring_tide"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:tide",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:tide",
+                "amount": -10
+              },
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 8,
+                "include_self": true,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:water_breathing",
+                      "duration": 1200,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:dolphins_grace",
+                      "duration": 1200,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:and",
+                        "conditions": [
+                          {
+                            "type": "pheno:origin",
+                            "condition": {
+                              "type": "pheno:skill",
+                              "skill": "minecraft:fisherman/tidecaller/buoy"
+                            }
+                          },
+                          {
+                            "type": "pheno:health",
+                            "max": 0.5,
+                            "relative": true
+                          }
+                        ]
+                      },
+                      "if_action": {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:regeneration",
+                        "duration": 200,
+                        "amplifier": 0
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:water_breathing",
+                  "duration": 600,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:dolphins_grace",
+                  "duration": 600,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:fisherman/tidecaller/buoy"
+                        }
+                      },
+                      {
+                        "type": "pheno:health",
+                        "max": 0.5,
+                        "relative": true
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:regeneration",
+                    "duration": 200,
+                    "amplifier": 0
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.generic.splash",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:splash",
+              "count": 20,
+              "spread": 1.2
+            }
+          ]
+        }
+      ]
+    }
   }
 }

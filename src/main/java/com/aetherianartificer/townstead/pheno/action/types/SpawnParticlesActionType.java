@@ -58,6 +58,28 @@ public final class SpawnParticlesActionType implements ActionType {
             ParticleOptions options = DataParticles.options(id);
             if (options == null) return;
             LivingEntity e = ctx.entity();
+            // Where something landed (a shot's impact), the burst is there, not on whoever threw it.
+            Vec3 at = ctx.at();
+            if (at != null) {
+                Vec3 origin = at.add(0, 0.1, 0);
+                Vec3 up = new Vec3(0, 1, 0);
+                var emissions = shape == null || shape == ParticleShapes.Shape.POINT ? null
+                        : ParticleShapes.layout(shape, count, origin, up, radius, height, length, level.getRandom());
+                for (ServerPlayer player : level.players()) {
+                    if (player.distanceToSqr(origin) > 96 * 96) continue;
+                    if (emissions == null) {
+                        level.sendParticles(player, options, true, origin.x, origin.y, origin.z,
+                                count, spread, spread, spread, speed);
+                        continue;
+                    }
+                    for (ParticleShapes.Emission emission : emissions) {
+                        level.sendParticles(player, options, true,
+                                emission.position().x, emission.position().y, emission.position().z, 0,
+                                emission.direction().x, emission.direction().y, emission.direction().z, speed);
+                    }
+                }
+                return;
+            }
             if (shape == null || shape == ParticleShapes.Shape.POINT) {
                 float dx = e.getBbWidth() * spread;
                 float dy = e.getBbHeight() * spread;

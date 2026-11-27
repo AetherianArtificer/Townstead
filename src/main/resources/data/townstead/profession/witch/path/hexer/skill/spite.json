@@ -1,0 +1,50 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.witch.hexer.spite"
+  },
+  "icon": "minecraft:wither_rose",
+  "description": {
+    "translate": "skill.townstead.witch.hexer.spite.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lingering_curse"
+  ],
+  "power": {
+    "type": "pheno:trigger",
+    "trigger": "when_kill",
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 8,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:and",
+        "actions": [
+          {
+            "type": "pheno:invert",
+            "action": {
+              "type": "pheno:change_collection",
+              "collection": "townstead:hexed",
+              "operation": "add",
+              "time_limit": 1200
+            }
+          },
+          {
+            "type": "pheno:set_flag",
+            "flag": "townstead:hexer_hexed",
+            "duration": 1200
+          },
+          {
+            "type": "pheno:spawn_particles",
+            "particle": "minecraft:witch",
+            "count": 6,
+            "spread": 0.4
+          }
+        ]
+      },
+      "limit": 1
+    }
+  }
+}

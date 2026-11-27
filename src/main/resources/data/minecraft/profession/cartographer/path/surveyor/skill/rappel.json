@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.surveyor.rappel"
+  },
+  "icon": "minecraft:chain",
+  "description": {
+    "translate": "skill.townstead.cartographer.surveyor.rappel.description"
+  },
+  "cost": 1,
+  "requires": [
+    "plumb_line"
+  ]
+}

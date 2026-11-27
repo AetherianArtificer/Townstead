@@ -22,7 +22,9 @@ import org.spongepowered.asm.mixin.injection.At;
  *
  * <p>Targets the synthetic decoder lambda compiled from MCA's STREAM_CODEC
  * static initializer; the swap is gated to that single GETSTATIC, so the
- * encoder lambda (which uses COMPOUND_TAG for write-only) is untouched.</p>
+ * encoder lambda (which uses COMPOUND_TAG for write-only) is untouched. The
+ * lambda's number changes whenever MCA adds or removes a lambda in that class,
+ * so the decoder is matched by its full descriptor under each known number.</p>
  *
  * <p>1.21.1-only: {@code TRUSTED_COMPOUND_TAG} does not exist in 1.20.1, and
  * MCA's 1.20.1 Forge build serves this payload through the legacy
@@ -32,13 +34,15 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(targets = "net.conczin.mca.network.s2c.GetVillageResponse", remap = false)
 public class GetVillageResponseLargePacketMixin {
     @ModifyExpressionValue(
-            method = "lambda$static$4",
+            method = {
+                    "lambda$static$4(Lnet/minecraft/network/FriendlyByteBuf;)Lnet/conczin/mca/network/s2c/GetVillageResponse;",
+                    "lambda$static$1(Lnet/minecraft/network/FriendlyByteBuf;)Lnet/conczin/mca/network/s2c/GetVillageResponse;"
+            },
             at = @At(
                     value = "FIELD",
                     target = "Lnet/minecraft/network/codec/ByteBufCodecs;COMPOUND_TAG:Lnet/minecraft/network/codec/StreamCodec;",
                     opcode = Opcodes.GETSTATIC
             ),
-            expect = 1,
             remap = false
     )
     private static StreamCodec<ByteBuf, CompoundTag> townstead$useTrustedCompoundTagCodec(

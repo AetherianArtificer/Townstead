@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.butcher.smokehouse.tinderbox"
+  },
+  "icon": "minecraft:flint_and_steel",
+  "description": {
+    "translate": "skill.townstead.butcher.smokehouse.tinderbox.description"
+  },
+  "cost": 1,
+  "requires": [
+    "ember_carry"
+  ]
+}

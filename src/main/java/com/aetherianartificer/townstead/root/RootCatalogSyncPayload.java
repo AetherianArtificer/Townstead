@@ -508,6 +508,16 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (net.minecraft.world.entity.EquipmentSlot slot : r.disabledSlots()) buf.writeByte(slot.ordinal());
         buf.writeVarInt(r.hiddenSlots().size());
         for (net.minecraft.world.entity.EquipmentSlot slot : r.hiddenSlots()) buf.writeByte(slot.ordinal());
+        buf.writeBoolean(r.fit() != null);
+        if (r.fit() != null) buf.writeVarInt(r.fit().size());
+        if (r.fit() != null) r.fit().forEach((part, placements) -> {
+            buf.writeUtf(part);
+            buf.writeVarInt(placements.size());
+            for (RigDefinition.Fit fit : placements) {
+                buf.writeUtf(fit.bone());
+                writeAdjust(buf, fit.adjust());
+            }
+        });
         buf.writeVarInt(r.skinRemap().size());
         r.skinRemap().forEach((from, to) -> {
             buf.writeUtf(from);
@@ -728,6 +738,16 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
         for (int i = 0; i < hiddenCount; i++) {
             hiddenSlots.add(net.minecraft.world.entity.EquipmentSlot.values()[buf.readByte()]);
         }
+        boolean fitDeclared = buf.readBoolean();
+        int fitCount = fitDeclared ? Math.min(buf.readVarInt(), 16) : 0;
+        java.util.Map<String, List<RigDefinition.Fit>> fit = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < fitCount; i++) {
+            String part = buf.readUtf();
+            int placementCount = Math.min(buf.readVarInt(), 32);
+            List<RigDefinition.Fit> placements = new ArrayList<>(placementCount);
+            for (int j = 0; j < placementCount; j++) placements.add(new RigDefinition.Fit(buf.readUtf(), readAdjust(buf)));
+            fit.put(part, List.copyOf(placements));
+        }
         int remapCount = buf.readVarInt();
         java.util.Map<String, String> skinRemap = new java.util.LinkedHashMap<>();
         for (int i = 0; i < remapCount; i++) skinRemap.put(buf.readUtf(), buf.readUtf());
@@ -762,7 +782,7 @@ public record RootCatalogSyncPayload(List<RootCatalogEntry> entries, List<GeneCa
             float[] to = {buf.readFloat(), buf.readFloat(), buf.readFloat()};
             colliders.add(new RigDefinition.Collider(name, bone, from, to, buf.readFloat()));
         }
-        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays), List.copyOf(skinParts), java.util.Set.copyOf(hiddenSlots), declared ? List.copyOf(colliders) : null, java.util.Map.copyOf(skinRemap));
+        return new RigDefinition(id, modelType, modelRef, modelLayer, texture, bones, armorType, inner, outer, face, back, head, java.util.List.copyOf(boots), hold, hair, Map.copyOf(poses), hitbox, java.util.Set.copyOf(disabledSlots), cameraBone, emote, animation, modelClass, cameraOffset, List.copyOf(overlays), List.copyOf(skinParts), java.util.Set.copyOf(hiddenSlots), declared ? List.copyOf(colliders) : null, java.util.Map.copyOf(skinRemap), fitDeclared ? java.util.Map.copyOf(fit) : null);
     }
 
     private static void writeNullableUtf(FriendlyByteBuf buf, String value) {

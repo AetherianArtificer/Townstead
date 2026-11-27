@@ -127,6 +127,9 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ModConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ModConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
+    public static final ModConfigSpec.BooleanValue SOFT_PART_PUSH;
+    public static final ModConfigSpec.BooleanValue ENABLE_SEVERING;
+    public static final ModConfigSpec.BooleanValue ENABLE_GORE;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ModConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ModConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -144,6 +147,7 @@ public final class TownsteadConfig {
     public static final ModConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ModConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ModConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ModConfigSpec.BooleanValue FAR_VILLAGER_DETAIL;
     public static final ModConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ModConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ModConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
@@ -253,6 +257,9 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.BooleanValue RESOURCE_HUD_SHOW_VALUES;
     public static final ForgeConfigSpec.BooleanValue REDUCE_MOTION;
     public static final ForgeConfigSpec.EnumValue<com.aetherianartificer.townstead.client.attachment.PhysicsQuality> ATTACHMENT_PHYSICS;
+    public static final ForgeConfigSpec.BooleanValue SOFT_PART_PUSH;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_SEVERING;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_GORE;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_PARTICLES;
     public static final ForgeConfigSpec.BooleanValue DIALOGUE_DISABLE_CAMERA;
     public static final ForgeConfigSpec.BooleanValue SPIRIT_COLORBLIND_PATTERNS;
@@ -270,6 +277,7 @@ public final class TownsteadConfig {
     public static final ForgeConfigSpec.ConfigValue<Double> FATIGUE_MISALIGNED_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue DEBUG_VILLAGER_SLEEP;
     public static final ForgeConfigSpec.BooleanValue DEBUG_LOGGING;
+    public static final ForgeConfigSpec.BooleanValue FAR_VILLAGER_DETAIL;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> API_DENIED_WRITE_SOURCES;
     public static final ForgeConfigSpec.BooleanValue ENABLE_MCA_BUILDING_DISCOVERY;
     public static final ForgeConfigSpec.BooleanValue ENABLE_ENCLOSURE_RECOGNITION;
@@ -402,10 +410,10 @@ public final class TownsteadConfig {
             PREFERRED_THIRST_BACKEND = b
                     .translation("townstead.configuration.needs.thirst.preferredBackend")
                     .comment("Which thirst mod drives villager thirst when more than one is installed.",
-                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken, then Tough As Nails.",
-                             "\"legendary_survival_overhaul\", \"thirst\" or \"tough_as_nails\" pins that backend, falling back to an installed backend.")
+                             "\"auto\" prefers Legendary Survival Overhaul, then Thirst Was Reclaimed / Thirst Was Taken, then ThirstWasTaken2, then Homeostatic, then Tough As Nails.",
+                             "\"legendary_survival_overhaul\", \"thirst\", \"thirstwastaken2\", \"homeostatic\" or \"tough_as_nails\" pins that backend, falling back to an installed backend.")
                     // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
-                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst", "tough_as_nails"));
+                    .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "thirst", "thirstwastaken2", "homeostatic", "tough_as_nails"));
             b.pop();
         } else {
             ENABLE_SELF_INVENTORY_DRINKING = null;
@@ -427,10 +435,10 @@ public final class TownsteadConfig {
         PREFERRED_TEMPERATURE_BACKEND = b
                 .translation("townstead.configuration.needs.temperature.preferredBackend")
                 .comment("Which mod reports the ambient temperature at a villager position.",
-                         "\"auto\" prefers Legendary Survival Overhaul, then Cold Sweat, then Tough As Nails, then the built-in climate model.",
+                         "\"auto\" prefers Legendary Survival Overhaul, then Cold Sweat, then Tough As Nails, then Homeostatic, then the built-in climate model.",
                          "Naming a mod pins it when installed; \"builtin\" ignores temperature mods entirely.")
                 // Arrays.asList, not List.of: correct() probes missing keys with null and List.of.contains(null) throws.
-                .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "builtin"));
+                .defineInList("preferredBackend", "auto", Arrays.asList("auto", "legendary_survival_overhaul", "cold_sweat", "tough_as_nails", "homeostatic", "builtin"));
         CLIMATE_AUTHORITY = b
                 .translation("townstead.configuration.needs.temperature.climateAuthority")
                 .comment("Who decides the climate (seasons, biomes, day and night, weather, dimensions) when a temperature mod is installed.",
@@ -569,7 +577,8 @@ public final class TownsteadConfig {
                 .comment("Who may eat sapient flesh (the townstead:cannibal_meats item tag). Each tier includes the ones below it:",
                          "OFF: nobody. PREDATORS: roots declaring eats_sapients may eat other kinds, never their own.",
                          "TRAIT: predators as above, and cannibals (born with the gene, or broken by starvation) may eat anything.",
-                         "EVERYONE: anything goes. Starvation can only create cannibals at TRAIT or above.")
+                         "EVERYONE: anything goes. Starvation can only create cannibals at TRAIT or above.",
+                         "At every tier, diets declaring eats_sapients (a vampire's) may eat other kinds.")
                 .defineEnum("mode", com.aetherianartificer.townstead.hunger.CannibalismPolicy.Mode.OFF);
         CANNIBALISM_PRODUCE = b
                 .translation("townstead.configuration.cannibalism.produce")
@@ -819,6 +828,15 @@ public final class TownsteadConfig {
                 .defineInRange("startYearMax", 2200, 0, 100000);
         b.pop();
 
+        // ── Performance ──
+        b.translation("townstead.configuration.performance").push("performance");
+        FAR_VILLAGER_DETAIL = b
+                .translation("townstead.configuration.performance.farVillagerDetail")
+                .comment("Villagers far from every player think and move less often. They return to full detail",
+                        "when a player comes near, or when they are hurt, trading or in danger.")
+                .define("farVillagerDetail", true);
+        b.pop();
+
         // ── Debug ──
         b.translation("townstead.configuration.debug").push("debug");
         DEBUG_VILLAGER_AI = b
@@ -833,6 +851,18 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.debug.debugLogging")
                 .comment("Enable verbose Townstead diagnostic logging across subsystems (animation bridge, etc.).")
                 .define("debugLogging", false);
+        b.pop();
+
+        // ── Attachments ──
+        b.translation("townstead.configuration.attachments").push("attachments");
+        ENABLE_SEVERING = b
+                .translation("townstead.configuration.attachments.severing")
+                .comment("Attachments can come off when they take enough damage. When disabled, they only get wounded.")
+                .define("severing", true);
+        ENABLE_GORE = b
+                .translation("townstead.configuration.attachments.gore")
+                .comment("Show blood and wounds in this world, with Bit of a Mess installed.")
+                .define("gore", true);
         b.pop();
 
         // ── Public API ──
@@ -954,6 +984,10 @@ public final class TownsteadConfig {
                 .translation("townstead.configuration.attachments.physics")
                 .comment("Secondary motion on tails, ears, hair and other attachments: FULL, LOW (nearby bearers only, no wind) or OFF. Reduce Motion caps this at LOW.")
                 .defineEnum("physics", com.aetherianartificer.townstead.client.attachment.PhysicsQuality.FULL);
+        SOFT_PART_PUSH = clientBuilder
+                .translation("townstead.configuration.attachments.softPush")
+                .comment("Let a soft part you wear (a sac, a belly) nudge you gently away from walls it presses on.")
+                .define("softPush", true);
         clientBuilder.pop();
 
         clientBuilder.translation("townstead.configuration.accessibility").push("accessibility");

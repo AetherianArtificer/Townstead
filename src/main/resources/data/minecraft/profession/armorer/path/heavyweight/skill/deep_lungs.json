@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.heavyweight.deep_lungs"
+  },
+  "icon": "minecraft:turtle_helmet",
+  "description": {
+    "translate": "skill.townstead.armorer.heavyweight.deep_lungs.description"
+  },
+  "cost": 1,
+  "requires": [
+    "iron_tread"
+  ]
+}

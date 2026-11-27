@@ -25,10 +25,14 @@
           "type": "pheno:tamed"
         },
         "if_action": {
-          "type": "pheno:apply_effect",
-          "effect": "minecraft:resistance",
-          "duration": 30,
-          "amplifier": 0
+          "type": "pheno:ward",
+          "id": "loyal_companions",
+          "amount": 1000,
+          "fraction": 0.2,
+          "duration": 30
+        },
+        "else_action": {
+          "type": "pheno:nothing"
         }
       }
     }

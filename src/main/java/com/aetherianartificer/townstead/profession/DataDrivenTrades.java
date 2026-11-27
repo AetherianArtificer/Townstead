@@ -76,6 +76,28 @@ public final class DataDrivenTrades {
         }
     }
 
+    /**
+     * {@code listings} without the data slots that offer this trader nothing. Vanilla rolls a
+     * fixed number of listings and, on 1.20.1, does not retry one that comes back empty; the
+     * unused slots of a profession with few data trades would otherwise crowd out its real ones.
+     */
+    public static VillagerTrades.ItemListing[] withoutEmptySlots(VillagerTrades.ItemListing[] listings,
+                                                                Entity trader) {
+        if (listings == null) return null;
+        List<VillagerTrades.ItemListing> kept = null;
+        for (int i = 0; i < listings.length; i++) {
+            VillagerTrades.ItemListing listing = listings[i];
+            boolean empty = listing instanceof DataDrivenListing data && data.getOffer(trader, null) == null;
+            if (empty && kept == null) {
+                kept = new ArrayList<>(listings.length);
+                for (int j = 0; j < i; j++) kept.add(listings[j]);
+            } else if (!empty && kept != null) {
+                kept.add(listing);
+            }
+        }
+        return kept == null ? listings : kept.toArray(VillagerTrades.ItemListing[]::new);
+    }
+
     private static boolean hasResult(net.minecraft.world.item.trading.MerchantOffers offers,
                                      ResourceLocation resultItem) {
         for (MerchantOffer offer : offers) {

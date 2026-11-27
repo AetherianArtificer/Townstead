@@ -9,6 +9,20 @@
   "color": "#7A8A9A",
   "powers": [
     {
+      "type": "pheno:trigger",
+      "trigger": "when_hurt",
+      "condition": {
+        "type": "pheno:career_xp",
+        "career": "minecraft:armorer",
+        "at_least": 80
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:temper",
+        "amount": 5
+      }
+    },
+    {
       "type": "pheno:action_over_time",
       "interval": 20,
       "resource_cost": {
@@ -19,28 +33,66 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:armorer/bulwark/take_the_hit"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:armorer/bulwark/iron_will"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:armorer/bulwark/arrow_screen"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:armorer",
+            "at_least": 80
           },
           {
-            "type": "pheno:entity_in_radius",
-            "radius": 8,
-            "condition": {
-              "type": "pheno:hostile"
-            }
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:block_in_radius",
+                "radius": 3,
+                "block_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:in_tag",
+                      "tag": "minecraft:anvil"
+                    },
+                    {
+                      "type": "pheno:and",
+                      "conditions": [
+                        {
+                          "type": "pheno:or",
+                          "conditions": [
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:furnace"
+                            },
+                            {
+                              "type": "pheno:block",
+                              "block": "minecraft:blast_furnace"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "pheno:block_state",
+                          "property": "lit",
+                          "value": "true"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "type": "pheno:equipped_item",
+                "slot": "head"
+              },
+              {
+                "type": "pheno:equipped_item",
+                "slot": "chest"
+              },
+              {
+                "type": "pheno:equipped_item",
+                "slot": "legs"
+              },
+              {
+                "type": "pheno:equipped_item",
+                "slot": "feet"
+              }
+            ]
           }
         ]
       },
@@ -54,27 +106,27 @@
   "skills": [
     [
       "arrow_catcher",
-      "stand_firm",
-      "cover"
+      "douse",
+      "guard"
     ],
     [
       "proofed_plate",
-      "brace_for_impact",
-      "shield_line"
+      "blast_plate",
+      "cover"
     ],
     [
-      "take_the_hit",
-      "iron_will",
-      "arrow_screen"
-    ],
-    [
-      "fireproof",
-      "fortress",
+      "braced",
+      "stand_fast",
       "iron_wall"
     ],
     [
+      "fireproof",
+      "rally_point",
+      "last_bastion"
+    ],
+    [
       "unbreakable",
-      "last_bastion",
+      "living_shield",
       "aegis"
     ]
   ]

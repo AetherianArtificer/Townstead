@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.delver.clean_seam"
+  },
+  "icon": "minecraft:bundle",
+  "description": {
+    "translate": "skill.townstead.toolsmith.delver.clean_seam.description"
+  },
+  "cost": 1,
+  "requires": [
+    "vein"
+  ]
+}

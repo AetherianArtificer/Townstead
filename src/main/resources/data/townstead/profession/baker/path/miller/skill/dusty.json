@@ -1,0 +1,29 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.baker.miller.dusty"
+  },
+  "icon": "minecraft:white_dye",
+  "description": {
+    "translate": "skill.townstead.baker.miller.dusty.description"
+  },
+  "cost": 1,
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 20,
+    "condition": {
+      "type": "pheno:block",
+      "y": 0,
+      "block_condition": {
+        "type": "pheno:block",
+        "block": "townstead:haze"
+      }
+    },
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:speed",
+      "duration": 30,
+      "amplifier": 0
+    }
+  }
+}

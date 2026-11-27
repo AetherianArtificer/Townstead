@@ -1,0 +1,92 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.threshold"
+  },
+  "icon": "minecraft:oak_door",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.threshold.description"
+  },
+  "cost": 1,
+  "requires": [
+    "load_bearing"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 5,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "x": 1,
+                  "y": 1,
+                  "z": 0,
+                  "block_condition": {
+                    "type": "movement_blocking"
+                  }
+                },
+                {
+                  "type": "pheno:block",
+                  "x": -1,
+                  "y": 1,
+                  "z": 0,
+                  "block_condition": {
+                    "type": "movement_blocking"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:block",
+                  "x": 0,
+                  "y": 1,
+                  "z": 1,
+                  "block_condition": {
+                    "type": "movement_blocking"
+                  }
+                },
+                {
+                  "type": "pheno:block",
+                  "x": 0,
+                  "y": 1,
+                  "z": -1,
+                  "block_condition": {
+                    "type": "movement_blocking"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 2,
+          "condition": {
+            "type": "pheno:hostile"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:area_of_effect",
+      "radius": 2,
+      "include_self": false,
+      "target": "hostile",
+      "action": {
+        "type": "pheno:add_velocity",
+        "away_from_other": 0.6,
+        "y": 0.1
+      }
+    }
+  }
+}

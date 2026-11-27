@@ -6,7 +6,6 @@ import com.aetherianartificer.townstead.compat.mca.McaRoomWorkflow;
 import com.mojang.brigadier.CommandDispatcher;
 import net.conczin.mca.server.world.data.Building;
 //? if >=1.21 {
-import net.conczin.mca.server.world.data.RegisteredRoomUpdate;
 //?}
 import net.conczin.mca.server.world.data.Village;
 import net.conczin.mca.server.world.data.VillageManager;
@@ -61,7 +60,7 @@ public final class BuildingDiagnosticsCommands {
             //? if >=1.21 {
             var scan = McaRoomWorkflow.analyzeRoom(level, pos);
             report.append("\n").append(Component.translatable(
-                    "townstead.command.building.add_room_analysis", scan.result().toString(),
+                    "townstead.command.building.add_room_analysis", String.valueOf(scan.result()),
                     scan.matchingTypes().toString()));
             //?}
             source.sendSuccess(() -> report, false);
@@ -80,10 +79,10 @@ public final class BuildingDiagnosticsCommands {
         report.append("\n").append(Component.translatable("townstead.command.building.structure_floor",
                 room.getStructureId(), room.getFloorId(), room.getFloorCells().size(),
                 room.getFloorFootprintArea()));
-        RegisteredRoomUpdate update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(
+        var update = McaRoomWorkflow.analyzeRegisteredRoomUpdate(
                 level, village, room.getId(), pos);
         report.append("\n").append(Component.translatable("townstead.command.building.update_analysis",
-                update.result().toString(), update.matchingTypes().toString()));
+                String.valueOf(update.result()), update.matchingTypes().toString()));
         //?}
         source.sendSuccess(() -> report, false);
         return 1;

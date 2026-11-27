@@ -7,54 +7,77 @@
   "description": {
     "translate": "skill.townstead.leatherworker.saddler.charge.description"
   },
-  "cost": 1,
-  "requires": [
-    "gallop"
-  ],
-  "skill_group": "townstead:saddler_ride",
+  "cost": 2,
+  "skill_group": "townstead:saddler_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 400,
-    "slot": 1,
-    "ai_trigger": "never",
+    "cooldown": 300,
+    "slot": 2,
+    "ai_trigger": "when_threatened",
     "resource_cost": {
-      "resource": "townstead:hide",
-      "amount": 40
-    },
-    "condition": {
-      "type": "pheno:riding"
+      "resource": "townstead:stamina",
+      "amount": 25
     },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:riding_action",
-          "action": {
-            "type": "pheno:apply_effect",
-            "effect": "minecraft:speed",
-            "duration": 100,
-            "amplifier": 3
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:leatherworker/saddler/cavalry"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:stamina",
+                "min": 25
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:stamina",
+            "amount": -25
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {
-          "type": "pheno:area_of_effect",
-          "radius": 4,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
-            "type": "pheno:and",
-            "actions": [
-              {
-                "type": "pheno:add_velocity",
-                "away_from_other": 1.4,
-                "y": 0.3
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:leatherworker/saddler/cavalry"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 12,
+            "include_self": false,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:riding"
               },
-              {
-                "type": "pheno:damage",
-                "amount": 4,
-                "source": "other"
+              "if_action": {
+                "type": "pheno:riding_action",
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 100,
+                  "amplifier": 3
+                }
+              },
+              "else_action": {
+                "type": "pheno:nothing"
               }
-            ]
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           }
         },
         {
@@ -62,6 +85,118 @@
           "sound": "minecraft:entity.horse.gallop",
           "volume": 1.0,
           "pitch": 1.0
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:riding"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:riding_action",
+                "action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:speed",
+                  "duration": 100,
+                  "amplifier": 3
+                }
+              },
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 4,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:add_velocity",
+                      "away_from_other": 1.4,
+                      "y": 0.3
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:leatherworker/saddler/ride_down"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:damage",
+                            "amount": 5,
+                            "source": "other"
+                          },
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:slowness",
+                            "duration": 40,
+                            "amplifier": 3
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:dash",
+            "distance": 4,
+            "ticks": 6,
+            "max_hits": 4,
+            "stop_on_hit": false,
+            "hit_radius": 1.0,
+            "on_hit": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:add_velocity",
+                  "away_from_other": 1.4,
+                  "y": 0.3
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:leatherworker/saddler/ride_down"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:damage",
+                        "amount": 5,
+                        "source": "other"
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 40,
+                        "amplifier": 3
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
+          }
         }
       ]
     }

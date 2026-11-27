@@ -7,15 +7,12 @@
   "description": {
     "translate": "skill.townstead.shepherd.packmaster.sic_em.description"
   },
-  "cost": 1,
-  "requires": [
-    "heel"
-  ],
-  "skill_group": "townstead:pack_command",
+  "cost": 2,
+  "skill_group": "townstead:packmaster_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 240,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -25,18 +22,66 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 16,
-          "include_self": false,
-          "target": "non_hostile",
-          "action": {
-            "type": "pheno:if_else",
-            "condition": {
-              "type": "pheno:tamed"
-            },
-            "if_action": {
-              "type": "pheno:set_attack_target"
-            }
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:hostile"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 16,
+                "include_self": false,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:tamed"
+                  },
+                  "if_action": {
+                    "type": "pheno:set_attack_target"
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:slowness",
+                "duration": 40,
+                "amplifier": 3
+              },
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:origin",
+                  "condition": {
+                    "type": "pheno:skill",
+                    "skill": "minecraft:shepherd/packmaster/flank"
+                  }
+                },
+                "if_action": {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 100,
+                  "amplifier": 1
+                },
+                "else_action": {
+                  "type": "pheno:nothing"
+                }
+              },
+              {
+                "type": "pheno:apply_effect",
+                "effect": "minecraft:glowing",
+                "duration": 100,
+                "amplifier": 0
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
           },
           "on": {
             "type": "pheno:ray",
@@ -44,10 +89,67 @@
           }
         },
         {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:shepherd/packmaster/release_the_hounds"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:flock",
+                "min": 10
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:change_resource",
+                "resource": "townstead:flock",
+                "amount": -10
+              },
+              {
+                "type": "pheno:area_of_effect",
+                "radius": 16,
+                "include_self": false,
+                "target": "non_hostile",
+                "action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:tamed"
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:strength",
+                    "duration": 200,
+                    "amplifier": 1
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
           "type": "pheno:play_sound",
           "sound": "minecraft:block.note_block.flute",
           "volume": 1.0,
           "pitch": 1.6
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.wolf.growl",
+          "volume": 1.0,
+          "pitch": 1.0
         }
       ]
     }

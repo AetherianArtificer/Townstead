@@ -1,0 +1,47 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.tiller.good_earth"
+  },
+  "icon": "minecraft:farmland",
+  "description": {
+    "translate": "skill.townstead.farmer.tiller.good_earth.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stomp"
+  ],
+  "power": {
+    "type": "pheno:action_over_time",
+    "interval": 100,
+    "resource_cost": {
+      "resource": "townstead:grit",
+      "amount": 0
+    },
+    "condition": {
+      "type": "pheno:resource",
+      "resource": "townstead:grit",
+      "min": 25
+    },
+    "action": {
+      "type": "pheno:at",
+      "blocks": {
+        "radius": [
+          6,
+          1,
+          6
+        ],
+        "where": {
+          "type": "pheno:block",
+          "block": "minecraft:farmland"
+        }
+      },
+      "do": {
+        "type": "pheno:modify_block_state",
+        "property": "moisture",
+        "value": "7"
+      },
+      "optional": true
+    }
+  }
+}

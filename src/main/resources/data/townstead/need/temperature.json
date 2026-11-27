@@ -162,6 +162,18 @@
       "surface_c": 500,
       "native_reference_degrees": 0
     },
+    "minecraft:magma_block": {
+      "power_w": 2500,
+      "radiant_degrees": 12,
+      "native_reference_degrees": 0,
+      "draft": false
+    },
+    "minecraft:lava": {
+      "power_w": 5000,
+      "radiant_degrees": 12,
+      "native_reference_degrees": 0,
+      "draft": false
+    },
     "minecraft:soul_campfire": {
       "power_w": 3500,
       "surface_c": 300,

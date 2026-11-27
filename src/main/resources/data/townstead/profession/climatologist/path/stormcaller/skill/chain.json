@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.chain"
+  },
+  "icon": "minecraft:chain",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.chain.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lightning_strike"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cartographer.pathfinder.no_one_left_behind"
+  },
+  "icon": "minecraft:lead",
+  "description": {
+    "translate": "skill.townstead.cartographer.pathfinder.no_one_left_behind.description"
+  },
+  "cost": 1,
+  "requires": [
+    "lead_the_way"
+  ]
+}

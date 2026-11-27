@@ -19,21 +19,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:butcher/tenderizer/rhythm"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:butcher/tenderizer/pulverize"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:butcher/tenderizer/hold_down"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:butcher",
+            "at_least": 80
           },
           {
             "type": "pheno:and",
@@ -42,7 +30,7 @@
                 "type": "pheno:equipped_item",
                 "slot": "mainhand",
                 "item_condition": {
-                  "type": "ingredient",
+                  "type": "pheno:ingredient",
                   "tag": "townstead:butcher_hammers"
                 }
               },
@@ -60,6 +48,55 @@
       "action": {
         "type": "pheno:change_resource",
         "resource": "townstead:cut",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:cut",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:butcher",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "pheno:ingredient",
+                  "tag": "townstead:butcher_hammers"
+                }
+              },
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 8,
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                }
+              },
+              {
+                "type": "pheno:building"
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:cut",
         "amount": 1
       }
     }
@@ -67,28 +104,28 @@
   "skills": [
     [
       "mallet_blows",
-      "tenderize",
-      "brace"
+      "heave",
+      "tenderize"
     ],
     [
       "tender_cuts",
-      "flatten",
-      "stagger"
-    ],
-    [
-      "rhythm",
-      "pulverize",
-      "hold_down"
+      "strong_back",
+      "rhythm"
     ],
     [
       "momentum",
-      "mallet_storm",
-      "tough_hide"
+      "drive",
+      "bone_breaker"
     ],
     [
-      "bone_breaker",
-      "meat_grinder",
-      "iron_butcher"
+      "butchers_stance",
+      "wedge",
+      "mallet_storm"
+    ],
+    [
+      "tough_hide",
+      "iron_butcher",
+      "meat_grinder"
     ]
   ]
 }

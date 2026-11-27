@@ -390,7 +390,7 @@ public class WorksiteRegister extends SavedData {
         ListTag rows = entry.getList(KEY_ORDERS, Tag.TAG_COMPOUND);
         for (int i = 0; i < rows.size(); i++) {
             CompoundTag row = rows.getCompound(i);
-            ResourceLocation output = parseRl(row.getString(KEY_ORDER_OUTPUT));
+            ResourceLocation output = renamed(parseRl(row.getString(KEY_ORDER_OUTPUT)));
             // A line naming an item that no longer parses is dropped; the rest of the list stands.
             if (output == null) continue;
             com.aetherianartificer.townstead.work.order.Order order =
@@ -431,6 +431,15 @@ public class WorksiteRegister extends SavedData {
     }
 
     @Nullable
+    // Task types renamed since a save could have listed them: the butcher's blood cleaning became tidying.
+    private static final java.util.Map<String, String> RENAMED = java.util.Map.of("townstead_work:clean", "townstead_work:tidy");
+
+    private static ResourceLocation renamed(ResourceLocation id) {
+        if (id == null) return null;
+        String now = RENAMED.get(id.toString());
+        return now == null ? id : parseRl(now);
+    }
+
     private static ResourceLocation parseRl(String raw) {
         if (raw == null || raw.isEmpty()) return null;
         //? if >=1.21 {

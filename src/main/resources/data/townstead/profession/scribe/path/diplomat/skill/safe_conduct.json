@@ -16,6 +16,61 @@
     "mob_condition": {
       "type": "pheno:entity_type",
       "tag": "minecraft:raiders"
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:equipped_item",
+            "slot": "mainhand",
+            "item_condition": {
+              "type": "pheno:or",
+              "conditions": [
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:swords"
+                },
+                {
+                  "type": "pheno:ingredient",
+                  "tag": "minecraft:axes"
+                },
+                {
+                  "type": "pheno:ingredient",
+                  "item": "minecraft:bow"
+                },
+                {
+                  "type": "pheno:ingredient",
+                  "item": "minecraft:crossbow"
+                },
+                {
+                  "type": "pheno:ingredient",
+                  "item": "minecraft:trident"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:flag",
+            "flag": "townstead:diplomat_provoked"
+          }
+        }
+      ]
+    }
+  },
+  "companions": {
+    "provoked": {
+      "type": "pheno:trigger",
+      "trigger": "when_attack",
+      "action": {
+        "type": "pheno:set_flag",
+        "flag": "townstead:diplomat_provoked",
+        "duration": 1200
+      }
     }
   }
 }

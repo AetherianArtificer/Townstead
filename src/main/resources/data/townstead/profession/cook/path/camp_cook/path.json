@@ -1,0 +1,116 @@
+{
+  "schema": "townstead:profession_path/v1",
+  "name": {
+    "translate": "career.townstead.cook.path.camp_cook"
+  },
+  "title": {
+    "translate": "career.townstead.cook.title.camp_cook"
+  },
+  "color": "#B8742A",
+  "powers": [
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:simmer",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "townstead:cook",
+            "at_least": 300
+          },
+          {
+            "type": "pheno:block_in_radius",
+            "radius": 4,
+            "block_condition": {
+              "type": "pheno:in_tag",
+              "tag": "minecraft:campfires"
+            }
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:simmer",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:simmer",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "townstead:cook",
+            "at_least": 300
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:block_in_radius",
+                  "radius": 4,
+                  "block_condition": {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:campfires"
+                  }
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 8,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:simmer",
+        "amount": 2
+      }
+    }
+  ],
+  "skills": [
+    [
+      "open_air",
+      "dinner_bell",
+      "ladle"
+    ],
+    [
+      "campfire_cook",
+      "seconds",
+      "hot_soup"
+    ],
+    [
+      "smoke_signal",
+      "hearthside",
+      "kick_the_pot"
+    ],
+    [
+      "seasoned",
+      "bedroll_corner",
+      "slippery"
+    ],
+    [
+      "stone_soup",
+      "camp_kitchen",
+      "cast_iron"
+    ]
+  ]
+}

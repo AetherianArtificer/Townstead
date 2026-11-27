@@ -11,7 +11,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * A block where a mob's own gene would hurt it (see {@code Hazard}) reads as other known danger, so
  * routes go around it when they reasonably can and still cross it when nothing else reaches.
- * MCA's evaluator inherits this method, so villagers are covered.
+ * MCA's evaluator inherits this method, so villagers are covered. A block inside a private
+ * Ownership Plaque place that does not list the villager reads as a wall (see {@code PrivatePaths}).
  */
 @Mixin(WalkNodeEvaluator.class)
 public abstract class WalkNodeHazardMixin {
@@ -21,6 +22,11 @@ public abstract class WalkNodeHazardMixin {
     private void townstead$hazardCost(net.minecraft.world.level.pathfinder.PathfindingContext context,
                                       int x, int y, int z, Mob mob,
                                       CallbackInfoReturnable<net.minecraft.world.level.pathfinder.PathType> cir) {
+        if (cir.getReturnValue() != net.minecraft.world.level.pathfinder.PathType.BLOCKED
+                && com.aetherianartificer.townstead.storage.PrivatePaths.closed(mob, x, y, z)) {
+            cir.setReturnValue(net.minecraft.world.level.pathfinder.PathType.BLOCKED);
+            return;
+        }
         if (cir.getReturnValue() == net.minecraft.world.level.pathfinder.PathType.WALKABLE
                 && HazardPaths.dangerous(mob, x, y, z)) {
             cir.setReturnValue(net.minecraft.world.level.pathfinder.PathType.DANGER_OTHER);
@@ -31,6 +37,11 @@ public abstract class WalkNodeHazardMixin {
     private void townstead$hazardCost(net.minecraft.world.level.BlockGetter level,
                                       int x, int y, int z, Mob mob,
                                       CallbackInfoReturnable<net.minecraft.world.level.pathfinder.BlockPathTypes> cir) {
+        if (cir.getReturnValue() != net.minecraft.world.level.pathfinder.BlockPathTypes.BLOCKED
+                && com.aetherianartificer.townstead.storage.PrivatePaths.closed(mob, x, y, z)) {
+            cir.setReturnValue(net.minecraft.world.level.pathfinder.BlockPathTypes.BLOCKED);
+            return;
+        }
         if (cir.getReturnValue() == net.minecraft.world.level.pathfinder.BlockPathTypes.WALKABLE
                 && HazardPaths.dangerous(mob, x, y, z)) {
             cir.setReturnValue(net.minecraft.world.level.pathfinder.BlockPathTypes.DANGER_OTHER);

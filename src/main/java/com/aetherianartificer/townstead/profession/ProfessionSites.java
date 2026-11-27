@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.function.BiPredicate;
 
 /**
  * Every place a career can be worked in one village, in a stable order.
@@ -102,6 +103,11 @@ public final class ProfessionSites {
         }
     }
 
+    /** How many workers this career employs in this village, counting those not loaded. */
+    public static int staffCount(ServerLevel level, Village village, ProfessionDef def) {
+        return roll(level, village, def, null).staff().size();
+    }
+
     /** How many workers this career can employ in this village. */
     public static int total(ServerLevel level, Village village, @Nullable ProfessionDef def) {
         return sites(level, village, def).size();
@@ -170,7 +176,7 @@ public final class ProfessionSites {
     public static Optional<Site> assignedSite(ServerLevel level, VillagerEntityMCA villager,
                                               @Nullable ProfessionDef def) {
         if (def == null) return Optional.empty();
-        Optional<Village> villageOpt = ProfessionCapacity.resolveVillage(villager);
+        Optional<Village> villageOpt = employingVillage(villager);
         if (villageOpt.isEmpty()) return Optional.empty();
         Village village = villageOpt.get();
         long gameTime = level.getGameTime();
@@ -183,7 +189,7 @@ public final class ProfessionSites {
                 && gameTime <= cached.expiresAt()) {
             return cached.site();
         }
-        if (!isMember(village, villager)) {
+        if (!isOnBooks(village, villager)) {
             return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime,
                     Optional.empty());
         }
@@ -194,25 +200,8 @@ public final class ProfessionSites {
                     Optional.empty());
         }
 
-        List<VillagerEntityMCA> workers = workers(level, village, def, villager);
-        int workerIndex = -1;
-        List<String> paths = new ArrayList<>(workers.size());
-        List<net.minecraft.resources.ResourceLocation> rawProfessions =
-                new ArrayList<>(workers.size());
-        for (int i = 0; i < workers.size(); i++) {
-            VillagerEntityMCA worker = workers.get(i);
-            if (worker.getUUID().equals(villager.getUUID())) workerIndex = i;
-            com.aetherianartificer.townstead.profession.def.ProfessionPaths.Path path =
-                    ProfessionIdentity.path(worker, def.id());
-            paths.add(path == null ? null : path.id());
-            rawProfessions.add(rawProfession(worker));
-        }
-        if (workerIndex < 0) {
-            return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime,
-                    Optional.empty());
-        }
-        int siteIndex = assignedSiteIndex(
-                paths, rawProfessions, sites, def.jobSites(), workerIndex);
+        int siteIndex = roll(level, village, def, villager)
+                .seatOf(villager.getUUID(), sites, def.jobSites(), mayHold(level));
         Optional<Site> result = siteIndex < 0 ? Optional.empty() : Optional.of(sites.get(siteIndex));
         return cacheAssignment(villager, dimension, def.id(), village.getId(), gameTime, result);
     }
@@ -285,7 +274,7 @@ public final class ProfessionSites {
                 .BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         for (JobSiteProvider provider : def.jobSites()) {
             if (provider instanceof JobSiteProvider.JobBlock block
-                    && block.via() == null && block.blocks().contains(blockId)) return true;
+                    && block.via() == null && block.blocks().contains(blockId) && block.counts(level, pos)) return true;
         }
         return false;
     }
@@ -360,11 +349,11 @@ public final class ProfessionSites {
             if (profession == null
                     || profession == net.minecraft.world.entity.npc.VillagerProfession.NONE) continue;
             int index = hypotheticalSiteIndex(level, village, villager, def, sites, id);
-            if (index >= 0 && sites.get(index).isProprietorSeat()) return profession;
+            if (index >= 0 && sites.get(index).isProprietorSeat() && countsAsStaff(profession, def)) return profession;
         }
 
         net.minecraft.world.entity.npc.VillagerProfession career = professionFor(def);
-        if (career == null) return null;
+        if (career == null || !countsAsStaff(career, def)) return null;
         return hypotheticalSiteIndex(level, village, villager, def, sites, def.id()) >= 0
                 ? career : null;
     }
@@ -373,54 +362,87 @@ public final class ProfessionSites {
             ServerLevel level, Village village, VillagerEntityMCA villager, ProfessionDef def,
             List<Site> sites, net.minecraft.resources.ResourceLocation hypotheticalProfession) {
 
-        List<VillagerEntityMCA> workers = new ArrayList<>(workers(level, village, def, villager));
-        if (workers.stream().noneMatch(worker -> worker.getUUID().equals(villager.getUUID()))) {
-            workers.add(villager);
-            workers.sort(BY_SENIORITY);
-        }
-        List<String> paths = new ArrayList<>(workers.size());
-        List<net.minecraft.resources.ResourceLocation> rawProfessions =
-                new ArrayList<>(workers.size());
-        int askingWorkerIndex = -1;
-        for (int i = 0; i < workers.size(); i++) {
-            VillagerEntityMCA worker = workers.get(i);
-            boolean asking = worker.getUUID().equals(villager.getUUID());
-            if (asking) askingWorkerIndex = i;
-            com.aetherianartificer.townstead.profession.def.ProfessionPaths.Path path =
-                    ProfessionIdentity.path(worker, def.id());
-            paths.add(asking && worker.getVillagerData().getProfession()
-                    == net.minecraft.world.entity.npc.VillagerProfession.NONE
-                    ? com.aetherianartificer.townstead.profession.def.ProfessionDefs
-                            .pathId(hypotheticalProfession)
-                    : path == null ? null : path.id());
-            rawProfessions.add(asking ? hypotheticalProfession : rawProfession(worker));
-        }
-        return assignedSiteIndex(
-                paths, rawProfessions, sites, def.jobSites(), askingWorkerIndex);
+        String path = villager.getVillagerData().getProfession()
+                == net.minecraft.world.entity.npc.VillagerProfession.NONE
+                ? com.aetherianartificer.townstead.profession.def.ProfessionDefs
+                        .pathId(hypotheticalProfession)
+                : pathId(villager, def);
+        return roll(level, village, def, villager).seatIfHired(
+                villager.getUUID(), hypotheticalProfession, path, sites, def.jobSites(), mayHold(level));
     }
 
     /**
-     * This career's workers in a stable order, with the asking villager folded in when they do
-     * this work — a villager being considered for a seat has to appear in the ordering that
-     * decides seats, or they could never be given one.
+     * Who may hold which seat: a building under a private Ownership Plaque seats only the people
+     * it lists. Each building's plaque is read once per match.
      */
-    private static List<VillagerEntityMCA> workers(ServerLevel level, Village village,
-                                                   ProfessionDef def,
-                                                   VillagerEntityMCA asking) {
-        net.minecraft.resources.ResourceLocation[] taskTypes = def.workTasks().stream()
-                .map(com.aetherianartificer.townstead.profession.def.WorkTaskDef::type)
-                .distinct()
-                .toArray(net.minecraft.resources.ResourceLocation[]::new);
-        List<VillagerEntityMCA> workers = new ArrayList<>();
-        for (VillagerEntityMCA resident : village.getResidents(level)) {
-            if (!declares(resident, taskTypes)) continue;
-            if (workers.stream().noneMatch(worker ->
-                    worker.getUUID().equals(resident.getUUID()))) workers.add(resident);
+    private static java.util.function.BiPredicate<java.util.UUID, Site> mayHold(ServerLevel level) {
+        Map<Integer, java.util.Optional<com.aetherianartificer.townstead.storage.RoomOwnershipAccess.Place>> places = new HashMap<>();
+        return (worker, site) -> {
+            if (site.building() == null) return true;
+            var place = places.computeIfAbsent(site.building().getId(), id -> java.util.Optional.ofNullable(
+                    com.aetherianartificer.townstead.storage.RoomOwnershipAccess.placeFor(level, site.building())));
+            return com.aetherianartificer.townstead.storage.RoomOwnershipAccess.mayWork(level, place.orElse(null), worker);
+        };
+    }
+
+    /**
+     * This career's staff, brought in line with the residents that are loaded. The asking
+     * villager is folded in when they do this work, since a villager being considered for a
+     * seat has to appear in the ordering that decides seats.
+     */
+    private static SeatRoll roll(ServerLevel level, Village village, ProfessionDef def,
+                                 @Nullable VillagerEntityMCA asking) {
+        SeatLedger ledger = SeatLedger.get(level.getServer());
+        SeatRoll roll = ledger.roll(level.dimension().location(), village.getId(), def.id());
+
+        Set<java.util.UUID> onBooks = village.getResidentsUUIDs()
+                .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
+        Set<java.util.UUID> loaded = new java.util.HashSet<>();
+        Map<java.util.UUID, SeatRoll.Present> working = new HashMap<>();
+        List<VillagerEntityMCA> residents = new ArrayList<>(village.getResidents(level));
+        if (asking != null) residents.add(asking);
+        for (VillagerEntityMCA resident : residents) {
+            loaded.add(resident.getUUID());
+            if (!countsAsStaff(resident.getVillagerData().getProfession(), def)) continue;
+            working.put(resident.getUUID(), new SeatRoll.Present(
+                    rawProfession(resident), pathId(resident, def), seatedSince(resident)));
         }
-        if (declares(asking, taskTypes) && workers.stream().noneMatch(worker ->
-                worker.getUUID().equals(asking.getUUID()))) workers.add(asking);
-        workers.sort(BY_SENIORITY);
-        return workers;
+        if (asking != null) onBooks.add(asking.getUUID());
+
+        boolean changed = false;
+        if (!roll.seeded()) {
+            changed = seedAbsentWorkers(level, roll, def, onBooks, loaded);
+            roll.markSeeded();
+        }
+        if (roll.sync(working, loaded, onBooks) || changed) ledger.setDirty();
+        return roll;
+    }
+
+    /**
+     * A roll that has never been filled starts from the last career the resident register saw
+     * for each unloaded resident, so a world saved before rolls existed does not hire over them.
+     */
+    private static boolean seedAbsentWorkers(ServerLevel level, SeatRoll roll, ProfessionDef def,
+                                             Set<java.util.UUID> onBooks,
+                                             Set<java.util.UUID> loaded) {
+        com.aetherianartificer.townstead.village.ResidentRegister register =
+                com.aetherianartificer.townstead.village.ResidentRegister.get(level.getServer());
+        String career = def.id().toString();
+        boolean changed = false;
+        for (java.util.UUID id : onBooks) {
+            if (loaded.contains(id)) continue;
+            boolean worksHere = register.record(level.getServer(), id, false)
+                    .filter(record -> record.alive() && career.equals(record.professionId()))
+                    .isPresent();
+            if (worksHere) changed |= roll.enroll(id, def.id(), null, 0L);
+        }
+        return changed;
+    }
+
+    private static @Nullable String pathId(VillagerEntityMCA worker, ProfessionDef def) {
+        com.aetherianartificer.townstead.profession.def.ProfessionPaths.Path path =
+                ProfessionIdentity.path(worker, def.id());
+        return path == null ? null : path.id();
     }
 
     /**
@@ -445,6 +467,15 @@ public final class ProfessionSites {
             List<@Nullable String> workerPaths,
             List<net.minecraft.resources.ResourceLocation> workerProfessions,
             List<Site> sites, List<JobSiteProvider> providers, int askingWorkerIndex) {
+        return assignedSiteIndex(workerPaths, workerProfessions, sites, providers, askingWorkerIndex, null);
+    }
+
+    /** As above, with {@code eligible(worker, site)} passing over seats a worker may not hold. */
+    static int assignedSiteIndex(
+            List<@Nullable String> workerPaths,
+            List<net.minecraft.resources.ResourceLocation> workerProfessions,
+            List<Site> sites, List<JobSiteProvider> providers, int askingWorkerIndex,
+            @Nullable BiPredicate<Integer, Integer> eligible) {
         if (askingWorkerIndex < 0 || askingWorkerIndex >= workerPaths.size()) return -1;
         if (workerProfessions.size() != workerPaths.size()) return -1;
         boolean[] claimed = new boolean[sites.size()];
@@ -461,11 +492,18 @@ public final class ProfessionSites {
         for (int worker : workerOrder) {
             String path = workerPaths.get(worker);
             net.minecraft.resources.ResourceLocation profession = workerProfessions.get(worker);
-            int chosen = firstAvailableProprietor(profession, sites, claimed);
-            if (chosen < 0) {
-                chosen = firstAvailableAffinity(path, profession, sites, providers, claimed);
+            boolean[] closed = claimed;
+            if (eligible != null) {
+                closed = claimed.clone();
+                for (int i = 0; i < closed.length; i++) {
+                    if (!closed[i] && !eligible.test(worker, i)) closed[i] = true;
+                }
             }
-            if (chosen < 0) chosen = firstAvailable(profession, sites, claimed);
+            int chosen = firstAvailableProprietor(profession, sites, closed);
+            if (chosen < 0) {
+                chosen = firstAvailableAffinity(path, profession, sites, providers, closed);
+            }
+            if (chosen < 0) chosen = firstAvailable(profession, sites, closed);
             if (chosen < 0) continue;
             claimed[chosen] = true;
             assignment[worker] = chosen;
@@ -538,10 +576,25 @@ public final class ProfessionSites {
                 villager.getVillagerData().getProfession());
     }
 
-    private static boolean declares(VillagerEntityMCA villager,
-                                    net.minecraft.resources.ResourceLocation[] taskTypes) {
-        return taskTypes.length > 0 && com.aetherianartificer.townstead.work.WorkTaskDeclarations
-                .professionDeclares(villager.getVillagerData().getProfession(), taskTypes);
+    /**
+     * Whether holding {@code held} puts a villager on this career's seat roll. Hiring asks the same
+     * question as keeping, so nobody is hired into a seat the roll would never give them, which
+     * fired them after the grace and hired them again, round and round.
+     *
+     * <p>Only the career itself, a profession that resolves to it, or one that carries it counts.
+     * Shared task types do not: most careers declare {@code craft} and every one declares
+     * {@code tidy}, so a mason would fill the library.</p>
+     */
+    static boolean countsAsStaff(@Nullable net.minecraft.world.entity.npc.VillagerProfession held,
+                                 ProfessionDef def) {
+        if (held == null || def == null
+                || held == net.minecraft.world.entity.npc.VillagerProfession.NONE) return false;
+        net.minecraft.resources.ResourceLocation id =
+                net.minecraft.core.registries.BuiltInRegistries.VILLAGER_PROFESSION.getKey(held);
+        if (id == null) return false;
+        return def.id().equals(id)
+                || def.id().equals(com.aetherianartificer.townstead.profession.def.ProfessionDefs.canonicalId(id))
+                || ProfessionCarriers.carries(held, def);
     }
 
     /**
@@ -549,11 +602,25 @@ public final class ProfessionSites {
      * cook has always asked for both; a passer-by standing in the square is not staff.
      */
     private static boolean isMember(Village village, VillagerEntityMCA villager) {
-        if (!village.isWithinBorder(villager)) return false;
+        return village.isWithinBorder(villager) && isOnBooks(village, villager);
+    }
+
+    /**
+     * Whether the village lists this villager. Keeping a job asks only this: a worker who walks
+     * past the border is still staff. Getting hired also asks for the border, see
+     * {@link #isMember}.
+     */
+    private static boolean isOnBooks(Village village, VillagerEntityMCA villager) {
         Optional<Village> home = villager.getResidency().getHomeVillage();
         if (home.isPresent() && home.get().getId() == village.getId()) return true;
         java.util.UUID id = villager.getUUID();
         return village.getResidentsUUIDs().anyMatch(id::equals);
+    }
+
+    /** The village a worker is employed by: their home village wherever they stand. */
+    private static Optional<Village> employingVillage(VillagerEntityMCA villager) {
+        Optional<Village> home = villager.getResidency().getHomeVillage();
+        return home.isPresent() ? home : ProfessionCapacity.resolveVillage(villager);
     }
 
     /**
@@ -627,14 +694,9 @@ public final class ProfessionSites {
     private static final String SEATED_SINCE = "townstead:seated_since";
 
     /**
-     * Whoever has held a seat longest keeps it, then UUID order, so a newcomer only ever takes a
-     * seat nobody holds. Ordering by UUID alone let a new hire displace a worker, who was then
-     * released and displaced someone else in turn. A villager not seated yet sorts last.
+     * When this worker took their seat. Whoever has held a seat longest keeps it (see
+     * {@link SeatRoll}); a villager not seated yet sorts last.
      */
-    private static final Comparator<VillagerEntityMCA> BY_SENIORITY = Comparator
-            .comparingLong(ProfessionSites::seatedSince)
-            .thenComparing(worker -> worker.getUUID().toString());
-
     private static long seatedSince(VillagerEntityMCA worker) {
         if (worker.getVillagerData().getProfession() == net.minecraft.world.entity.npc.VillagerProfession.NONE) {
             return Long.MAX_VALUE;
@@ -646,7 +708,12 @@ public final class ProfessionSites {
     /** Records a hire or a release, and drops every cached assignment since the staff changed. */
     public static void seatChanged(VillagerEntityMCA villager, boolean hired) {
         if (hired) villager.getPersistentData().putLong(SEATED_SINCE, villager.level().getGameTime());
-        else villager.getPersistentData().remove(SEATED_SINCE);
+        else {
+            villager.getPersistentData().remove(SEATED_SINCE);
+            if (villager.level() instanceof ServerLevel level) {
+                SeatLedger.get(level.getServer()).dismissEverywhere(villager.getUUID());
+            }
+        }
         ASSIGNMENTS.clear();
     }
 

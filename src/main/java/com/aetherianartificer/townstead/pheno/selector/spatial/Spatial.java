@@ -61,6 +61,14 @@ public final class Spatial {
             JsonObject obj = element.getAsJsonObject();
             if (obj.has("offset")) {
                 int[] o = triple(obj.get("offset"));
+                // "space":"facing" reads the offset from the entity: x to its right, z ahead of it.
+                if ("facing".equals(net.minecraft.util.GsonHelper.getAsString(obj, "space", "world"))) {
+                    return ctx -> {
+                        if (ctx.self() == null) return null;
+                        Direction ahead = ctx.self().getDirection();
+                        return ctx.focusBlock().relative(ahead, o[2]).relative(ahead.getClockWise(), o[0]).above(o[1]);
+                    };
+                }
                 return ctx -> ctx.focusBlock().offset(o[0], o[1], o[2]);
             }
             if (obj.has("at")) {

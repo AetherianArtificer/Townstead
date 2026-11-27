@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.stonewarden.fire_break"
+  },
+  "icon": "minecraft:water_bucket",
+  "description": {
+    "translate": "skill.townstead.mason.stonewarden.fire_break.description"
+  },
+  "cost": 1,
+  "requires": [
+    "brace_the_beams"
+  ]
+}

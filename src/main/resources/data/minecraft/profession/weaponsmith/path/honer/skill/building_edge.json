@@ -9,13 +9,13 @@
   },
   "cost": 1,
   "requires": [
-    "sharpening"
+    "keep_it_keen"
   ],
   "power": {
     "type": "pheno:stacking_effect",
     "effect": "minecraft:strength",
     "min_stacks": 0,
-    "max_stacks": 180,
+    "max_stacks": 120,
     "stacks_per_level": 60,
     "condition": {
       "type": "pheno:entity_in_radius",

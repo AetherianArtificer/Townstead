@@ -14,6 +14,7 @@ public final class WardrobeClientStore {
     private static volatile boolean villageWarm = true;
     private static volatile boolean villageLight = true;
     private static volatile Map<UUID, WardrobeSyncPayload.Resident> residents = Map.of();
+    private static volatile Map<String, String> titles = Map.of();
 
     private WardrobeClientStore() {}
 
@@ -23,6 +24,7 @@ public final class WardrobeClientStore {
         villageWarm = payload.villageWarm();
         villageLight = payload.villageLight();
         residents = Map.copyOf(new LinkedHashMap<>(payload.residents()));
+        titles = Map.copyOf(payload.titles());
     }
 
     public static @Nullable WardrobeTemplate template(@Nullable String id) {
@@ -31,6 +33,11 @@ public final class WardrobeClientStore {
             if (id.equals(template.id().toString())) return template;
         }
         return null;
+    }
+
+    /** A Skin Library outfit's title, or null when none was recorded. */
+    public static @Nullable String title(@Nullable String skin) {
+        return skin == null ? null : titles.get(skin);
     }
 
     public static boolean villageWarm() {
@@ -71,5 +78,6 @@ public final class WardrobeClientStore {
         villageWarm = true;
         villageLight = true;
         residents = Map.of();
+        titles = Map.of();
     }
 }

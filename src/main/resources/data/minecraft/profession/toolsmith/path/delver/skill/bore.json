@@ -7,65 +7,260 @@
   "description": {
     "translate": "skill.townstead.toolsmith.delver.bore.description"
   },
-  "cost": 1,
-  "requires": [
-    "chip_away"
-  ],
-  "skill_group": "townstead:delver_tunnel",
+  "cost": 2,
+  "skill_group": "townstead:delver_utility",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 100,
+    "cooldown": 160,
     "slot": 1,
     "ai_trigger": "never",
     "resource_cost": {
       "resource": "townstead:stamina",
       "amount": 25
     },
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:ingredient",
+        "tag": "minecraft:pickaxes"
+      }
+    },
     "action": {
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:at",
-          "blocks": {
-            "radius": [
-              1,
-              1,
-              1
-            ],
-            "around": "looking_at",
-            "where": {
-              "type": "and",
-              "conditions": [
-                {
-                  "type": "air",
-                  "inverted": true
-                },
-                {
-                  "type": "hardness",
-                  "min": 0.1,
-                  "max": 3.5
-                },
-                {
-                  "type": "block_entity",
-                  "inverted": true
-                },
-                {
-                  "type": "in_tag",
-                  "tag": "minecraft:mineable/pickaxe"
-                }
-              ]
-            }
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:toolsmith/delver/great_excavation"
           },
-          "do": {
-            "type": "pheno:destroy",
-            "drop_item": true
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:toolsmith/delver/shaft"
+                },
+                "if_action": {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      2,
+                      2,
+                      2
+                    ],
+                    "around": "looking_at",
+                    "where": {
+                      "type": "and",
+                      "conditions": [
+                        {
+                          "type": "air",
+                          "inverted": true
+                        },
+                        {
+                          "type": "hardness",
+                          "min": 0.1,
+                          "max": 3.5
+                        },
+                        {
+                          "type": "block_entity",
+                          "inverted": true
+                        },
+                        {
+                          "type": "or",
+                          "conditions": [
+                            {
+                              "type": "in_tag",
+                              "tag": "minecraft:mineable/pickaxe"
+                            },
+                            {
+                              "type": "in_tag",
+                              "tag": "minecraft:mineable/shovel"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": true
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      2,
+                      2,
+                      2
+                    ],
+                    "around": "looking_at",
+                    "where": {
+                      "type": "and",
+                      "conditions": [
+                        {
+                          "type": "air",
+                          "inverted": true
+                        },
+                        {
+                          "type": "hardness",
+                          "min": 0.1,
+                          "max": 3.5
+                        },
+                        {
+                          "type": "block_entity",
+                          "inverted": true
+                        },
+                        {
+                          "type": "in_tag",
+                          "tag": "minecraft:mineable/pickaxe"
+                        }
+                      ]
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": true
+                  }
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "mainhand",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": 8
+                }
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:toolsmith/delver/shaft"
+                },
+                "if_action": {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "around": "looking_at",
+                    "where": {
+                      "type": "and",
+                      "conditions": [
+                        {
+                          "type": "air",
+                          "inverted": true
+                        },
+                        {
+                          "type": "hardness",
+                          "min": 0.1,
+                          "max": 3.5
+                        },
+                        {
+                          "type": "block_entity",
+                          "inverted": true
+                        },
+                        {
+                          "type": "or",
+                          "conditions": [
+                            {
+                              "type": "in_tag",
+                              "tag": "minecraft:mineable/pickaxe"
+                            },
+                            {
+                              "type": "in_tag",
+                              "tag": "minecraft:mineable/shovel"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": true
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:at",
+                  "blocks": {
+                    "radius": [
+                      1,
+                      1,
+                      1
+                    ],
+                    "around": "looking_at",
+                    "where": {
+                      "type": "and",
+                      "conditions": [
+                        {
+                          "type": "air",
+                          "inverted": true
+                        },
+                        {
+                          "type": "hardness",
+                          "min": 0.1,
+                          "max": 3.5
+                        },
+                        {
+                          "type": "block_entity",
+                          "inverted": true
+                        },
+                        {
+                          "type": "in_tag",
+                          "tag": "minecraft:mineable/pickaxe"
+                        }
+                      ]
+                    }
+                  },
+                  "do": {
+                    "type": "pheno:destroy",
+                    "drop_item": true
+                  }
+                }
+              },
+              {
+                "type": "pheno:equipped_item_action",
+                "slot": "mainhand",
+                "item_action": {
+                  "type": "pheno:damage",
+                  "amount": 4
+                }
+              }
+            ]
           }
         },
         {
-          "type": "pheno:play_sound",
-          "sound": "minecraft:block.stone.break",
-          "volume": 1.0,
-          "pitch": 0.8
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:block.stone.break",
+              "volume": 1.0,
+              "pitch": 0.8
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:poof",
+              "count": 10,
+              "spread": 0.6
+            },
+            {
+              "type": "pheno:swing_hand"
+            }
+          ]
         }
       ]
     }

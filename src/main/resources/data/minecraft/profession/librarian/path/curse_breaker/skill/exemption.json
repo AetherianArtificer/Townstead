@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.librarian.curse_breaker.exemption"
+  },
+  "icon": "minecraft:paper",
+  "description": {
+    "translate": "skill.townstead.librarian.curse_breaker.exemption.description"
+  },
+  "cost": 1,
+  "requires": [
+    "dispel_field"
+  ]
+}

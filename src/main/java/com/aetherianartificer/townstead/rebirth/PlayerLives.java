@@ -59,7 +59,7 @@ public final class PlayerLives extends SavedData {
         namesCache = Map.of();
     }
 
-    /** The name a player chose at their latest rebirth, or null in their first life. */
+    /** The character name a player goes by, or null while they go by their account name. */
     public static @Nullable String nameOf(UUID player) {
         return namesCache.get(player);
     }

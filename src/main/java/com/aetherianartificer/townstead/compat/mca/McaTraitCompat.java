@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Binary compatibility boundary for MCA's trait registry migration. */
 public final class McaTraitCompat {
@@ -24,11 +25,23 @@ public final class McaTraitCompat {
     private static final Method LEGACY_VALUE_OF = method(Traits.Trait.class, "valueOf", String.class);
     private static final Method LEGACY_ID = method(Traits.Trait.class, "id");
 
+    // MCA's trait entries are permanent once registered, and traits are asked for per villager per tick.
+    private static final Map<String, Optional<Traits.Trait>> RESOLVED = new ConcurrentHashMap<>();
+
     private McaTraitCompat() {}
 
     /** Resolve either a legacy trait name or a namespaced registry id. */
     public static Optional<Traits.Trait> resolve(@Nullable String reference) {
-        if (reference == null || reference.isBlank()) return Optional.empty();
+        if (reference == null) return Optional.empty();
+        Optional<Traits.Trait> known = RESOLVED.get(reference);
+        if (known != null) return known;
+        Optional<Traits.Trait> found = lookUp(reference);
+        if (found.isPresent()) RESOLVED.put(reference, found);
+        return found;
+    }
+
+    private static Optional<Traits.Trait> lookUp(String reference) {
+        if (reference.isBlank()) return Optional.empty();
         String normalized = reference.trim();
         String canonical = canonical(normalized);
         if (canonical == null) return Optional.empty();

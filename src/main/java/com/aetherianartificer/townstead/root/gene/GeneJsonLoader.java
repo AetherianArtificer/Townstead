@@ -160,9 +160,17 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                 continue;
             }
             String shortName = id.getPath().substring(id.getPath().lastIndexOf('/') + 1);
+            // A companion on the wheel is named, described and drawn like any gene. With no name it
+            // reads as its key, capitalised ("Blink", not "blink").
             Component name = config.has("display_name")
                     ? DataPackLang.parseComponent(config.get("display_name"), id.toString(), lang)
-                    : Component.literal(shortName);
+                    : Component.literal(titleCase(shortName));
+            Component description = config.has("description")
+                    ? DataPackLang.parseComponent(config.get("description"), id + ".desc", lang)
+                    : null;
+            ResourceLocation icon = config.has("icon")
+                    ? DataPackLang.parseId(GsonHelper.getAsString(config, "icon", ""))
+                    : null;
             List<GeneVariant> variants = parseVariants(id, config, type.get(), name, 1, lang);
             if (variants.isEmpty()) {
                 LOGGER.warn("Gene {} - companion '{}' has invalid config, skipping", parent, id);
@@ -175,11 +183,22 @@ public final class GeneJsonLoader extends SimpleJsonResourceReloadListener {
                     : type.get().defaultLocus(variants.get(0).instance());
             String category = GsonHelper.getAsString(config, "category",
                     ResourceGeneType.KEY.equals(typeKey) ? "resource" : "companion");
-            parsed.put(id, new Gene(id, name, null, null, category,
+            parsed.put(id, new Gene(id, name, description, icon, category,
                     Dominance.fromString("recessive"), locus, 1, variants, false, parentLayer));
             ids.add(id);
         }
         if (!ids.isEmpty()) companions.put(parent, ids);
+    }
+
+    /** "blink" reads "Blink", "fire_bolt" reads "Fire Bolt". */
+    static String titleCase(String key) {
+        StringBuilder out = new StringBuilder();
+        for (String word : key.split("[_\\s]+")) {
+            if (word.isEmpty()) continue;
+            if (out.length() > 0) out.append(' ');
+            out.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return out.toString();
     }
 
     /**

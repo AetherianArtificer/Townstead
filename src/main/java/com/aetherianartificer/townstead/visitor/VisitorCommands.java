@@ -48,8 +48,8 @@ public final class VisitorCommands {
             source.sendFailure(Component.literal("Stand in a village first."));
             return 0;
         }
-        Visitors.Spec thrall = thrallState == null ? null : new Visitors.Spec(role, Map.of(thrallState, 1.0), null, null, null);
-        VillagerEntityMCA visitor = Visitors.arrive(player, village, new Visitors.Spec(role, Map.of(state, 1.0), null, null, thrall));
+        Visitors.Spec thrall = thrallState == null ? null : new Visitors.Spec(role, Map.of(thrallState, 1.0), null, null, null, false);
+        VillagerEntityMCA visitor = Visitors.arrive(player, village, new Visitors.Spec(role, Map.of(state, 1.0), null, null, thrall, false));
         if (visitor == null) {
             source.sendFailure(Component.literal("No visitor could arrive."));
             return 0;

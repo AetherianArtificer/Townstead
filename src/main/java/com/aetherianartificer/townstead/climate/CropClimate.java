@@ -64,7 +64,7 @@ public final class CropClimate {
     public static float growingCelsius(ServerLevel level, BlockPos pos, int daysAhead) {
         // Only a covered crop can be in a room; an open field never starts a room scan.
         if (level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, pos.getX(), pos.getZ()) > pos.getY() + 1) {
-            var room = RoomHeat.at(level, pos);
+            var room = RoomHeat.passiveAt(level, pos);
             if (room.isPresent()) return (float) room.getAsDouble();
         }
         return ClimateModel.dailyMean(level, pos, daysAhead);

@@ -1,0 +1,211 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.toolsmith.sapper.blasting_charge"
+  },
+  "icon": "minecraft:tnt",
+  "description": {
+    "translate": "skill.townstead.toolsmith.sapper.blasting_charge.description"
+  },
+  "cost": 2,
+  "skill_group": "townstead:sapper_utility",
+  "power": {
+    "type": "pheno:active_ability",
+    "cooldown": 300,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:stamina",
+      "amount": 25
+    },
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:player"
+        },
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:gamemode",
+            "gamemode": "adventure"
+          }
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:movement",
+                "movement": "sneaking"
+              },
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:toolsmith/sapper/directed_blast"
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:at",
+            "blocks": {
+              "radius": [
+                1,
+                1,
+                1
+              ],
+              "around": "looking_at",
+              "where": {
+                "type": "and",
+                "conditions": [
+                  {
+                    "type": "air",
+                    "inverted": true
+                  },
+                  {
+                    "type": "hardness",
+                    "min": 0.1,
+                    "max": 3.5
+                  },
+                  {
+                    "type": "block_entity",
+                    "inverted": true
+                  },
+                  {
+                    "type": "in_tag",
+                    "tag": "minecraft:mineable/pickaxe"
+                  }
+                ]
+              }
+            },
+            "do": {
+              "type": "pheno:destroy",
+              "drop_item": true
+            }
+          },
+          "else_action": {
+            "type": "pheno:if_else",
+            "condition": {
+              "type": "pheno:skill",
+              "skill": "minecraft:toolsmith/sapper/grand_detonation"
+            },
+            "if_action": {
+              "type": "pheno:at",
+              "blocks": {
+                "radius": [
+                  3,
+                  3,
+                  3
+                ],
+                "around": "looking_at",
+                "where": {
+                  "type": "and",
+                  "conditions": [
+                    {
+                      "type": "air",
+                      "inverted": true
+                    },
+                    {
+                      "type": "hardness",
+                      "min": 0.1,
+                      "max": 3.5
+                    },
+                    {
+                      "type": "block_entity",
+                      "inverted": true
+                    },
+                    {
+                      "type": "in_tag",
+                      "tag": "minecraft:mineable/pickaxe"
+                    }
+                  ]
+                }
+              },
+              "do": {
+                "type": "pheno:destroy",
+                "drop_item": false
+              }
+            },
+            "else_action": {
+              "type": "pheno:at",
+              "blocks": {
+                "radius": [
+                  2,
+                  2,
+                  2
+                ],
+                "around": "looking_at",
+                "where": {
+                  "type": "and",
+                  "conditions": [
+                    {
+                      "type": "air",
+                      "inverted": true
+                    },
+                    {
+                      "type": "hardness",
+                      "min": 0.1,
+                      "max": 3.5
+                    },
+                    {
+                      "type": "block_entity",
+                      "inverted": true
+                    },
+                    {
+                      "type": "in_tag",
+                      "tag": "minecraft:mineable/pickaxe"
+                    }
+                  ]
+                }
+              },
+              "do": {
+                "type": "pheno:destroy",
+                "drop_item": false
+              }
+            }
+          }
+        },
+        {
+          "type": "pheno:and",
+          "actions": [
+            {
+              "type": "pheno:play_sound",
+              "sound": "minecraft:entity.generic.explode",
+              "volume": 1.0,
+              "pitch": 1.0
+            },
+            {
+              "type": "pheno:spawn_particles",
+              "particle": "minecraft:explosion",
+              "count": 4,
+              "spread": 1.0
+            }
+          ]
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:toolsmith/sapper/grand_detonation"
+          },
+          "if_action": {
+            "type": "pheno:damage",
+            "amount": 4
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:swing_hand"
+        }
+      ]
+    }
+  }
+}

@@ -84,6 +84,22 @@ public final class RootSelector {
         return new Selection(chosen, null);
     }
 
+    /** Whether {@link #select} could choose any origin here that {@code allowed} accepts. */
+    public static boolean anySelectable(Level level, BlockPos pos, Predicate<ResourceLocation> allowed) {
+        if (!com.aetherianartificer.townstead.switchboard.Systems.on(com.aetherianartificer.townstead.switchboard.Systems.ROOTS)) return false;
+        Holder<Biome> biome = level.getBiome(pos);
+        ResourceLocation biomeId = biome.unwrapKey().map(ResourceKey::location).orElse(null);
+        Set<ResourceLocation> tagIds = new HashSet<>();
+        biome.tags().forEach(t -> tagIds.add(t.location()));
+        ResourceLocation dimId = level.dimension().location();
+        for (Root root : RootRegistry.all()) {
+            ResourceLocation id = root.id();
+            if (!RootRules.villagersSpawn(id) || !allowed.test(id)) continue;
+            if (RootRegistry.effectiveSpawnBias(id).weight(biomeId, tagIds, dimId) * (float) RootRules.rate(id) > 0f) return true;
+        }
+        return false;
+    }
+
     @Nullable
     private static ResourceLocation weightedPick(List<Root> origins, @Nullable ResourceLocation biomeId,
                                                  Set<ResourceLocation> tagIds, @Nullable ResourceLocation dimId,

@@ -121,6 +121,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
+        if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnModel(entity, model, texture, pose, buffers, light, fade);
 
         RigSkins.render(entity, model, pose, buffers, light, fade);
         if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
@@ -344,6 +345,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
         if (bodyOffset[0] != 0f || bodyOffset[1] != 0f || bodyOffset[2] != 0f) {
             pose.translate(bodyOffset[0] / 16f, bodyOffset[1] / 16f, bodyOffset[2] / 16f);
         }
+        RigWearables.noteDrawn(entity, scale, bodyOffset);
         int tone = RigSkinTone.forEntity(entity);
         if (fade < 1f) tone = (Math.round(fade * 255f) << 24) | (tone & 0xFFFFFF);
         //? if neoforge {
@@ -353,6 +355,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
+        if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnModel(entity, model, texture, pose, buffers, light, fade);
         RigSkins.render(entity, model, pose, buffers, light, fade);
         if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
         // Face, boots, and held items keep the hard cut at the flag flip (see the humanoid path).

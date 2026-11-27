@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.hunter.slayer.quarry"
+  },
+  "icon": "minecraft:leather_boots",
+  "description": {
+    "translate": "skill.townstead.hunter.slayer.quarry.description"
+  },
+  "cost": 1,
+  "requires": [
+    "fresh_tracks"
+  ]
+}

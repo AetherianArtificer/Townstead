@@ -1,0 +1,19 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cook.camp_cook.campfire_cook"
+  },
+  "icon": "minecraft:flint_and_steel",
+  "description": {
+    "translate": "skill.townstead.cook.camp_cook.campfire_cook.description"
+  },
+  "cost": 1,
+  "requires": [
+    "open_air"
+  ],
+  "power": {
+    "type": "pheno:damage_modifier",
+    "modifier": 0.5,
+    "damage_tag": "minecraft:is_fire"
+  }
+}

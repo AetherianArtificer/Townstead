@@ -11,18 +11,31 @@ import net.minecraft.network.chat.Component;
  * {@link #renderContent} (from a scroll-adjusted top, returning the content height)
  * and may draw a post-scissor overlay (e.g. tooltips) in {@link #renderOverlay}.
  */
-abstract class ScrollPane extends AbstractWidget {
+public abstract class ScrollPane extends AbstractWidget {
 
     protected static final int PAD = 4;
     private int scrollOffset;
     private int contentHeight;
 
-    ScrollPane(int x, int y, int width, int height) {
+    protected ScrollPane(int x, int y, int width, int height) {
         super(x, y, width, height, Component.empty());
     }
 
     protected void resetScroll() {
         scrollOffset = 0;
+    }
+
+    /** The content's height before it has been drawn once, for a reveal on opening. Unknown by default. */
+    protected int contentHeightHint() {
+        return contentHeight;
+    }
+
+    /** Scrolls just far enough to show this span of the content. */
+    protected void scrollToReveal(int contentY0, int contentY1) {
+        int innerH = getHeight() - PAD * 2;
+        if (contentY0 < scrollOffset) scrollOffset = contentY0;
+        else if (contentY1 > scrollOffset + innerH) scrollOffset = contentY1 - innerH;
+        scrollOffset = Math.max(0, Math.min(Math.max(0, contentHeightHint() - innerH), scrollOffset));
     }
 
     @Override

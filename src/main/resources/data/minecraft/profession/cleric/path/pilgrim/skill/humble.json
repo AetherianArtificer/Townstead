@@ -1,0 +1,58 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.cleric.pilgrim.humble"
+  },
+  "icon": "minecraft:wheat",
+  "description": {
+    "translate": "skill.townstead.cleric.pilgrim.humble.description"
+  },
+  "cost": 1,
+  "requires": [
+    "long_road"
+  ],
+  "power": {
+    "type": "pheno:mobs_ignore",
+    "mob_condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:wolf"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:bee"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:iron_golem"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:enderman"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:piglin"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:zombified_piglin"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:polar_bear"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:llama"
+        },
+        {
+          "type": "pheno:entity_type",
+          "entity_type": "minecraft:panda"
+        }
+      ]
+    }
+  }
+}

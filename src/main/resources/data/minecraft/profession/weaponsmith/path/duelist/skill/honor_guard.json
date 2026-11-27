@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.duelist.honor_guard"
+  },
+  "icon": "minecraft:white_banner",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.duelist.honor_guard.description"
+  },
+  "cost": 1,
+  "requires": [
+    "challenge"
+  ]
+}

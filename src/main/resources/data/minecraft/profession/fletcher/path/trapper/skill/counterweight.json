@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.fletcher.trapper.counterweight"
+  },
+  "icon": "minecraft:anvil",
+  "description": {
+    "translate": "skill.townstead.fletcher.trapper.counterweight.description"
+  },
+  "cost": 1,
+  "requires": [
+    "deadfall"
+  ]
+}

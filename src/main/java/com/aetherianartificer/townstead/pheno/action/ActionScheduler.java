@@ -32,11 +32,16 @@ public final class ActionScheduler {
 
     public static void tick(MinecraftServer server) {
         if (PENDING.isEmpty()) return;
+        // Take what's due first: a due action may schedule another, which goes into the list for a later tick.
+        List<Entry> due = new ArrayList<>();
         Iterator<Entry> it = PENDING.iterator();
         while (it.hasNext()) {
             Entry entry = it.next();
             if (entry.level().getGameTime() < entry.dueTick()) continue;
             it.remove();
+            due.add(entry);
+        }
+        for (Entry entry : due) {
             try {
                 if (!entry.ctx().entity().isRemoved()) entry.action().run(entry.ctx());
             } finally {

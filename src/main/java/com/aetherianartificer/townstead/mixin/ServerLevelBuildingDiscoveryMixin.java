@@ -31,6 +31,7 @@ public abstract class ServerLevelBuildingDiscoveryMixin {
         if (!((Object) this instanceof ServerLevel level) || pos == null || newState == null) return;
         BlockState oldState = level.getBlockState(pos);
         com.aetherianartificer.townstead.recognition.EnclosureWatcher.onBlockChanged(level, pos, oldState, newState);
+        com.aetherianartificer.townstead.chronicle.emit.FireWatcher.onBlockChanged(level, pos, oldState, newState);
         // Most same-block state changes cannot alter classification. Stateful stacks are the
         // exception: Bakery jars keep several physical bottles in one tile via a `stack` property.
         if (oldState.getBlock() == newState.getBlock()

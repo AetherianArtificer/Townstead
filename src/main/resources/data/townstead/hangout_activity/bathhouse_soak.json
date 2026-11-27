@@ -1,0 +1,25 @@
+{
+  "schema": "townstead:hangout_activity/v2",
+  "kind": "mixed",
+  "minimum_participants": 1,
+  "maximum_participants": 6,
+  "duration_ticks": 1200,
+  "roles": {
+    "initiator": 1,
+    "companion": 5
+  },
+  "postures": [
+    "townstead:sit"
+  ],
+  "performance": {
+    "id": "townstead:bathhouse_soak",
+    "channel": "social",
+    "duration_ticks": 1200,
+    "priority": 10,
+    "fallback": "vanilla_gesture"
+  },
+  "social_cues": {
+    "conversations": true,
+    "dialogue_interval_ticks": 300
+  }
+}

@@ -3,53 +3,255 @@
   "display_name": {
     "translate": "skill.townstead.climatologist.heatwarden.kindle"
   },
-  "icon": "minecraft:torch",
+  "icon": "minecraft:flint_and_steel",
   "description": {
     "translate": "skill.townstead.climatologist.heatwarden.kindle.description"
   },
-  "cost": 1,
-  "requires": [
-    "heatproof"
-  ],
+  "cost": 2,
+  "skill_group": "townstead:heatwarden_utility",
   "power": {
-    "type": "pheno:action_over_time",
-    "interval": 20,
+    "type": "pheno:active_ability",
+    "cooldown": 200,
+    "slot": 1,
+    "ai_trigger": "never",
     "resource_cost": {
-      "resource": "townstead:front",
-      "amount": 0
+      "resource": "townstead:stamina",
+      "amount": 20
     },
     "condition": {
-      "type": "pheno:or",
+      "type": "pheno:and",
       "conditions": [
         {
-          "type": "pheno:environment",
-          "exposure": "sun"
+          "type": "pheno:and",
+          "conditions": [
+            {
+              "type": "pheno:entity_type",
+              "entity_type": "minecraft:player"
+            },
+            {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:gamemode",
+                "gamemode": "adventure"
+              }
+            }
+          ]
         },
         {
-          "type": "pheno:block_in_radius",
-          "radius": 6,
-          "block_condition": {
-            "type": "pheno:and",
-            "conditions": [
-              {
-                "type": "pheno:in_tag",
-                "tag": "townstead:kitchen/heat_sources"
-              },
-              {
-                "type": "pheno:block_state",
-                "property": "lit",
-                "value": "true",
-                "if_missing": "pass"
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:skill",
+                "skill": "townstead:climatologist/heatwarden/solar_flare"
               }
-            ]
-          }
+            },
+            {
+              "type": "pheno:not",
+              "condition": {
+                "type": "pheno:block",
+                "y": 0,
+                "block_condition": {
+                  "type": "pheno:in_rain"
+                }
+              }
+            }
+          ]
         }
       ]
     },
     "action": {
-      "type": "pheno:change_resource",
-      "resource": "townstead:front",
-      "amount": 3
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:at",
+          "blocks": {
+            "type": "pheno:ray",
+            "distance": 12,
+            "where": {
+              "type": "pheno:block_state",
+              "property": "lit",
+              "value": "false"
+            }
+          },
+          "do": {
+            "type": "pheno:modify_block_state",
+            "property": "lit",
+            "value": "true"
+          },
+          "optional": true
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:not",
+            "condition": {
+              "type": "pheno:block_in_radius",
+              "radius": 12,
+              "block_condition": {
+                "type": "pheno:block_state",
+                "property": "lit",
+                "value": "false"
+              }
+            }
+          },
+          "if_action": {
+            "type": "pheno:at",
+            "blocks": {
+              "radius": 0,
+              "around": "looking_at"
+            },
+            "do": {
+              "type": "pheno:offset",
+              "y": 1,
+              "block_action": {
+                "type": "pheno:set_block",
+                "block": "minecraft:fire"
+              }
+            },
+            "optional": true
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:climatologist/heatwarden/solar_flare"
+          },
+          "if_action": {
+            "type": "pheno:at",
+            "blocks": [
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    1
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:air"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    2
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:air"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    3
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:air"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    4
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:air"
+                }
+              },
+              {
+                "radius": 0,
+                "around": {
+                  "offset": [
+                    0,
+                    0,
+                    5
+                  ],
+                  "space": "facing"
+                },
+                "where": {
+                  "type": "pheno:air"
+                }
+              }
+            ],
+            "do": {
+              "type": "pheno:set_block",
+              "block": "minecraft:fire"
+            },
+            "optional": true
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:climatologist/heatwarden/thaw"
+          },
+          "if_action": {
+            "type": "pheno:at",
+            "blocks": {
+              "radius": [
+                3,
+                3,
+                3
+              ],
+              "around": "looking_at",
+              "where": {
+                "type": "pheno:or",
+                "conditions": [
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:ice"
+                  },
+                  {
+                    "type": "pheno:in_tag",
+                    "tag": "minecraft:snow"
+                  }
+                ]
+              }
+            },
+            "do": {
+              "type": "pheno:destroy",
+              "drop_item": false
+            },
+            "optional": true
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:item.flintandsteel.use",
+          "volume": 1.0,
+          "pitch": 0.9
+        }
+      ]
     }
   }
 }

@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "full_net"
+    "knot_work"
   ],
   "power": {
     "type": "pheno:modifier",

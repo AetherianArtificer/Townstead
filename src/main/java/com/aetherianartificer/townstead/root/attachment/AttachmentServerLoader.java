@@ -63,6 +63,8 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
         });
         PhysicsChains.setPresets(physicsPresets);
 
+        BodyParts.onReload();
+
         manager.listResources(DIR, rl -> isTopLevelJson(rl.getPath())).forEach((file, resource) -> {
             String id = idFrom(file.getNamespace(), file.getPath(), DIR);
             JsonObject json = readJson(resource);
@@ -240,7 +242,10 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                 blobs.put(tintMaskSha, new AttachmentServerData.Blob(mask, AttachmentServerData.KIND_TEXTURE));
             }
         }
-        boolean translucent = GsonHelper.getAsString(json, "render", "cutout").equals("translucent");
+        String render = GsonHelper.getAsString(json, "render", "cutout");
+        float opacity = Math.max(0f, Math.min(1f, GsonHelper.getAsFloat(json, "opacity", 1f)));
+        // See-through at all means it has to blend.
+        boolean translucent = render.equals("translucent") || render.equals("translucent_layered") || opacity < 1f;
         String emissiveSha = "";
         String emissiveRef = GsonHelper.getAsString(json, "emissive", "");
         if (!emissiveRef.isEmpty()) {
@@ -280,10 +285,10 @@ public final class AttachmentServerLoader implements ResourceManagerReloadListen
                 ? json.getAsJsonObject("when").toString() : "";
         return new AttachmentDef(id, geoSha, texSha, targetTag, targetPoint, bone,
                 readVec(json, "offset"), readVec(json, "rotation"), scale, tint,
-                tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent,
+                tintSource, tintBlend, tintStrength, tintMaskSha, emissiveSha, translucent, opacity,
                 readStrings(json, "hides_under"), whenJson,
                 morph, visibility, stages, parsePoses(json), parsePhysics(json, ns),
-                parseAnimations(manager, ns, id, json, blobs));
+                parseAnimations(manager, ns, id, json, blobs), AttachmentBody.parse(json));
     }
 
     /**

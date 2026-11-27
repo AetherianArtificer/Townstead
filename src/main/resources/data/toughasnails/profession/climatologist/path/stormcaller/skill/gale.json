@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.climatologist.stormcaller.gale"
+  },
+  "icon": "minecraft:phantom_membrane",
+  "description": {
+    "translate": "skill.townstead.climatologist.stormcaller.gale.description"
+  },
+  "cost": 1,
+  "requires": [
+    "tailwind"
+  ]
+}

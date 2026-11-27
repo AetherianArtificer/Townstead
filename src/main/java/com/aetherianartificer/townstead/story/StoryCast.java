@@ -106,6 +106,8 @@ final class StoryCast {
         ServerPlayer player = session.player;
         for (VillagerEntityMCA member : members.values()) {
             if (!member.isAlive() || member.level() != player.level()) continue;
+            if (!com.aetherianartificer.townstead.villager.VillagerControl.mayMove(member,
+                    com.aetherianartificer.townstead.villager.VillagerControl.Owner.STORY)) continue;
             if (member.distanceToSqr(player) > HOLD_SQR) {
                 member.getBrain().setMemory(MemoryModuleType.WALK_TARGET, new WalkTarget(player, 0.5f, 3));
             } else {
@@ -132,6 +134,10 @@ final class StoryCast {
             LivingEntity face = villager == speaker ? other : speaker;
             if (face != null) villager.getBrain().setMemory(MemoryModuleType.LOOK_TARGET, new EntityTracker(face, true));
         }
+    }
+
+    boolean has(VillagerEntityMCA villager) {
+        return members.containsValue(villager);
     }
 
     void release() {

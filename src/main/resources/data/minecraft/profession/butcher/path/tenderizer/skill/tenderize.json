@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.butcher.tenderizer.tenderize.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:tenderizer_blow",
+  "cost": 2,
+  "skill_group": "townstead:tenderizer_combat",
   "power": {
     "type": "pheno:active_ability",
-    "cooldown": 240,
-    "slot": 1,
+    "cooldown": 160,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -25,9 +25,90 @@
           "type": "pheno:and",
           "actions": [
             {
-              "type": "pheno:damage",
-              "amount": 3,
-              "source": "other"
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:and",
+                "conditions": [
+                  {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "minecraft:butcher/tenderizer/rhythm"
+                    }
+                  },
+                  {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:tenderizer_beat3"
+                    }
+                  }
+                ]
+              },
+              "if_action": {
+                "type": "pheno:damage",
+                "amount": 6,
+                "source": "other"
+              },
+              "else_action": {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:and",
+                  "conditions": [
+                    {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:skill",
+                        "skill": "minecraft:butcher/tenderizer/rhythm"
+                      }
+                    },
+                    {
+                      "type": "pheno:origin",
+                      "condition": {
+                        "type": "pheno:flag",
+                        "flag": "townstead:tenderizer_beat2"
+                      }
+                    }
+                  ]
+                },
+                "if_action": {
+                  "type": "pheno:damage",
+                  "amount": 5,
+                  "source": "other"
+                },
+                "else_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "minecraft:butcher/tenderizer/rhythm"
+                        }
+                      },
+                      {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:flag",
+                          "flag": "townstead:tenderizer_beat1"
+                        }
+                      }
+                    ]
+                  },
+                  "if_action": {
+                    "type": "pheno:damage",
+                    "amount": 4,
+                    "source": "other"
+                  },
+                  "else_action": {
+                    "type": "pheno:damage",
+                    "amount": 3,
+                    "source": "other"
+                  }
+                }
+              }
             },
             {
               "type": "pheno:apply_effect",
@@ -42,10 +123,148 @@
           }
         },
         {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "minecraft:butcher/tenderizer/rhythm"
+          },
+          "if_action": {
+            "type": "pheno:and",
+            "actions": [
+              {
+                "type": "pheno:if_else",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "minecraft:butcher/tenderizer/meat_grinder"
+                },
+                "if_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:flag",
+                    "flag": "townstead:tenderizer_beat2"
+                  },
+                  "if_action": {
+                    "type": "pheno:set_flag",
+                    "flag": "townstead:tenderizer_beat3",
+                    "duration": 100
+                  },
+                  "else_action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:tenderizer_beat1"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:set_flag",
+                          "flag": "townstead:tenderizer_beat2",
+                          "duration": 100
+                        },
+                        {
+                          "type": "pheno:set_flag",
+                          "flag": "townstead:tenderizer_beat1",
+                          "duration": 100
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:tenderizer_beat1",
+                      "duration": 100
+                    }
+                  }
+                },
+                "else_action": {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:flag",
+                    "flag": "townstead:tenderizer_beat2"
+                  },
+                  "if_action": {
+                    "type": "pheno:set_flag",
+                    "flag": "townstead:tenderizer_beat3",
+                    "duration": 60
+                  },
+                  "else_action": {
+                    "type": "pheno:if_else",
+                    "condition": {
+                      "type": "pheno:flag",
+                      "flag": "townstead:tenderizer_beat1"
+                    },
+                    "if_action": {
+                      "type": "pheno:and",
+                      "actions": [
+                        {
+                          "type": "pheno:set_flag",
+                          "flag": "townstead:tenderizer_beat2",
+                          "duration": 60
+                        },
+                        {
+                          "type": "pheno:set_flag",
+                          "flag": "townstead:tenderizer_beat1",
+                          "duration": 60
+                        }
+                      ]
+                    },
+                    "else_action": {
+                      "type": "pheno:set_flag",
+                      "flag": "townstead:tenderizer_beat1",
+                      "duration": 60
+                    }
+                  }
+                }
+              },
+              {
+                "type": "pheno:play_sound",
+                "sound": "minecraft:block.note_block.basedrum",
+                "volume": 1.0,
+                "pitch": 1.0
+              }
+            ]
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:skill",
+                "skill": "minecraft:butcher/tenderizer/meat_grinder"
+              },
+              {
+                "type": "pheno:flag",
+                "flag": "townstead:tenderizer_beat1"
+              },
+              {
+                "type": "pheno:resource",
+                "resource": "townstead:stamina",
+                "min": 5
+              }
+            ]
+          },
+          "if_action": {
+            "type": "pheno:change_resource",
+            "resource": "townstead:stamina",
+            "amount": -5
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
           "type": "pheno:play_sound",
           "sound": "minecraft:block.anvil.land",
           "volume": 0.5,
           "pitch": 0.7
+        },
+        {
+          "type": "pheno:swing_hand"
         }
       ]
     }

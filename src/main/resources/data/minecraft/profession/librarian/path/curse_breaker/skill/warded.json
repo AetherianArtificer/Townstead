@@ -9,7 +9,7 @@
   },
   "cost": 1,
   "requires": [
-    "arcane_study"
+    "unfading"
   ],
   "power": {
     "type": "pheno:damage_modifier",
@@ -17,8 +17,8 @@
     "damage_type": "minecraft:magic",
     "condition": {
       "type": "pheno:resource",
-      "resource": "townstead:insight",
-      "min": 50
+      "resource": "townstead:focus",
+      "min": 25
     }
   }
 }

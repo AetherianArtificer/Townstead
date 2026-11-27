@@ -7,12 +7,12 @@
   "description": {
     "translate": "skill.townstead.climatologist.frostkeeper.cold_snap.description"
   },
-  "cost": 1,
-  "skill_group": "townstead:frost_cold",
+  "cost": 2,
+  "skill_group": "townstead:frostkeeper_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 300,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:stamina",
@@ -22,24 +22,149 @@
       "type": "pheno:and",
       "actions": [
         {
-          "type": "pheno:area_of_effect",
-          "radius": 5,
-          "include_self": false,
-          "target": "hostile",
-          "action": {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "toughasnails:climatologist/frostkeeper/glacier"
+          },
+          "if_action": {
             "type": "pheno:and",
             "actions": [
               {
-                "type": "pheno:freeze",
-                "amount": 60
+                "type": "pheno:area_of_effect",
+                "radius": 8,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:freeze",
+                      "amount": 60
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:slowness",
+                      "duration": 100,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:wet"
+                      },
+                      "if_action": {
+                        "type": "pheno:and",
+                        "actions": [
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:slowness",
+                            "duration": 60,
+                            "amplifier": 6
+                          },
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:jump_boost",
+                            "duration": 60,
+                            "amplifier": 128
+                          },
+                          {
+                            "type": "pheno:apply_effect",
+                            "effect": "minecraft:weakness",
+                            "duration": 60,
+                            "amplifier": 4
+                          },
+                          {
+                            "type": "pheno:set_flag",
+                            "flag": "townstead:frostkeeper_frozen",
+                            "duration": 60
+                          },
+                          {
+                            "type": "pheno:spawn_particles",
+                            "particle": "minecraft:snowflake",
+                            "count": 10,
+                            "spread": 0.4
+                          }
+                        ]
+                      },
+                      "else_action": {
+                        "type": "pheno:nothing"
+                      }
+                    }
+                  ]
+                }
               },
               {
                 "type": "pheno:apply_effect",
                 "effect": "minecraft:slowness",
-                "duration": 100,
-                "amplifier": 0
+                "duration": 20,
+                "amplifier": 6
               }
             ]
+          },
+          "else_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 5,
+            "include_self": false,
+            "target": "hostile",
+            "action": {
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:freeze",
+                  "amount": 60
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:slowness",
+                  "duration": 100,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:wet"
+                  },
+                  "if_action": {
+                    "type": "pheno:and",
+                    "actions": [
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:slowness",
+                        "duration": 60,
+                        "amplifier": 6
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:jump_boost",
+                        "duration": 60,
+                        "amplifier": 128
+                      },
+                      {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:weakness",
+                        "duration": 60,
+                        "amplifier": 4
+                      },
+                      {
+                        "type": "pheno:set_flag",
+                        "flag": "townstead:frostkeeper_frozen",
+                        "duration": 60
+                      },
+                      {
+                        "type": "pheno:spawn_particles",
+                        "particle": "minecraft:snowflake",
+                        "count": 10,
+                        "spread": 0.4
+                      }
+                    ]
+                  },
+                  "else_action": {
+                    "type": "pheno:nothing"
+                  }
+                }
+              ]
+            }
           }
         },
         {

@@ -7,13 +7,80 @@
   "description": {
     "translate": "skill.townstead.beverage_artisan.sandy_merchant.sea_breeze.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "sun_lover"
+    "tropical_punch"
   ],
+  "skill_group": "townstead:sandy_merchant_utility",
   "power": {
-    "type": "pheno:thermal_tolerance",
-    "cold": 1.0,
-    "heat": 0.0
+    "type": "pheno:active_ability",
+    "cooldown": 600,
+    "slot": 1,
+    "ai_trigger": "never",
+    "resource_cost": {
+      "resource": "townstead:tan",
+      "amount": 30
+    },
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:not",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:beverage_artisan/sandy_merchant/endless_summer"
+          }
+        },
+        {
+          "type": "pheno:time_of_day",
+          "min": 0,
+          "max": 12500
+        }
+      ]
+    },
+    "action": {
+      "type": "pheno:and",
+      "actions": [
+        {
+          "type": "pheno:set_flag",
+          "flag": "townstead:sandy_merchant_breeze",
+          "duration": 600
+        },
+        {
+          "type": "pheno:if_else",
+          "condition": {
+            "type": "pheno:skill",
+            "skill": "townstead:beverage_artisan/sandy_merchant/fair_winds"
+          },
+          "if_action": {
+            "type": "pheno:area_of_effect",
+            "radius": 8,
+            "include_self": true,
+            "target": "non_hostile",
+            "action": {
+              "type": "pheno:apply_effect",
+              "effect": "minecraft:water_breathing",
+              "duration": 600,
+              "amplifier": 0
+            }
+          },
+          "else_action": {
+            "type": "pheno:nothing"
+          }
+        },
+        {
+          "type": "pheno:play_sound",
+          "sound": "minecraft:entity.dolphin.splash",
+          "volume": 1.0,
+          "pitch": 1.2
+        },
+        {
+          "type": "pheno:spawn_particles",
+          "particle": "minecraft:splash",
+          "count": 20,
+          "spread": 1.0
+        }
+      ]
+    }
   }
 }

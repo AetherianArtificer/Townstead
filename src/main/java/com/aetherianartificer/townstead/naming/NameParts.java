@@ -22,7 +22,8 @@ public record NameParts(String given,
                         @Nullable Component title,
                         @Nullable Component style,
                         String epithet,
-                        NamingTradition.Order order) {
+                        NamingTradition.Order order,
+                        boolean familyLocked) {
 
     public NameParts {
         given = given == null ? "" : given.trim();
@@ -137,7 +138,7 @@ public record NameParts(String given,
         }
 
         public NameParts build() {
-            return new NameParts(given, family, title, style, epithet, order);
+            return new NameParts(given, family, title, style, epithet, order, familyAuthoritative);
         }
     }
 }

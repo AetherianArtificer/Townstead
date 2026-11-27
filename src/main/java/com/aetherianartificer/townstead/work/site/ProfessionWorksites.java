@@ -104,6 +104,9 @@ public final class ProfessionWorksites {
             if (site == null) continue;
             if (primary != null && primary.site().key().equals(site.key())) continue;
             if (!policy.permitsAdditional(site.id())) continue;
+            if (!com.aetherianartificer.townstead.storage.RoomOwnershipAccess.mayWork(level,
+                    com.aetherianartificer.townstead.storage.RoomOwnershipAccess.placeFor(level, building),
+                    villager.getUUID())) continue;
             out.add(new Assignment(building, site, referenceOf(building, villager)));
         }
         return List.copyOf(out);

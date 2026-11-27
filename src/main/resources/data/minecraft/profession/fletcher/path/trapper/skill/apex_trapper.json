@@ -9,30 +9,30 @@
   },
   "cost": 1,
   "requires": [
-    "stalker"
+    "camouflage"
   ],
   "power": {
-    "type": "pheno:action_over_time",
-    "interval": 20,
-    "resource_cost": {
-      "resource": "townstead:draw",
-      "amount": 0
-    },
+    "type": "pheno:attack_modifier",
+    "modifier": 2.0,
     "condition": {
       "type": "pheno:resource",
       "resource": "townstead:draw",
-      "min": 75
+      "min": 50
     },
-    "action": {
-      "type": "pheno:area_of_effect",
-      "radius": 6,
-      "include_self": false,
-      "target": "hostile",
-      "action": {
-        "type": "pheno:apply_effect",
-        "effect": "minecraft:slowness",
-        "duration": 30,
-        "amplifier": 1
+    "bientity_condition": {
+      "type": "pheno:target_condition",
+      "condition": {
+        "type": "pheno:or",
+        "conditions": [
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:trapper_baited"
+          },
+          {
+            "type": "pheno:flag",
+            "flag": "townstead:trapper_tripped"
+          }
+        ]
       }
     }
   }

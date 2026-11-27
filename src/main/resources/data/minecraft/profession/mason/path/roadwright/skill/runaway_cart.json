@@ -1,0 +1,14 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.mason.roadwright.runaway_cart"
+  },
+  "icon": "minecraft:minecart",
+  "description": {
+    "translate": "skill.townstead.mason.roadwright.runaway_cart.description"
+  },
+  "cost": 1,
+  "requires": [
+    "road_run"
+  ]
+}

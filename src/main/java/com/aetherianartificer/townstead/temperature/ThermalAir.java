@@ -18,7 +18,8 @@ public final class ThermalAir {
      */
     public static float humidity(ServerLevel level, BlockPos pos, float air) {
         var outside = ClimateModel.sample(level, pos);
-        return relative(outside.humidity(), outside.air(), air);
+        double vapour = outside.humidity() * Evaporation.saturationPressure(outside.air()) + RoomHeat.addedVapour(level, pos);
+        return (float) Math.max(0.05, Math.min(1, vapour / Evaporation.saturationPressure(air)));
     }
 
     /** The same water vapour as air at {@code fromCelsius} with {@code humidity}, warmed or cooled to {@code toCelsius}. */
@@ -27,8 +28,14 @@ public final class ThermalAir {
         return (float) Math.max(0.05, Math.min(1, vapour / Evaporation.saturationPressure(toCelsius)));
     }
 
-    /** Water at a position: the climate some days back, blended toward the ground under cover, never below freezing. */
+    /** Water at a position: a heated pool's own temperature, or else the climate's ({@link #climateWater}). */
     public static float water(ServerLevel level, BlockPos pos) {
+        var pool = com.aetherianartificer.townstead.compat.mess.MessBridge.poolCelsius(level, pos);
+        return pool.isPresent() ? (float) pool.getAsDouble() : climateWater(level, pos);
+    }
+
+    /** Water with no heat put in it: the climate some days back, blended toward the ground under cover, never below freezing. */
+    public static float climateWater(ServerLevel level, BlockPos pos) {
         float lagged = ClimateModel.dailyMean(level, pos, -WATER_LAG_DAYS);
         return Math.max(0.5f, GroundClimate.blend(level, pos, lagged));
     }

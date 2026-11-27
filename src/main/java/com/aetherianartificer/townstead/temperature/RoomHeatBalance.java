@@ -80,6 +80,16 @@ public final class RoomHeatBalance {
         return volume * 1200 * airChangesPerHour / 3600;
     }
 
+    /**
+     * Water vapour a room's sources add to its air, in hPa: {@code kgPerSecond} of evaporation carried off by
+     * {@code ventilation} (W/K, as air at 1200 J/m3K). Past saturation it condenses; the caller caps humidity at 1.
+     */
+    public static double addedVapour(double kgPerSecond, double ventilation, double celsius) {
+        if (!(kgPerSecond > 0) || !(ventilation > 0)) return 0;
+        double flow = ventilation / 1200, density = kgPerSecond / flow;
+        return density * 461.5 * (celsius + 273.15) / 100;
+    }
+
     /** Mod temperature contributions are authored strengths, converted once to effective watts. */
     public static double sourcePower(double nativeDegrees, double wattsPerDegree, int faces, int exposedFaces) {
         return nativeDegrees * wattsPerDegree * sourceShare(faces, exposedFaces);

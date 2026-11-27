@@ -1,0 +1,41 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.armorer.bulwark.braced"
+  },
+  "icon": "minecraft:iron_boots",
+  "description": {
+    "translate": "skill.townstead.armorer.bulwark.braced.description"
+  },
+  "cost": 1,
+  "requires": [
+    "proofed_plate"
+  ],
+  "power": {
+    "type": "pheno:attribute",
+    "attribute": "minecraft:generic.knockback_resistance",
+    "amount": 1.0,
+    "condition": {
+      "type": "pheno:or",
+      "conditions": [
+        {
+          "type": "pheno:or",
+          "conditions": [
+            {
+              "type": "pheno:toggled",
+              "gene": "minecraft:armorer/bulwark/iron_wall"
+            },
+            {
+              "type": "pheno:flag",
+              "flag": "townstead:bulwark_guarding"
+            }
+          ]
+        },
+        {
+          "type": "pheno:toggled",
+          "gene": "minecraft:armorer/bulwark/stand_fast"
+        }
+      ]
+    }
+  }
+}

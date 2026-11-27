@@ -19,21 +19,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:cleric/confessor/listening_ear"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:cleric/confessor/purge"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:cleric/confessor/last_rites"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:cleric",
+            "at_least": 80
           },
           {
             "type": "pheno:entity_in_radius",
@@ -60,6 +48,65 @@
       "action": {
         "type": "pheno:change_resource",
         "resource": "townstead:faith",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:faith",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:cleric",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 8,
+                  "condition": {
+                    "type": "pheno:and",
+                    "conditions": [
+                      {
+                        "type": "pheno:not",
+                        "condition": {
+                          "type": "pheno:hostile"
+                        }
+                      },
+                      {
+                        "type": "pheno:health",
+                        "max": 0.7,
+                        "relative": true
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "type": "pheno:block_in_radius",
+                "radius": 3,
+                "block_condition": {
+                  "type": "pheno:block",
+                  "block": "minecraft:brewing_stand"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:faith",
         "amount": 1
       }
     }
@@ -68,21 +115,21 @@
     [
       "steady_soul",
       "cleanse",
-      "stay_your_hand"
+      "shield_of_faith"
     ],
     [
       "steady_pour",
       "absolve",
-      "shield_of_faith"
-    ],
-    [
-      "listening_ear",
-      "purge",
-      "last_rites"
+      "stay_your_hand"
     ],
     [
       "grace",
-      "sanctify",
+      "absolution",
+      "last_rites"
+    ],
+    [
+      "listening_ear",
+      "shriven",
       "sanctuary"
     ],
     [

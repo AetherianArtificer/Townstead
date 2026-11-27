@@ -1,0 +1,20 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.scribe.archivist.fair_copy"
+  },
+  "icon": "minecraft:writable_book",
+  "description": {
+    "translate": "skill.townstead.scribe.archivist.fair_copy.description"
+  },
+  "cost": 1,
+  "requires": [
+    "catalog"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "xp_gain",
+    "operation": "multiply",
+    "value": 1.15
+  }
+}

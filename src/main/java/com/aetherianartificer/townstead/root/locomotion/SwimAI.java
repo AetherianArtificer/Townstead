@@ -57,7 +57,7 @@ public final class SwimAI {
     private static final Map<VillagerEntityMCA, BlockPos> DWELL_SPOTS = new WeakHashMap<>();
 
     public static void tick(VillagerEntityMCA villager) {
-        if (villager.level().isClientSide) return;
+        if (villager.level().isClientSide || villager.isNoAi()) return;
         int phase = villager.tickCount + villager.getId();
         if (phase % CHECK_EVERY != 0) return;
         boolean costDue = phase % COST_EVERY == 0;

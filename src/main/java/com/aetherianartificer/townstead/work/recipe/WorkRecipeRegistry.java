@@ -213,7 +213,7 @@ public final class WorkRecipeRegistry {
             // same line the work draws: below it is input, at it is output.
             com.aetherianartificer.townstead.work.order.OrderStackFilters.register(
                     purification.output(),
-                    stack -> thirstBridge.purity(stack) >= ThirstCompatBridge.PURITY_PURIFIED);
+                    stack -> thirstBridge.purity(stack) >= thirstBridge.finishedPurity());
             recipes.add(purification);
         }
 
@@ -423,6 +423,7 @@ public final class WorkRecipeRegistry {
                     continue;
                 }
                 ItemStack result = safeGetResult(level, recipe);
+                if (result.isEmpty()) result = projectedResult(recipeId, typeId, recipe);
                 if (result.isEmpty()) {
                     emptyResults++;
                     continue;
@@ -452,13 +453,14 @@ public final class WorkRecipeRegistry {
                     continue;
                 }
                 ResourceLocation container = containerOf(recipe);
+                if (container == null) container = def.containerFor(outputId);
                 int cookTime = cookingTimeTicks(recipe, 200);
                 boolean tool = def.behaviorUses("tool");
                 boolean beverage = outputId.getPath().contains("coffee") || outputId.getPath().contains("tea");
                 out.add(new DiscoveredRecipe(recipeId, role,
                         autoTier(role, inputs.size(), cookTime), outputId,
                         Math.max(1, result.getCount()), cookTime, tool,
-                        container, container == null ? 0 : Math.max(1, result.getCount()),
+                        container, container == null ? 0 : Math.max(def.recipeContainerCount(), Math.max(1, result.getCount())),
                         inputs, false, beverage,
                         //? if >=1.21 {
                         holder
@@ -816,6 +818,14 @@ public final class WorkRecipeRegistry {
 
     // ── Reflection helpers ──
 
+    /** For a recipe that changes a block instead of reporting a result: the output its projection names. */
+    private static ItemStack projectedResult(ResourceLocation recipeId, ResourceLocation typeId, Recipe<?> recipe) {
+        RecipeProjections.View view = RecipeProjections.project(recipeId, typeId, recipe);
+        ResourceLocation output = view.succeeded() ? view.idValue("output") : null;
+        if (output == null || !BuiltInRegistries.ITEM.containsKey(output)) return ItemStack.EMPTY;
+        return new ItemStack(BuiltInRegistries.ITEM.get(output));
+    }
+
     private static ItemStack safeGetResult(ServerLevel level, Recipe<?> recipe) {
         try {
             ItemStack fromApi = recipe.getResultItem(level.registryAccess());
@@ -831,6 +841,9 @@ public final class WorkRecipeRegistry {
 
     /** Reads the duration published by a recipe implementation. */
     public static int cookingTimeTicks(Recipe<?> recipe, int fallback) {
+        if (recipe instanceof net.minecraft.world.item.crafting.AbstractCookingRecipe cooking) {
+            return Math.max(1, cooking.getCookingTime());
+        }
         String[] methods = {"getCookingTime", "getCookTime", "getCookTimeInTicks", "time",
                 "getTime", "cookTick", "getCookTick"};
         for (String name : methods) {
@@ -999,7 +1012,10 @@ public final class WorkRecipeRegistry {
             List<ResourceLocation> ids = itemIdsFromIngredient(mcIng);
             if (ids.isEmpty()) continue;
             int count = reflectIngredientCount(mcIng);
-            result.add(new RecipeIngredient(ids, count, ingredientTag(mcIng, ids)));
+            ResourceLocation exact = exactProductOf(mcIng);
+            result.add(exact != null
+                    ? new RecipeIngredient(ids, count, null, exact)
+                    : new RecipeIngredient(ids, count, ingredientTag(mcIng, ids)));
         }
         if (!result.isEmpty()) return result;
 
@@ -1019,6 +1035,29 @@ public final class WorkRecipeRegistry {
             } catch (Throwable ignored) {}
         }
         return result;
+    }
+
+    /**
+     * The one exact product an ingredient stands for, when every stack it accepts is the same
+     * component-bearing product: a water bottle rather than any potion, a dried herb rather than
+     * any prepared one. Null for ordinary item and tag ingredients, and for a mix of products,
+     * which keep matching by item id.
+     */
+    public static @Nullable ResourceLocation exactProductOf(net.minecraft.world.item.crafting.Ingredient ingredient) {
+        if (ingredient == null || ingredient.isEmpty()) return null;
+        ResourceLocation exact = null;
+        try {
+            for (ItemStack stack : ingredient.getItems()) {
+                if (stack == null || stack.isEmpty()) continue;
+                ResourceLocation product = com.aetherianartificer.townstead.work.order.OrderProducts.key(stack);
+                if (product == null || product.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()))) return null;
+                if (exact != null && !exact.equals(product)) return null;
+                exact = product;
+            }
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+        return exact;
     }
 
     static @Nullable ResourceLocation ingredientTag(

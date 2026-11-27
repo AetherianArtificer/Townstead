@@ -20,21 +20,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:hunter/nightward/sentinel"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:hunter/nightward/rebuke"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "townstead:hunter/nightward/incense_line"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "townstead:hunter",
+            "at_least": 160
           },
           {
             "type": "pheno:entity_in_radius",
@@ -48,6 +36,53 @@
       "action": {
         "type": "pheno:change_resource",
         "resource": "townstead:vigil",
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:vigil",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "townstead:hunter",
+            "at_least": 160
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 12,
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                }
+              },
+              {
+                "type": "pheno:time_of_day",
+                "min": 13000,
+                "max": 23000
+              },
+              {
+                "type": "pheno:village",
+                "within_border": true
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:vigil",
         "amount": 1
       }
     }
@@ -55,28 +90,28 @@
   "skills": [
     [
       "home_ground",
-      "garlic_ward",
+      "hang_garlic",
       "sprinkle"
     ],
     [
       "planted",
-      "garlic_cloud",
-      "hallowed_circle"
-    ],
-    [
-      "sentinel",
-      "rebuke",
+      "hallowed_circle",
       "incense_line"
     ],
     [
+      "threshold_salt",
+      "mirror",
+      "sunburst"
+    ],
+    [
       "unbroken",
-      "sunburst",
-      "sanctuary"
+      "true_sight",
+      "false_dawn"
     ],
     [
       "last_watch",
-      "false_dawn",
-      "hold_the_line"
+      "sanctuary",
+      "last_light"
     ]
   ]
 }

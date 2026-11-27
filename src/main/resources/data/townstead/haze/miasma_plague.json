@@ -1,0 +1,18 @@
+{
+  "shape": "cloud",
+  "color": "#5A7A2A",
+  "duration": 260,
+  "fog": {
+    "distance": 4.0
+  },
+  "particle": "minecraft:spore_blossom_air",
+  "inside": {
+    "interval": 20,
+    "action": {
+      "type": "pheno:apply_effect",
+      "effect": "minecraft:poison",
+      "duration": 40,
+      "amplifier": 0
+    }
+  }
+}

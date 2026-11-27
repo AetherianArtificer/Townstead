@@ -7,15 +7,15 @@
   "description": {
     "translate": "skill.townstead.beverage_artisan.sandy_merchant.coconut_bomb.description"
   },
-  "cost": 1,
+  "cost": 2,
   "requires": [
-    "frozen_daiquiri"
+    "volley"
   ],
-  "skill_group": "townstead:sandy_cocktails",
+  "skill_group": "townstead:sandy_merchant_combat",
   "power": {
     "type": "pheno:active_ability",
     "cooldown": 400,
-    "slot": 1,
+    "slot": 2,
     "ai_trigger": "when_threatened",
     "resource_cost": {
       "resource": "townstead:tan",
@@ -28,21 +28,100 @@
           "type": "pheno:and",
           "actions": [
             {
-              "type": "pheno:damage",
-              "amount": 6,
-              "source": "other"
+              "type": "pheno:and",
+              "actions": [
+                {
+                  "type": "pheno:if_else",
+                  "condition": {
+                    "type": "pheno:origin",
+                    "condition": {
+                      "type": "pheno:skill",
+                      "skill": "townstead:beverage_artisan/sandy_merchant/beach_party"
+                    }
+                  },
+                  "if_action": {
+                    "type": "pheno:apply_effect",
+                    "effect": "minecraft:weakness",
+                    "duration": 100,
+                    "amplifier": 4
+                  },
+                  "else_action": {
+                    "type": "pheno:damage",
+                    "amount": 10,
+                    "source": "other"
+                  }
+                },
+                {
+                  "type": "pheno:apply_effect",
+                  "effect": "minecraft:nausea",
+                  "duration": 160,
+                  "amplifier": 0
+                },
+                {
+                  "type": "pheno:spawn_particles",
+                  "particle": "minecraft:crit",
+                  "count": 6,
+                  "spread": 0.3
+                }
+              ]
             },
             {
-              "type": "pheno:apply_effect",
-              "effect": "minecraft:nausea",
-              "duration": 160,
-              "amplifier": 0
-            },
-            {
-              "type": "pheno:apply_effect",
-              "effect": "minecraft:slowness",
-              "duration": 60,
-              "amplifier": 0
+              "type": "pheno:if_else",
+              "condition": {
+                "type": "pheno:origin",
+                "condition": {
+                  "type": "pheno:skill",
+                  "skill": "townstead:beverage_artisan/sandy_merchant/split"
+                }
+              },
+              "if_action": {
+                "type": "pheno:area_of_effect",
+                "radius": 4,
+                "include_self": false,
+                "target": "hostile",
+                "action": {
+                  "type": "pheno:and",
+                  "actions": [
+                    {
+                      "type": "pheno:if_else",
+                      "condition": {
+                        "type": "pheno:origin",
+                        "condition": {
+                          "type": "pheno:skill",
+                          "skill": "townstead:beverage_artisan/sandy_merchant/beach_party"
+                        }
+                      },
+                      "if_action": {
+                        "type": "pheno:apply_effect",
+                        "effect": "minecraft:weakness",
+                        "duration": 100,
+                        "amplifier": 4
+                      },
+                      "else_action": {
+                        "type": "pheno:damage",
+                        "amount": 5,
+                        "source": "other"
+                      }
+                    },
+                    {
+                      "type": "pheno:apply_effect",
+                      "effect": "minecraft:nausea",
+                      "duration": 160,
+                      "amplifier": 0
+                    },
+                    {
+                      "type": "pheno:spawn_particles",
+                      "particle": "minecraft:crit",
+                      "count": 6,
+                      "spread": 0.3
+                    }
+                  ]
+                },
+                "limit": 2
+              },
+              "else_action": {
+                "type": "pheno:nothing"
+              }
             }
           ],
           "on": {

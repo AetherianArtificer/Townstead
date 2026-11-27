@@ -21,6 +21,10 @@ public final class ModifierCapability {
     }
 
     public static CapabilityKey key(ModifierGeneType.Modifier kind, @Nullable ResourceLocation discriminator) {
+        if (kind == ModifierGeneType.Modifier.CUSTOM && discriminator != null) {
+            return CapabilityKey.scalar(ResourceLocation.tryParse("townstead_roots:"
+                    + "modifier/" + discriminator.getNamespace() + "/" + discriminator.getPath()));
+        }
         String path = "modifier/" + kind.key() + (discriminator != null ? "/" + discriminator : "");
         return CapabilityKey.scalar(ResourceLocation.tryParse("townstead_roots:" + path));
     }

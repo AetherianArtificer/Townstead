@@ -1,0 +1,7 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="All Rights Reserved"
+[[mods]]
+modId="townstead_skill_check"
+version="1"
+displayName="Townstead career skill checks"

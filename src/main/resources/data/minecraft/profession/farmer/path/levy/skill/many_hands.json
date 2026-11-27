@@ -1,0 +1,260 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.farmer.levy.many_hands"
+  },
+  "icon": "minecraft:hay_block",
+  "description": {
+    "translate": "skill.townstead.farmer.levy.many_hands.description"
+  },
+  "cost": 1,
+  "requires": [
+    "stubborn"
+  ],
+  "power": {
+    "type": "pheno:modifier",
+    "target": "damage_dealt",
+    "operation": "add",
+    "value": 1.0,
+    "condition": {
+      "type": "pheno:and",
+      "conditions": [
+        {
+          "type": "pheno:resource",
+          "resource": "townstead:grit",
+          "min": 50
+        },
+        {
+          "type": "pheno:entity_in_radius",
+          "radius": 6,
+          "compare_to": 1,
+          "condition": {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              },
+              {
+                "type": "pheno:equipped_item",
+                "slot": "mainhand",
+                "item_condition": {
+                  "type": "pheno:or",
+                  "conditions": [
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "minecraft:hoes"
+                    },
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "minecraft:axes"
+                    },
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "minecraft:pickaxes"
+                    },
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "minecraft:shovels"
+                    },
+                    {
+                      "type": "pheno:ingredient",
+                      "tag": "minecraft:swords"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "companions": {
+    "hand2": {
+      "type": "pheno:modifier",
+      "target": "damage_dealt",
+      "operation": "add",
+      "value": 1.0,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:resource",
+            "resource": "townstead:grit",
+            "min": 50
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 6,
+            "compare_to": 2,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                {
+                  "type": "pheno:equipped_item",
+                  "slot": "mainhand",
+                  "item_condition": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:hoes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:axes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:pickaxes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:shovels"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:swords"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "hand3": {
+      "type": "pheno:modifier",
+      "target": "damage_dealt",
+      "operation": "add",
+      "value": 1.0,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:resource",
+            "resource": "townstead:grit",
+            "min": 50
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 6,
+            "compare_to": 3,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                {
+                  "type": "pheno:equipped_item",
+                  "slot": "mainhand",
+                  "item_condition": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:hoes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:axes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:pickaxes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:shovels"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:swords"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "hand4": {
+      "type": "pheno:modifier",
+      "target": "damage_dealt",
+      "operation": "add",
+      "value": 1.0,
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:resource",
+            "resource": "townstead:grit",
+            "min": 50
+          },
+          {
+            "type": "pheno:entity_in_radius",
+            "radius": 6,
+            "compare_to": 4,
+            "condition": {
+              "type": "pheno:and",
+              "conditions": [
+                {
+                  "type": "pheno:not",
+                  "condition": {
+                    "type": "pheno:hostile"
+                  }
+                },
+                {
+                  "type": "pheno:equipped_item",
+                  "slot": "mainhand",
+                  "item_condition": {
+                    "type": "pheno:or",
+                    "conditions": [
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:hoes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:axes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:pickaxes"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:shovels"
+                      },
+                      {
+                        "type": "pheno:ingredient",
+                        "tag": "minecraft:swords"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

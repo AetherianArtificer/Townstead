@@ -50,6 +50,21 @@ public final class PhenoHooks {
                 ModifierCapability.key(target), ModifierCapability.key(target, discriminator));
     }
 
+    // --- mechanics other mods own: a modifier whose target is a namespaced id ---
+
+    /** {@code base} as {@code e}'s powers modify another mod's mechanic {@code target}, for example {@code my_mod:grind_speed}. */
+    public static float custom(LivingEntity e, ResourceLocation target, float base) {
+        if (e == null || target == null || e.level().isClientSide) return base;
+        return (float) Capabilities.applyToBase(e, base, ModifierCapability.key(Modifier.CUSTOM, target));
+    }
+
+    /** As {@link #custom(LivingEntity, ResourceLocation, float)}, for a mechanic that acts on an item: item-scoped modifiers test {@code subject}. */
+    public static float custom(LivingEntity e, ResourceLocation target, float base,
+                               @Nullable net.minecraft.world.item.ItemStack subject) {
+        if (e == null || target == null || e.level().isClientSide) return base;
+        return (float) Capabilities.applyToBase(e, subject, base, ModifierCapability.key(Modifier.CUSTOM, target));
+    }
+
     /** Rounds a scaled count up or down at random so fractional scaling holds on average. */
     private static int roundRandomly(LivingEntity e, float value) {
         if (value <= 0f) return 0;

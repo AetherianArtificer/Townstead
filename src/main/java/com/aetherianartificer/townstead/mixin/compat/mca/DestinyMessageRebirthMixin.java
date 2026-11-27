@@ -7,10 +7,20 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Sends a reborn player who picks "Where you died" in Destiny back to where the last life ended. */
+/**
+ * Sends a reborn player who picks "Where you died" in Destiny back to where the last life ended,
+ * and lifts the Destiny damage shield when Destiny closes.
+ */
 @Mixin(value = DestinyMessage.class, remap = false)
 public abstract class DestinyMessageRebirthMixin {
     //? if >=1.21 {
+    @Inject(method = "handle", at = @At("HEAD"), require = 0)
+    private void townstead$closed(net.minecraft.world.entity.player.Player player, CallbackInfo ci) {
+        if (((DestinyMessage) (Object) this).destination().isEmpty()) {
+            com.aetherianartificer.townstead.rebirth.DestinyShield.closed(player.getUUID());
+        }
+    }
+
     @Inject(method = "handle", at = @At("HEAD"), cancellable = true, require = 0)
     private void townstead$whereYouDied(net.minecraft.world.entity.player.Player player, CallbackInfo ci) {
         var destination = ((DestinyMessage) (Object) this).destination();
@@ -23,7 +33,17 @@ public abstract class DestinyMessageRebirthMixin {
         ci.cancel();
     }
     //?} else {
-    /*@Inject(method = "receive", at = @At("HEAD"), cancellable = true, require = 0)
+    /*@Inject(method = "receive", at = @At("HEAD"), require = 0)
+    private void townstead$closed(net.minecraft.server.level.ServerPlayer player, CallbackInfo ci) {
+        try {
+            java.lang.reflect.Field field = DestinyMessage.class.getDeclaredField("isClosing");
+            field.setAccessible(true);
+            if (field.getBoolean(this)) com.aetherianartificer.townstead.rebirth.DestinyShield.closed(player.getUUID());
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        }
+    }
+
+    @Inject(method = "receive", at = @At("HEAD"), cancellable = true, require = 0)
     private void townstead$whereYouDied(net.minecraft.server.level.ServerPlayer player, CallbackInfo ci) {
         // Read by reflection, not @Shadow: a missing field would fail the whole mixin at launch.
         String location;

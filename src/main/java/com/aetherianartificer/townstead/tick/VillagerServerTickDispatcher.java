@@ -10,6 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 public final class VillagerServerTickDispatcher {
     private VillagerServerTickDispatcher() {}
@@ -23,16 +24,20 @@ public final class VillagerServerTickDispatcher {
         if (!villager.isAlive() || villager.isRemoved()) {
             FatigueVillagerTicker.forget(villager);
             com.aetherianartificer.townstead.performance.CollapsePlayback.stop(villager);
-            TemperatureVillagerTicker.forget(villager.getId());
-            WardrobeVillagerTicker.forget(villager.getId());
+            TemperatureVillagerTicker.forget(villager);
+            WardrobeVillagerTicker.forget(villager);
             EmptyContainerDropoff.forget(villager);
             com.aetherianartificer.townstead.profession.ProfessionSites.forget(villager);
             com.aetherianartificer.townstead.work.WorkActivities.forget(villager);
             com.aetherianartificer.townstead.hangout.HangoutEngine.forget(villager);
+            com.aetherianartificer.townstead.compat.werewolves.WerewolfVillagers.forget(villager);
             com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.forget(villager);
             com.aetherianartificer.townstead.pheno.state.EntityStates.forget(villager);
             return;
         }
+
+        // Every villager, resident or not, gets bathing wear once they have a gender; looked at every ten seconds, staggered.
+        if (Math.floorMod(gameTime + villager.getId(), 200L) == 0L) com.aetherianartificer.townstead.compat.mess.MessBridge.dressForBathing(villager);
 
         // Recreational drinking must finish even with hunger/thirst simulation disabled.
         com.aetherianartificer.townstead.hunger.VillagerConsumptionManager.tickAndFinalize(villager,
@@ -51,22 +56,31 @@ public final class VillagerServerTickDispatcher {
     /**
      * One per-villager system, with the switch that turns it off (null when it has none of its own).
      * A {@code resident} step only matters to someone living in a village, so wild villagers skip it.
+     * A far villager runs steps only on its brain ticks, except where {@code everyTick} holds: steps
+     * that drive motion or hit shapes, or that add up an amount on each tick.
      */
-    private record Step(String name, @Nullable String system, boolean resident, BiConsumer<VillagerEntityMCA, Long> action) {
+    private record Step(String name, @Nullable String system, boolean resident,
+                        Predicate<VillagerEntityMCA> everyTick, BiConsumer<VillagerEntityMCA, Long> action) {
         Step(String name, @Nullable String system, BiConsumer<VillagerEntityMCA, Long> action) {
-            this(name, system, false, action);
+            this(name, system, false, v -> false, action);
         }
     }
 
     private static Step resident(String name, @Nullable String system, BiConsumer<VillagerEntityMCA, Long> action) {
-        return new Step(name, system, true, action);
+        return new Step(name, system, true, v -> false, action);
+    }
+
+    private static Step always(String name, @Nullable String system, BiConsumer<VillagerEntityMCA, Long> action) {
+        return new Step(name, system, false, v -> true, action);
     }
 
     private static final List<Step> STEPS = List.of(
             resident("villager.conversation", null, (v, t) ->
                     com.aetherianartificer.townstead.dialogue.conversation.ConversationEngine.consider(v)),
             resident("villager.profession_auto_assign", Systems.WORK, (v, t) -> ProfessionAutoAssignTicker.tick(v)),
-            resident("villager.profession_trade_backfill", Systems.CAREERS, (v, t) -> ProfessionTradeBackfillTicker.tick(v)),
+            new Step("villager.job_retention", null, (v, t) ->
+                    com.aetherianartificer.townstead.profession.JobRetention.tick(v)),
+            resident("villager.profession_trade_backfill",Systems.CAREERS, (v, t) -> ProfessionTradeBackfillTicker.tick(v)),
             new Step("villager.hunger", null, (v, t) -> HungerVillagerTicker.tick(v)),
             resident("villager.thirst", null, (v, t) -> {
                 if (ThirstBridgeResolver.isActive()) ThirstVillagerTicker.tick(v);
@@ -76,41 +90,44 @@ public final class VillagerServerTickDispatcher {
             resident("villager.wardrobe", Systems.CLOTHING, (v, t) -> WardrobeVillagerTicker.tick(v)),
             resident("villager.container_dropoff", null, (v, t) -> EmptyContainerDropoff.tick(v)),
             resident("villager.profession_memory", Systems.CAREERS, (v, t) -> ProfessionProgressMemoryTicker.tick(v)),
-            resident("villager.guard_rest", Systems.WORK, (v, t) -> GuardRestEnforcerTicker.tick(v)),
+            new Step("villager.guard_rest", Systems.WORK, true, v -> true, (v, t) -> GuardRestEnforcerTicker.tick(v)),
             resident("villager.guard_leash", Systems.WORK, (v, t) -> GuardLeash.tick(v)),
             resident("villager.work_tool", Systems.WORK, (v, t) -> WorkToolTicker.tick(v)),
             resident("villager.work_feedback", Systems.WORK, (v, t) ->
                     com.aetherianartificer.townstead.work.feedback.WorkFeedbackTicker.tick(v)),
             // Always ticks so a reaction lock still releases after reactions are switched off.
-            new Step("villager.reaction_lock", null, (v, t) ->
+            always("villager.reaction_lock", null, (v, t) ->
                     com.aetherianartificer.townstead.reaction.ReactionLockTracker.tickFreeze(v, t)),
             resident("villager.reaction_context", Systems.REACTIONS, (v, t) ->
                     com.aetherianartificer.townstead.reaction.trigger.event.ContextTickHook.tick(v, t)),
             new Step("villager.life_stamper", null, (v, t) ->
                     com.aetherianartificer.townstead.calendar.VillagerLifeStamper.tick(v)),
             new Step("villager.life_stage", null, (v, t) -> LifeStageTicker.tick(v)),
-            new Step("villager.rig_crouch", Systems.ROOTS, (v, t) ->
+            always("villager.rig_crouch", Systems.ROOTS, (v, t) ->
                     com.aetherianartificer.townstead.root.rig.RigCrouch.tick(v)),
             // Gene and skill tickers stay on: Roots and Careers switch off their powers at the source.
-            new Step("villager.gene_ability", null, (v, t) ->
+            always("villager.gene_ability", null, (v, t) ->
                     com.aetherianartificer.townstead.root.ability.GeneAbilityTicker.tick(v)),
             new Step("villager.disposition", Systems.ROOTS, (v, t) ->
                     com.aetherianartificer.townstead.root.disposition.DispositionReactions.tick(v)),
             new Step("villager.gene_attribute", null, (v, t) ->
                     com.aetherianartificer.townstead.root.attribute.GeneAttributeApplier.tick(v)),
-            new Step("villager.active_ability", null, (v, t) ->
+            always("villager.active_ability", null, (v, t) ->
                     com.aetherianartificer.townstead.root.ability.ActiveAbilities.aiTick(v)),
-            new Step("villager.locomotion", null, (v, t) -> {
+            always("villager.locomotion", null, (v, t) -> {
                 com.aetherianartificer.townstead.root.locomotion.fly.DriftPilot.maintain(v);
                 com.aetherianartificer.townstead.root.locomotion.Locomotion.tick(v);
             }),
-            new Step("villager.glide", null, (v, t) -> com.aetherianartificer.townstead.root.ability.GlideAI.tick(v)),
-            new Step("villager.swim", null, (v, t) -> com.aetherianartificer.townstead.root.locomotion.SwimAI.tick(v)),
-            new Step("villager.gene_resource", null, (v, t) ->
+            always("villager.glide", null, (v, t) -> com.aetherianartificer.townstead.root.ability.GlideAI.tick(v)),
+            always("villager.swim", null, (v, t) -> com.aetherianartificer.townstead.root.locomotion.SwimAI.tick(v)),
+            always("villager.gene_resource", null, (v, t) ->
                     com.aetherianartificer.townstead.root.ability.ResourceValues.tick(v)),
+            always("villager.body_values", null, (v, t) ->
+                    com.aetherianartificer.townstead.root.attachment.BodyValues.tick(v)),
             new Step("villager.gene_collection", null, (v, t) ->
                     com.aetherianartificer.townstead.root.collection.CollectionValues.tick(v)),
-            resident("villager.hangout", Systems.HANGOUTS, (v, t) ->
+            new Step("villager.hangout", Systems.HANGOUTS, true,
+                    v -> com.aetherianartificer.townstead.hangout.HangoutEngine.visiting(v.getUUID()), (v, t) ->
                     com.aetherianartificer.townstead.hangout.HangoutEngine.tick(v)),
             new Step("villager.pheno_state", null, (v, t) ->
                     com.aetherianartificer.townstead.pheno.state.EntityStates.tick(v)),
@@ -126,6 +143,8 @@ public final class VillagerServerTickDispatcher {
                     com.aetherianartificer.townstead.chronicle.emit.PendingBirths.tick(v)),
             resident("villager.chronicle_marriage", Systems.CHRONICLES, (v, t) ->
                     com.aetherianartificer.townstead.chronicle.emit.MarriageWatcher.tick(v, t)),
+            new Step("villager.family_tree_name", null,
+                    com.aetherianartificer.townstead.naming.FamilyTreeNameTarget::tick),
             resident("villager.thrall", null, (v, t) ->
                     com.aetherianartificer.townstead.compat.vampirism.Thralls.tick(v)),
             // Wild werewolves turn too, as the mod's own human werewolves do.
@@ -140,13 +159,17 @@ public final class VillagerServerTickDispatcher {
             resident("villager.chronicle_gossip", Systems.CHRONICLES, (v, t) ->
                     com.aetherianartificer.townstead.chronicle.knowledge.GossipTicker.tick(v, t)),
             resident("villager.chronicle_mood", Systems.CHRONICLES, (v, t) ->
-                    com.aetherianartificer.townstead.chronicle.consumer.ChronicleMoodTicker.tick(v, t))
+                    com.aetherianartificer.townstead.chronicle.consumer.ChronicleMoodTicker.tick(v, t)),
+            resident("villager.keyed_mood", null, (v, t) ->
+                    com.aetherianartificer.townstead.social.KeyedSocialLedger.tick(v, t))
     );
 
     private static void runSteps(VillagerEntityMCA villager, long gameTime, boolean profiled) {
         boolean wild = com.aetherianartificer.townstead.replace.MobReplacer.isWild(villager);
+        boolean due = VillagerDetail.brainDue(villager);
         for (Step step : STEPS) {
             if (wild && step.resident()) continue;
+            if (!due && !step.everyTick().test(villager)) continue;
             if (step.system() != null && !Systems.on(step.system())) continue;
             if (profiled) profile(step.name(), () -> step.action().accept(villager, gameTime));
             else step.action().accept(villager, gameTime);

@@ -19,21 +19,9 @@
         "type": "pheno:and",
         "conditions": [
           {
-            "type": "pheno:or",
-            "conditions": [
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:shepherd/packmaster/pack_bond"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:shepherd/packmaster/hunt"
-              },
-              {
-                "type": "pheno:skill",
-                "skill": "minecraft:shepherd/packmaster/guard_dog"
-              }
-            ]
+            "type": "pheno:career_xp",
+            "career": "minecraft:shepherd",
+            "at_least": 80
           },
           {
             "type": "pheno:entity_in_radius",
@@ -47,7 +35,52 @@
       "action": {
         "type": "pheno:change_resource",
         "resource": "townstead:flock",
-        "amount": 1
+        "amount": 3
+      }
+    },
+    {
+      "type": "pheno:action_over_time",
+      "interval": 20,
+      "resource_cost": {
+        "resource": "townstead:flock",
+        "amount": 0
+      },
+      "condition": {
+        "type": "pheno:and",
+        "conditions": [
+          {
+            "type": "pheno:career_xp",
+            "career": "minecraft:shepherd",
+            "at_least": 80
+          },
+          {
+            "type": "pheno:and",
+            "conditions": [
+              {
+                "type": "pheno:not",
+                "condition": {
+                  "type": "pheno:entity_in_radius",
+                  "radius": 8,
+                  "condition": {
+                    "type": "pheno:tamed"
+                  }
+                }
+              },
+              {
+                "type": "pheno:entity_in_radius",
+                "radius": 12,
+                "condition": {
+                  "type": "pheno:hostile"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "pheno:change_resource",
+        "resource": "townstead:flock",
+        "amount": 2
       }
     }
   ],
@@ -55,27 +88,27 @@
     [
       "good_dog",
       "heel",
-      "treat"
+      "sic_em"
     ],
     [
       "loyal_companions",
-      "sic_em",
-      "stay"
+      "stay",
+      "flank"
     ],
     [
-      "pack_bond",
-      "hunt",
+      "scent",
+      "fetch",
       "guard_dog"
     ],
     [
       "alpha",
-      "pack_tactics",
-      "protect"
+      "retriever",
+      "treat"
     ],
     [
       "pack_leader",
-      "release_the_hounds",
-      "loyalty"
+      "pack_bond",
+      "release_the_hounds"
     ]
   ]
 }

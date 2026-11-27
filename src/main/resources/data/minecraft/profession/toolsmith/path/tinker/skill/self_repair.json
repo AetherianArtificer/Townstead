@@ -9,20 +9,11 @@
   },
   "cost": 1,
   "requires": [
-    "fiddle"
+    "well_made"
   ],
   "power": {
     "type": "pheno:action_over_time",
     "interval": 200,
-    "resource_cost": {
-      "resource": "townstead:knack",
-      "amount": 0
-    },
-    "condition": {
-      "type": "pheno:resource",
-      "resource": "townstead:knack",
-      "min": 50
-    },
     "action": {
       "type": "pheno:equipped_item_action",
       "slot": "mainhand",

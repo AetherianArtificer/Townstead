@@ -1,0 +1,42 @@
+{
+  "schema": "townstead:skill/v1",
+  "display_name": {
+    "translate": "skill.townstead.weaponsmith.headsman.heavy_axe"
+  },
+  "icon": "minecraft:netherite_axe",
+  "description": {
+    "translate": "skill.townstead.weaponsmith.headsman.heavy_axe.description"
+  },
+  "cost": 2,
+  "requires": [
+    "sentence"
+  ],
+  "power": {
+    "type": "pheno:attack_modifier",
+    "modifier": 1.3,
+    "condition": {
+      "type": "pheno:equipped_item",
+      "slot": "mainhand",
+      "item_condition": {
+        "type": "pheno:ingredient",
+        "tag": "minecraft:axes"
+      }
+    }
+  },
+  "companions": {
+    "slow": {
+      "type": "pheno:attribute",
+      "attribute": "minecraft:generic.attack_speed",
+      "amount": -0.2,
+      "operation": "multiply_total",
+      "condition": {
+        "type": "pheno:equipped_item",
+        "slot": "mainhand",
+        "item_condition": {
+          "type": "pheno:ingredient",
+          "tag": "minecraft:axes"
+        }
+      }
+    }
+  }
+}
