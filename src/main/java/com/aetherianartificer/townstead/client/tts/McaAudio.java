@@ -9,6 +9,8 @@ import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 
 /**
  * Calls MCA's TTS audio cache. Older MCA builds take a public {@code Consumer<OutputStream>};
@@ -22,14 +24,20 @@ public final class McaAudio {
     private McaAudio() {
     }
 
+    /** Writes downloaded audio; MCA's own download methods may throw. */
+    @FunctionalInterface
+    public interface Writer {
+        void write(OutputStream output) throws IOException;
+    }
+
     /** Downloads into MCA's disk cache unless the file is already there; true when it is usable. */
-    public static boolean cachedRetrieve(String identifier, Consumer<OutputStream> writer) {
+    public static boolean cachedRetrieve(String identifier, Writer writer) {
         Method method = method("cachedRetrieve", 2);
         return call(method, identifier, adapt(method, writer));
     }
 
     /** MCA's get: the disk cache when persistent, otherwise held in memory. */
-    public static boolean get(String identifier, Consumer<OutputStream> writer, boolean persistent) {
+    public static boolean get(String identifier, Writer writer, boolean persistent) {
         Method method = method("get", 3);
         return call(method, identifier, adapt(method, writer), persistent);
     }
@@ -52,10 +60,18 @@ public final class McaAudio {
         });
     }
 
-    private static Object adapt(Method method, Consumer<OutputStream> writer) {
+    private static Object adapt(Method method, Writer writer) {
         if (method == null) return null;
         Class<?> type = method.getParameterTypes()[1];
-        if (type.isInstance(writer)) return writer;
+        if (type == Consumer.class) {
+            return (Consumer<OutputStream>) output -> {
+                try {
+                    writer.write(output);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            };
+        }
         return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type}, (proxy, m, args) -> {
             if (m.getDeclaringClass() == Object.class) {
                 return switch (m.getName()) {
@@ -64,7 +80,7 @@ public final class McaAudio {
                     default -> "TownsteadAudioRetriever";
                 };
             }
-            writer.accept((OutputStream) args[0]);
+            writer.write((OutputStream) args[0]);
             return null;
         });
     }
