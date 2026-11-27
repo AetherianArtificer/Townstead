@@ -121,7 +121,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
-        if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnModel(entity, model, pose, buffers, light, fade);
+        if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnModel(entity, model, texture, pose, buffers, light, fade);
 
         RigSkins.render(entity, model, pose, buffers, light, fade);
         if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
@@ -355,7 +355,7 @@ public class SpeciesRigLayer<T extends LivingEntity, M extends EntityModel<T>> e
                 ((tone >> 16) & 0xFF) / 255f, ((tone >> 8) & 0xFF) / 255f, (tone & 0xFF) / 255f,
                 ((tone >>> 24) & 0xFF) / 255f);
         *///?}
-        if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnModel(entity, model, pose, buffers, light, fade);
+        if (com.aetherianartificer.townstead.compat.mess.MessBridge.active()) com.aetherianartificer.townstead.compat.mess.MessClientLink.drawOnModel(entity, model, texture, pose, buffers, light, fade);
         RigSkins.render(entity, model, pose, buffers, light, fade);
         if (fade >= 1f) RigModels.renderOverlays(rigBase, entity, model, pose, buffers, light);
         // Face, boots, and held items keep the hard cut at the flag flip (see the humanoid path).

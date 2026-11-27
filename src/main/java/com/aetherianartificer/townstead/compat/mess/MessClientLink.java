@@ -37,7 +37,7 @@ public final class MessClientLink {
     }
 
     /** Whatever has landed on this body, on the model it's being drawn with, faded with the body under it. */
-    public static <E extends LivingEntity> void drawOnModel(LivingEntity entity, EntityModel<E> model, PoseStack pose,
+    public static <E extends LivingEntity> void drawOnModel(LivingEntity entity, EntityModel<E> model, ResourceLocation texture, PoseStack pose,
                                                             MultiBufferSource buffers, int light, float fade) {
         TraceRender.draw(entity, model, (p, buffer, l, overlay, argb) -> {
             //? if neoforge {
@@ -45,13 +45,14 @@ public final class MessClientLink {
             //?} else {
             /*model.renderToBuffer(p, buffer, l, overlay, 1f, 1f, 1f, ((argb >>> 24) & 0xFF) / 255f);
             *///?}
-        }, null, pose, buffers, light, Math.round(fade * 255f), true);
+        }, TraceRender.pixelsOf(texture), pose, buffers, light, Math.round(fade * 255f), true);
     }
 
     /** What this body carries, and what has landed on this attachment at this place it fills. */
     public static void drawOnPart(LivingEntity entity, Object shape, String attachment, int anchor, Draw draw, ResourceLocation texture, PoseStack pose,
                                   MultiBufferSource buffers, int light, int alpha) {
-        TraceRender.drawPart(entity, shape, MessLink.partKey(attachment, anchor), draw::draw, TraceRender.imageOf(texture), pose, buffers, light, alpha);
+        // The texture's own pixels, so nothing lands where it's clear: a see-through part would otherwise show its marks as a box.
+        TraceRender.drawPart(entity, shape, MessLink.partKey(attachment, anchor), draw::draw, TraceRender.pixelsOf(texture), pose, buffers, light, alpha);
     }
 
     /** A texture of marks to draw over a piece, and its color. Whoever asks for one lets go of it. */
@@ -60,7 +61,7 @@ public final class MessClientLink {
     /** What's on this attachment now, to go with a piece that has come off it. */
     public static List<Mark> copyMarks(LivingEntity entity, Object shape, String attachment, int anchor, Draw draw, ResourceLocation texture) {
         List<Mark> out = new ArrayList<>();
-        for (TraceRender.Copied copied : TraceRender.copyPart(entity, shape, MessLink.partKey(attachment, anchor), draw::draw, TraceRender.imageOf(texture))) {
+        for (TraceRender.Copied copied : TraceRender.copyPart(entity, shape, MessLink.partKey(attachment, anchor), draw::draw, TraceRender.pixelsOf(texture))) {
             out.add(new Mark(copied.id(), copied.argb()));
         }
         return out;
